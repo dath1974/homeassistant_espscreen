@@ -29,3 +29,20 @@ map:
   look: [auto, light, dark]
   with: [person, device_tracker]
   max: 8
+  # Aircraft over the map tile (screen.map, docs/MAP.md "Aircraft"): a sensor whose `flights` attribute lists them, as
+  # the Flightradar24 integration's Current in area does, drawn by the screen over the map and moved in place on every
+  # report. Their marker (a dot, a dot with its heading, or a plane turned to it), their label, their colour (by
+  # altitude band or the screen's accent), the ones on the ground, whether they glide along their heading between two
+  # reports, and their track. The numbers: [default, lowest, highest] of the track's seconds, the most planes on the
+  # card and the altitudes in feet a plane is shown between.
+  aircraft:
+    plane_marker: [dot, arrow, plane]
+    plane_label: [auto, none, callsign, altitude, full]
+    plane_colour: [altitude, accent]
+    plane_ground: [hide, show]
+    plane_motion: [glide, hold]
+    plane_track: [hide, show]
+    plane_track_s: [60, 10, 900]
+    plane_most: [15, 1, 20]
+    plane_min: [0, 0, 60000]
+    plane_max: [60000, 0, 60000]

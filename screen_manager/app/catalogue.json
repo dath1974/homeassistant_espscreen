@@ -1633,7 +1633,57 @@
      "person",
      "device_tracker"
     ],
-    "max": 8
+    "max": 8,
+    "aircraft": {
+     "plane_marker": [
+      "dot",
+      "arrow",
+      "plane"
+     ],
+     "plane_label": [
+      "auto",
+      "none",
+      "callsign",
+      "altitude",
+      "full"
+     ],
+     "plane_colour": [
+      "altitude",
+      "accent"
+     ],
+     "plane_ground": [
+      "hide",
+      "show"
+     ],
+     "plane_motion": [
+      "glide",
+      "hold"
+     ],
+     "plane_track": [
+      "hide",
+      "show"
+     ],
+     "plane_track_s": [
+      60,
+      10,
+      900
+     ],
+     "plane_most": [
+      15,
+      1,
+      20
+     ],
+     "plane_min": [
+      0,
+      0,
+      60000
+     ],
+     "plane_max": [
+      60000,
+      0,
+      60000
+     ]
+    }
    },
    "keypad": null
   },

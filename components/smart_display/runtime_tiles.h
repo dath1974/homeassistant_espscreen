@@ -61,6 +61,7 @@
 #include "energy_view.h"
 #include "calendar_view.h"
 #include "meter_view.h"
+#include "aircraft_view.h"
 #include "plugin_api.h"
 #include "plugin_host.h"
 #include "screen_hooks.h"
@@ -616,7 +617,14 @@ struct Widgets {
   meter_view::View *meter{};
   // A plugin tile's card (docs/PLUGINS.md, plugin_host.cpp): the plugin's object; it goes with the card's extra layer.
   plugin_host::Card *plugin{};
+  // Aircraft over a map tile's picture (docs/MAP.md, "Aircraft", aircraft_view.cpp): one object just above the picture.
+  aircraft_view::View *air{};
 };
+// Aircraft over map tiles (docs/MAP.md, "Aircraft"): the last planes each map tile's card got (op "air"), by tile, so a
+// card drawn again lays them over its picture at once; the full view keeps its own (air_full).
+inline std::map<int, aircraft_plan::Overlay> air_tiles;
+inline void air_receive(aircraft_plan::Overlay &&next);
+inline void air_tick(uint32_t now);
 // A page is being built off the glass (warm_page): its cards ask for no pictures and wake nothing.
 inline bool warming=false;
 constexpr unsigned POINT_BUFFER = 128;
@@ -6385,6 +6393,7 @@ inline void end_extra(Widgets &w) {
     if(w.calendar)calendar_view::release(w);
     if(w.meter)meter_view::release(w);
     if(w.plugin)plugin_host::release(w);
+    if(w.air)aircraft_view::release(w.air);
     lv_obj_clean(w.extra);w.parts.fill(nullptr);w.extra_mode.clear();free_points(w.points);}
 }
 // Two triangles per segment between the polyline and its baseline. No canvas
@@ -8194,6 +8203,11 @@ inline bool render_camera_card(Widgets &w,const Tile &t,int width,int height){
   tile_picture_place(w,t,0,0,0);
   const bool photo=w.picture&&!lv_obj_has_flag(w.picture,LV_OBJ_FLAG_HIDDEN),waiting=!photo&&t.pictured()&&tile_picture_waiting(w,t);
   set_loading(w,waiting,width,height);
+  // Aircraft over a map tile's picture (docs/MAP.md, "Aircraft"): the last planes the card got, on the picture it shows.
+  if(photo&&t.is_map()&&t.extra().map_air){
+    const auto air=air_tiles.find((int)w.index);
+    if(air!=air_tiles.end())aircraft_view::show(w.air,w.picture,air->second);
+  }else if(w.air)aircraft_view::release(w.air);
   if(!photo&&!waiting)return false;
   // A tall card to style_tall, which gives the name the picture's ink; it only has no parts of its own.
   hide_panel(w);begin_extra(w,"tall",width,height);
@@ -10261,6 +10275,7 @@ inline void drop_card(Widgets &w) {
   if (w.calendar) calendar_view::release(w);
   if (w.meter) meter_view::release(w);
   if (w.plugin) plugin_host::release(w);
+  if (w.air) aircraft_view::release(w.air);
   if (captured_slider && (captured_slider == w.slider || captured_slider == w.control_slider)) { captured_slider = nullptr; slider_changed = false; }
   if (w.tile) lv_obj_delete(w.tile);
   w = Widgets{};
@@ -10626,6 +10641,8 @@ inline void tick() {
     }
   }
   if(!enabled)return;
+  // Aircraft over maps: their asks, and the planes that glide (air_tick).
+  air_tick(esphome::millis());
   // A failed update says so for five seconds, then the pages come back (ota_status.h).
   if(ota_status::now.phase==ota_status::Phase::failed){
     static uint32_t failed_at=0;
@@ -11087,6 +11104,108 @@ inline void camera_map_sheet(const MapSheet &next);
 inline void camera_request(const std::string &entity, int size = 0, uint32_t background = 0);
 inline void camera_release();
 
+// ----- Aircraft over a map (docs/MAP.md, "Aircraft", screen_manager/app/aircraft.py) -----
+// The screen asks ESP Screen Manager for the planes of the map cards on the glass that have them, and of a map's full
+// view, every AIR_ASK_MS and at once when another such card shows (or the full view another picture). The app answers
+// with op "air" now and again on every report of the planes' source, for 75 s after the last ask. The ask names each
+// card's tile and the size of the picture it shows, so the app places the planes on exactly that picture.
+constexpr uint32_t AIR_ASK_MS = 30000;
+inline aircraft_plan::Overlay air_full;  // the full view's planes; index -1 for none
+inline aircraft_view::View *air_full_view = nullptr;
+inline std::string air_asked_tiles, air_asked_full;
+inline uint32_t air_asked_tiles_at = 0, air_asked_full_at = 0, air_ticked_at = 0;
+
+// The size of the picture a card shows, "WxH", "" for none.
+inline std::string air_picture_size(lv_obj_t *picture) {
+#if LV_USE_IMAGE
+  if (!picture || lv_obj_has_flag(picture, LV_OBJ_FLAG_HIDDEN)) return "";
+  const auto *src = static_cast<const lv_image_dsc_t *>(lv_image_get_src(picture));
+  if (!src || !src->header.w || !src->header.h) return "";
+  return std::to_string(src->header.w) + "x" + std::to_string(src->header.h);
+#else
+  (void) picture;
+  return "";
+#endif
+}
+inline void air_event(const std::vector<std::pair<std::string, std::string>> &fields) {
+  if (inbox.empty()) return;
+  esphome::api::HomeassistantActionRequest request;
+  request.service = esphome::StringRef("esphome.screen_camera");
+  request.is_event = true;
+  std::vector<std::pair<std::string, std::string>> all = {{"inbox", inbox}, {"session", protocol_key(transfer.lease)}, {"rev", layout_rev}};
+  all.insert(all.end(), fields.begin(), fields.end());
+  request.data.init(all.size());
+  for (const auto &field : all) {
+    esphome::api::HomeassistantServiceMap entry;
+    entry.key = esphome::StringRef(field.first);
+    entry.value = esphome::StringRef(field.second);
+    request.data.push_back(entry);
+  }
+  esphome::api::global_api_server->send_homeassistant_action(request);
+  ESP_LOGD("aircraft", "asked for %s %s", fields.empty() ? "" : fields[0].second.c_str(), fields.size() > 1 ? fields[1].second.c_str() : "");
+}
+// The full view's planes on its picture, when they were placed for the view it shows; hidden while another comes.
+inline void air_full_place() {
+  if (!camera_root || !camera_picture || camera_map_index < 0) return;
+  const bool fits = air_full.index == camera_map_index && map_move == map_move_shown &&
+                    aircraft_plan::fits_view(air_full, map_move_shown.text(), map_focus);
+  if (!fits) { aircraft_view::set_hidden(air_full_view, true); return; }
+  aircraft_view::show(air_full_view, camera_picture, air_full);
+  aircraft_view::set_hidden(air_full_view, false);
+}
+inline void air_receive(aircraft_plan::Overlay &&next) {
+  next.at = lv_tick_get();
+  ESP_LOGD("aircraft", "%u planes for %s %d", (unsigned) next.planes.size(), next.full ? "full" : "tile", next.index);
+  if (next.full) {
+    if (!camera_root || next.index != camera_map_index) return;
+    air_full = std::move(next);
+    air_full_place();
+    return;
+  }
+  const int index = next.index;
+  auto &kept = air_tiles[index] = std::move(next);
+  for (auto &w : widgets)
+    if ((int) w.index == index && w.tile && w.picture && w.index < model.count && model.tiles[w.index].is_map() &&
+        model.tiles[w.index].extra().map_air && !lv_obj_has_flag(w.picture, LV_OBJ_FLAG_HIDDEN))
+      aircraft_view::show(w.air, w.picture, kept);
+}
+// Every 250 ms: the asks that are due, and once a second the planes that glide.
+inline void air_tick(uint32_t now) {
+  // The map cards of the page on the glass with aircraft, each with the size of its picture: "3:180x120,5:400x300". A
+  // full view covers the page, so its cards are not on the glass meanwhile.
+  std::string cards;
+  if (!camera_root) for (auto &w : widgets) {
+    if (!w.tile || lv_obj_has_flag(w.tile, LV_OBJ_FLAG_HIDDEN) || w.index >= model.count) continue;
+    const auto &t = model.tiles[w.index];
+    if (!t.is_map() || !t.extra().map_air) continue;
+    const std::string size = air_picture_size(w.picture);
+    if (size.empty()) continue;
+    if (!cards.empty()) cards += ',';
+    cards += std::to_string(w.index) + ':' + size;
+  }
+  if (cards.empty()) air_asked_tiles.clear();
+  else if (cards != air_asked_tiles || now - air_asked_tiles_at >= AIR_ASK_MS) {
+    air_asked_tiles = cards; air_asked_tiles_at = now;
+    air_event({{"air", "tile"}, {"cards", cards}});
+  }
+  // The full view of a map tile with aircraft, once the picture of the view its keys asked for is on the glass.
+  std::string full;
+  const std::string size = camera_root ? air_picture_size(camera_picture) : std::string();
+  if (!size.empty() && camera_map_index >= 0 && camera_map_index < (int) model.count &&
+      model.tiles[camera_map_index].extra().map_air && map_move == map_move_shown)
+    full = std::to_string(camera_map_index) + '|' + size + '|' + map_move_shown.text() + '|' + map_focus;
+  if (!full.empty() && (full != air_asked_full || now - air_asked_full_at >= AIR_ASK_MS)) {
+    air_asked_full = full; air_asked_full_at = now;
+    air_event({{"air", "full"}, {"idx", std::to_string(camera_map_index)}, {"size", size}, {"focus", map_focus},
+               {"move", map_move_shown.text()}});
+  }
+  if (now - air_ticked_at < 1000) return;
+  air_ticked_at = now;
+  const uint32_t at = lv_tick_get();
+  for (auto &w : widgets) aircraft_view::tick(w.air, at);
+  aircraft_view::tick(air_full_view, at);
+}
+
 inline picture_loader::Loader loader;
 namespace owners {
 using picture_loader::Kind;
@@ -11303,7 +11422,10 @@ inline void tile_picture_place(Widgets &w, const Tile &t, int size, int x, int y
     }
     lv_obj_remove_flag(w.picture, LV_OBJ_FLAG_HIDDEN);
     lv_obj_invalidate(w.picture);
+    // A map's aircraft lie on the picture: they follow its place and size.
+    if (w.air) aircraft_view::follow(w.air, w.picture);
   } else if (w.picture) {
+    if (w.air) aircraft_view::release(w.air);
     // Hidden, it lets go of its picture too: a picture object still pointing at a copy counts as drawing it, and the
     // store never frees what a card draws.
     lv_image_set_src(w.picture, nullptr);
@@ -11806,6 +11928,9 @@ inline void camera_close() {
   map_pinned = false;
   map_move = map_move_shown = MapMove{};
   map_sheet = MapSheet{};
+  aircraft_view::release(air_full_view);
+  air_full = {};
+  air_asked_full.clear();
   camera_release_due = true;
   // Its picture goes with it (the next collect, once nothing draws it), and a download on its way breaks off.
   loader.release(owners::VIEW);
@@ -11875,6 +12000,8 @@ inline void map_preview() {
   lv_image_set_scale(camera_picture, (uint32_t) std::max(16.0f, std::min(4096.0f, 256.0f * f)));
   lv_obj_align(camera_picture, LV_ALIGN_CENTER, (int32_t) -dx, (int32_t) -dy);
 #endif
+  // The planes lie on the picture of the view they were placed for, and wait while another is on its way.
+  air_full_place();
 }
 // Focus a marker (or everyone again with ""): the card goes at once, the new picture and card come with the answer.
 // Another focus is another view: the keys' move starts again from it.

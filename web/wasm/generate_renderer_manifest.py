@@ -12,6 +12,7 @@ files = [root / "components/smart_display/runtime_tiles.h", root / "components/s
          root / "components/smart_display/energy_view.cpp",
          root / "components/smart_display/calendar_view.cpp",
          root / "components/smart_display/meter_view.cpp",
+         root / "components/smart_display/aircraft_view.cpp",
          root / "components/smart_display/plugin_host.cpp",
          root / "components/smart_display/screen_hooks.cpp"]
 seen = set()

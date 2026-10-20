@@ -2397,6 +2397,65 @@
         "chosen": {
           "label": "En el mapa",
           "hint": "A quién sigue este mapa, cada uno con su color. Un rastreador es un teléfono, un coche o una etiqueta cuya ubicación conoce Home Assistant."
+        },
+        "aircraft": {
+          "label": "Aviones",
+          "hint": "Un sensor que enumera vuelos, como el sensor «Actual en el área» de la integración Flightradar24. La pantalla mueve cada avión cuando el sensor lo informa.",
+          "none": "Aún no hay ningún sensor que enumere vuelos. Añade una integración que lo haga, como Flightradar24, y su sensor «Actual en el área» aparecerá aquí.",
+          "choose": "Ninguno",
+          "search": "Buscar sensores",
+          "none_found": "Ningún sensor enumera vuelos",
+          "remove": "Quitar {name}",
+          "plane_marker": {
+            "label": "Marcador",
+            "dot": "Punto",
+            "arrow": "Punto y rumbo",
+            "plane": "Avión"
+          },
+          "plane_label": {
+            "label": "Etiqueta",
+            "auto": "Donde haya espacio",
+            "none": "Ninguna",
+            "callsign": "Indicativo",
+            "altitude": "Indicativo y altitud",
+            "full": "Indicativo, altitud, velocidad y ruta"
+          },
+          "plane_colour": {
+            "label": "Color",
+            "altitude": "Por altitud",
+            "accent": "Un color"
+          },
+          "plane_motion": {
+            "label": "Entre informes",
+            "glide": "Deslizar",
+            "hold": "Mantener",
+            "glide_hint": "Cada avión sigue su rumbo a su velocidad hasta el siguiente informe, durante 30 segundos como máximo.",
+            "hold_hint": "Cada avión se queda donde lo dejó el último informe."
+          },
+          "plane_track": {
+            "label": "Estela",
+            "hide": "Ocultar",
+            "show": "Mostrar"
+          },
+          "plane_track_s": {
+            "label": "Longitud de la estela",
+            "hint": "Segundos de vuelo detrás de cada avión, de {low} a {high}."
+          },
+          "plane_ground": {
+            "label": "En tierra",
+            "hide": "Ocultar",
+            "show": "Mostrar"
+          },
+          "altitude": {
+            "label": "Altitud",
+            "min": "Desde",
+            "max": "Hasta",
+            "hint": "En pies. Solo se muestran los aviones entre estas altitudes. La integración Flightradar24 también puede filtrar por altitud, lo que ahorra solicitudes."
+          },
+          "plane_most": {
+            "label": "Como máximo",
+            "hint": "Los aviones más cercanos al centro del mapa, como máximo {high}."
+          }
         }
       },
       "controls": {

@@ -1,5 +1,13 @@
 ## Unreleased
 
+- **Aircraft over the map.** The Map tile can show the planes around you, from a sensor that lists flights, such as
+  the Current in area sensor of the Flightradar24 integration. Choose it under Aircraft in the tile's settings. The
+  screen draws each plane over the map as a dot, a dot with its heading, or a plane turned the way it flies, coloured
+  by altitude or in one colour, with its callsign, altitude, speed and route where the card has room, and its track of
+  the last seconds you choose. It moves the planes on every report of the sensor, without a new picture, and in
+  between lets them fly on along their heading for up to 30 seconds. You choose the altitudes a plane is shown
+  between, whether planes on the ground show, and how many at most. Tap the map to see the planes over the whole
+  screen. A screen needs this update's firmware to draw them.
 - **Speaker and microphone on the Guition and Waveshare ESP32-P4 screens, experimental.** The Guition JC8012P4A1
   (10.1 inch, also its V2 and V3), JC1060P470 (7 inch, also its V2) and JC4880P443 (4.3 inch) now use their speaker and
   microphone, both at once, and the Waveshare ESP32-P4-WIFI6-Touch-LCD-7B, LCD-7 and LCD-10.1 their speaker and two

@@ -7,6 +7,7 @@ import { TILE, ofType, taps as catalogueTaps } from './catalogue';
 import { PLUGIN_LIST_MAX, PLUGIN_OPTIONS_BYTES, PLUGIN_TILE } from './plugins';
 import rules from './page-rules.json';
 import type { PageLayout, PageTile } from '../types';
+import { AIR_APPEARANCE, AIR_FIELDS, airProblem } from './aircraft';
 
 const bytes = (s: string) => new TextEncoder().encode(s).length;
 const matches = (pattern: RegExp, value: string) => value.match(pattern)?.[0] === value;
@@ -98,6 +99,7 @@ export function validatePageShape(layout: PageLayout, plugins = false) {
       fields(tile.placement, ['row', 'column', 'columns', 'rows']);
       fields(tile.appearance, ['label', 'presentation', 'display', 'icon', 'background', 'historyHours', 'refresh', 'subtitle', 'fit', 'overlay',
         'mapEntities', 'mapFraming', 'mapDistance', 'mapFollow', 'mapMarkers', 'mapNames', 'mapZones', 'mapStreets', 'mapLook', 'energyFlow',
+        ...AIR_FIELDS,
         ...CALENDAR_FIELDS, ...CALENDAR_MORE, ...METER_FIELDS], ['label']);
       fields(tile.interaction, ['tap', 'inline', 'controls', 'action', 'guard', 'play', 'speaker', 'shuffle', 'repeat', 'tilt_open'], []);
       const content = tile.content;
@@ -217,6 +219,10 @@ export function validateCardOptions(tile: PageTile, entityId: string, size: stri
   const mapTile = entityId === 'screen.map';
   if (mapTile && a.display !== 'map') fail('normalization');
   if (a.mapFollow !== undefined && !mapTile) fail('normalization');
+  // Aircraft over the map tile (docs/MAP.md, "Aircraft"), as aircraft.validate checks them: the map tile's alone.
+  const air = airProblem(Object.fromEntries(AIR_FIELDS.filter((f) => a[f] !== undefined).map((f) => [AIR_APPEARANCE[f], a[f]])),
+    mapTile && a.display === 'map');
+  if (air) fail(air === 'normalization' ? 'normalization' : 'fields');
   if (a.mapEntities !== undefined) {
     const list = a.mapEntities;
     if (a.display !== 'map' || !Array.isArray(list) || !list.length) fail('normalization');

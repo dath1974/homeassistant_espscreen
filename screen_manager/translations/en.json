@@ -2022,6 +2022,65 @@
         "chosen": {
           "label": "On the map",
           "hint": "Who this map follows, each in their own colour. A tracker is a phone, a car or a tag Home Assistant knows the place of."
+        },
+        "aircraft": {
+          "label": "Aircraft",
+          "hint": "A sensor that lists flights, such as the Current in area sensor of the Flightradar24 integration. The screen moves each plane as the sensor reports it.",
+          "none": "No sensor lists flights yet. Add an integration that does, such as Flightradar24, and its Current in area sensor shows up here.",
+          "choose": "None",
+          "search": "Search sensors",
+          "none_found": "No sensor that lists flights",
+          "remove": "Remove {name}",
+          "plane_marker": {
+            "label": "Marker",
+            "dot": "Dot",
+            "arrow": "Dot and heading",
+            "plane": "Plane"
+          },
+          "plane_label": {
+            "label": "Label",
+            "auto": "Where there is room",
+            "none": "None",
+            "callsign": "Callsign",
+            "altitude": "Callsign and altitude",
+            "full": "Callsign, altitude, speed and route"
+          },
+          "plane_colour": {
+            "label": "Colour",
+            "altitude": "By altitude",
+            "accent": "One colour"
+          },
+          "plane_motion": {
+            "label": "Between reports",
+            "glide": "Glide",
+            "hold": "Hold",
+            "glide_hint": "Each plane flies on along its heading at its speed until the next report, for up to 30 seconds.",
+            "hold_hint": "Each plane stays where the last report put it."
+          },
+          "plane_track": {
+            "label": "Track",
+            "hide": "Hide",
+            "show": "Show"
+          },
+          "plane_track_s": {
+            "label": "Track length",
+            "hint": "Seconds of flight behind each plane, from {low} to {high}."
+          },
+          "plane_ground": {
+            "label": "On the ground",
+            "hide": "Hide",
+            "show": "Show"
+          },
+          "altitude": {
+            "label": "Altitude",
+            "min": "From",
+            "max": "To",
+            "hint": "In feet. Only planes between these altitudes are shown. The Flightradar24 integration can also filter by altitude, which saves requests."
+          },
+          "plane_most": {
+            "label": "At most",
+            "hint": "The planes closest to the middle of the map, at most {high}."
+          }
         }
       },
       "controls": {

@@ -2397,6 +2397,65 @@
         "chosen": {
           "label": "Sur la carte",
           "hint": "Qui cette carte suit, chacun dans sa couleur. Un traceur est un téléphone, une voiture ou une balise dont Home Assistant connaît la position."
+        },
+        "aircraft": {
+          "label": "Avions",
+          "hint": "Un capteur qui liste des vols, comme le capteur « Actuellement dans la zone » de l’intégration Flightradar24. L’écran déplace chaque avion à chaque rapport du capteur.",
+          "none": "Aucun capteur ne liste encore de vols. Ajoutez une intégration qui le fait, comme Flightradar24, et son capteur « Actuellement dans la zone » apparaîtra ici.",
+          "choose": "Aucun",
+          "search": "Rechercher des capteurs",
+          "none_found": "Aucun capteur ne liste de vols",
+          "remove": "Retirer {name}",
+          "plane_marker": {
+            "label": "Marqueur",
+            "dot": "Point",
+            "arrow": "Point et cap",
+            "plane": "Avion"
+          },
+          "plane_label": {
+            "label": "Étiquette",
+            "auto": "Là où il y a de la place",
+            "none": "Aucune",
+            "callsign": "Indicatif",
+            "altitude": "Indicatif et altitude",
+            "full": "Indicatif, altitude, vitesse et trajet"
+          },
+          "plane_colour": {
+            "label": "Couleur",
+            "altitude": "Selon l’altitude",
+            "accent": "Une couleur"
+          },
+          "plane_motion": {
+            "label": "Entre deux rapports",
+            "glide": "Glisser",
+            "hold": "Figer",
+            "glide_hint": "Chaque avion continue sur son cap à sa vitesse jusqu’au rapport suivant, pendant 30 secondes au plus.",
+            "hold_hint": "Chaque avion reste là où le dernier rapport l’a placé."
+          },
+          "plane_track": {
+            "label": "Trace",
+            "hide": "Masquer",
+            "show": "Afficher"
+          },
+          "plane_track_s": {
+            "label": "Longueur de la trace",
+            "hint": "Secondes de vol derrière chaque avion, de {low} à {high}."
+          },
+          "plane_ground": {
+            "label": "Au sol",
+            "hide": "Masquer",
+            "show": "Afficher"
+          },
+          "altitude": {
+            "label": "Altitude",
+            "min": "De",
+            "max": "À",
+            "hint": "En pieds. Seuls les avions entre ces altitudes sont affichés. L’intégration Flightradar24 peut aussi filtrer par altitude, ce qui économise des requêtes."
+          },
+          "plane_most": {
+            "label": "Au plus",
+            "hint": "Les avions les plus proches du centre de la carte, {high} au plus."
+          }
         }
       },
       "controls": {

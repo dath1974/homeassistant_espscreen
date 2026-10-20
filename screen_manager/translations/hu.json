@@ -2397,6 +2397,65 @@
         "chosen": {
           "label": "A térképen",
           "hint": "Kiket követ ez a térkép, mindegyiket a saját színében. Nyomkövető egy telefon, autó vagy címke, amelynek helyét a Home Assistant ismeri."
+        },
+        "aircraft": {
+          "label": "Repülőgépek",
+          "hint": "Egy érzékelő, amely járatokat listáz, például a Flightradar24 integráció „Jelenleg a területen” érzékelője. A képernyő minden gépet elmozdít, amikor az érzékelő jelenti.",
+          "none": "Még egyetlen érzékelő sem listáz járatokat. Adj hozzá egy integrációt, amely ezt teszi, például a Flightradar24-et, és a „Jelenleg a területen” érzékelője itt megjelenik.",
+          "choose": "Nincs",
+          "search": "Érzékelők keresése",
+          "none_found": "Nincs járatokat listázó érzékelő",
+          "remove": "{name} eltávolítása",
+          "plane_marker": {
+            "label": "Jelölő",
+            "dot": "Pont",
+            "arrow": "Pont és irány",
+            "plane": "Repülőgép"
+          },
+          "plane_label": {
+            "label": "Felirat",
+            "auto": "Ahol van hely",
+            "none": "Nincs",
+            "callsign": "Hívójel",
+            "altitude": "Hívójel és magasság",
+            "full": "Hívójel, magasság, sebesség és útvonal"
+          },
+          "plane_colour": {
+            "label": "Szín",
+            "altitude": "Magasság szerint",
+            "accent": "Egy szín"
+          },
+          "plane_motion": {
+            "label": "Jelentések között",
+            "glide": "Továbbsiklik",
+            "hold": "Megáll",
+            "glide_hint": "Minden gép a következő jelentésig az irányában, a sebességével halad tovább, legfeljebb 30 másodpercig.",
+            "hold_hint": "Minden gép ott marad, ahová az utolsó jelentés tette."
+          },
+          "plane_track": {
+            "label": "Nyomvonal",
+            "hide": "Elrejtés",
+            "show": "Megjelenítés"
+          },
+          "plane_track_s": {
+            "label": "Nyomvonal hossza",
+            "hint": "Repült másodpercek minden gép mögött, {low} és {high} között."
+          },
+          "plane_ground": {
+            "label": "A földön",
+            "hide": "Elrejtés",
+            "show": "Megjelenítés"
+          },
+          "altitude": {
+            "label": "Magasság",
+            "min": "Ettől",
+            "max": "Eddig",
+            "hint": "Lábban. Csak az e magasságok közötti gépek látszanak. A Flightradar24 integráció is szűrhet magasság szerint, ami kéréseket takarít meg."
+          },
+          "plane_most": {
+            "label": "Legfeljebb",
+            "hint": "A térkép közepéhez legközelebbi gépek, legfeljebb {high}."
+          }
         }
       },
       "controls": {

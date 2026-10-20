@@ -329,6 +329,9 @@ struct Extra {
   // are, their states, the zones and the card's own choices (map_card.fingerprint). The screen never sees a place; it
   // folds this into the picture it asks for, so a map is drawn again when something moved and never on a clock.
   std::string map_mark;
+  // The map tile has aircraft over it (docs/MAP.md, "Aircraft"): the screen asks for their planes while its card or its
+  // full view is on the glass, and draws them over the picture (aircraft_view.cpp).
+  bool map_air = false;
   // The energy card's moment (firmware 0.47.0+): its own block, so no other tile's extras grow by it.
   std::shared_ptr<const energy_card::Data> energy;
   // A calendar card's events (firmware 0.56.0+, calendar_card.h): its own block too, shared with the card that paints it.
@@ -404,7 +407,7 @@ struct Extra {
            std::isnan(feels) && wind_unit.empty() && std::isnan(bearing) && std::isnan(pressure) && std::isnan(visibility) &&
            pressure_unit.empty() && visibility_unit.empty() && rain_unit.empty() && sunrise.empty() && sunset.empty() && duration.empty() &&
            remaining.empty() && !timer_end && media_title.empty() && media_artist.empty() && media_album.empty() &&
-           media_picture.empty() && map_mark.empty() && !media_duration && !media_position && !media_position_at && fan_speeds.empty() && fan_speed.empty() &&
+           media_picture.empty() && map_mark.empty() && !map_air && !media_duration && !media_position && !media_position_at && fan_speeds.empty() && fan_speed.empty() &&
            choices.empty() && room.empty() && !charging && std::isnan(tilt) && action.empty() && action_data.empty() &&
            action_templates.empty() && state_word.empty() && subtitle.empty() && !subtitle_at && effect.empty() &&
            option_rows.empty() && number_rows.empty() && lamps.empty() && blinds.empty() && code_format.empty() && changed_by.empty() && !arm_code_free &&

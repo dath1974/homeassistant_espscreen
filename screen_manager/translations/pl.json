@@ -2397,6 +2397,65 @@
         "chosen": {
           "label": "Na mapie",
           "hint": "Kogo śledzi ta mapa, każdy w swoim kolorze. Lokalizator to telefon, samochód lub tag, którego położenie zna Home Assistant."
+        },
+        "aircraft": {
+          "label": "Samoloty",
+          "hint": "Czujnik, który wymienia loty, na przykład czujnik „Obecnie w obszarze” integracji Flightradar24. Ekran przesuwa każdy samolot, gdy czujnik go zgłosi.",
+          "none": "Żaden czujnik nie wymienia jeszcze lotów. Dodaj integrację, która to robi, na przykład Flightradar24, a jej czujnik „Obecnie w obszarze” pojawi się tutaj.",
+          "choose": "Brak",
+          "search": "Szukaj czujników",
+          "none_found": "Brak czujnika wymieniającego loty",
+          "remove": "Usuń {name}",
+          "plane_marker": {
+            "label": "Znacznik",
+            "dot": "Kropka",
+            "arrow": "Kropka i kurs",
+            "plane": "Samolot"
+          },
+          "plane_label": {
+            "label": "Etykieta",
+            "auto": "Tam, gdzie jest miejsce",
+            "none": "Brak",
+            "callsign": "Znak wywoławczy",
+            "altitude": "Znak wywoławczy i wysokość",
+            "full": "Znak wywoławczy, wysokość, prędkość i trasa"
+          },
+          "plane_colour": {
+            "label": "Kolor",
+            "altitude": "Według wysokości",
+            "accent": "Jeden kolor"
+          },
+          "plane_motion": {
+            "label": "Między raportami",
+            "glide": "Płynnie",
+            "hold": "Bez ruchu",
+            "glide_hint": "Każdy samolot leci dalej swoim kursem i prędkością aż do następnego raportu, najwyżej 30 sekund.",
+            "hold_hint": "Każdy samolot zostaje tam, gdzie umieścił go ostatni raport."
+          },
+          "plane_track": {
+            "label": "Ślad",
+            "hide": "Ukryj",
+            "show": "Pokaż"
+          },
+          "plane_track_s": {
+            "label": "Długość śladu",
+            "hint": "Sekundy lotu za każdym samolotem, od {low} do {high}."
+          },
+          "plane_ground": {
+            "label": "Na ziemi",
+            "hide": "Ukryj",
+            "show": "Pokaż"
+          },
+          "altitude": {
+            "label": "Wysokość",
+            "min": "Od",
+            "max": "Do",
+            "hint": "W stopach. Widać tylko samoloty między tymi wysokościami. Integracja Flightradar24 też może filtrować według wysokości, co oszczędza zapytania."
+          },
+          "plane_most": {
+            "label": "Najwyżej",
+            "hint": "Samoloty najbliżej środka mapy, najwyżej {high}."
+          }
         }
       },
       "controls": {

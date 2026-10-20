@@ -124,6 +124,14 @@ enum Role : uint8_t {
   BAUHAUS_BLUE,
   BAUHAUS_BLACK,
   BAUHAUS_CREAM,
+  // ---- aircraft over a map (docs/MAP.md, "Aircraft"): a plane's marker and track by its altitude, as a flight map's
+  // rainbow runs from the ground up: on the ground, below 5,000 ft, below 15,000, below 30,000 and above. A little
+  // brighter in the dark look, where the map's ground is dark.
+  AIRCRAFT_GROUND,
+  AIRCRAFT_LOW,
+  AIRCRAFT_MID,
+  AIRCRAFT_HIGH,
+  AIRCRAFT_TOP,
   ROLE_COUNT
 };
 
@@ -219,6 +227,11 @@ inline constexpr Pair ROLES[ROLE_COUNT] = {
   /* BAUHAUS_BLUE */             {0x2B4E9B, 0x284783},
   /* BAUHAUS_BLACK */            {0x1D1D1B, 0x0B0B0B},
   /* BAUHAUS_CREAM */            {0xF2EBDD, 0x1A1A19},
+  /* AIRCRAFT_GROUND */          {0x7D858D, 0x9AA2AA},
+  /* AIRCRAFT_LOW */             {0xE8710A, 0xFF9533},
+  /* AIRCRAFT_MID */             {0x2E9E44, 0x4CC764},
+  /* AIRCRAFT_HIGH */            {0x1F6FD6, 0x5A9BEF},
+  /* AIRCRAFT_TOP */             {0x8E3FD0, 0xB27BEB},
 };
 
 // The look on screen. The board sets it through set_dark() (below) from the Dark mode setting; the table and the

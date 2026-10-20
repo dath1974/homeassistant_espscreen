@@ -2022,6 +2022,65 @@
         "chosen": {
           "label": "Op de kaart",
           "hint": "Wie deze kaart volgt, elk in een eigen kleur. Een tracker is een telefoon, auto of tag waarvan Home Assistant de plek kent."
+        },
+        "aircraft": {
+          "label": "Vliegtuigen",
+          "hint": "Een sensor die vluchten opsomt, zoals de sensor ‘Nu in gebied’ van de Flightradar24-integratie. Het scherm verplaatst elk vliegtuig zodra de sensor het meldt.",
+          "none": "Nog geen sensor somt vluchten op. Voeg een integratie toe die dat doet, zoals Flightradar24, en de sensor ‘Nu in gebied’ verschijnt hier.",
+          "choose": "Geen",
+          "search": "Sensoren zoeken",
+          "none_found": "Geen sensor die vluchten opsomt",
+          "remove": "{name} verwijderen",
+          "plane_marker": {
+            "label": "Markering",
+            "dot": "Stip",
+            "arrow": "Stip en koers",
+            "plane": "Vliegtuig"
+          },
+          "plane_label": {
+            "label": "Label",
+            "auto": "Waar ruimte is",
+            "none": "Geen",
+            "callsign": "Roepnaam",
+            "altitude": "Roepnaam en hoogte",
+            "full": "Roepnaam, hoogte, snelheid en route"
+          },
+          "plane_colour": {
+            "label": "Kleur",
+            "altitude": "Naar hoogte",
+            "accent": "Eén kleur"
+          },
+          "plane_motion": {
+            "label": "Tussen meldingen",
+            "glide": "Doorvliegen",
+            "hold": "Stilhouden",
+            "glide_hint": "Elk vliegtuig vliegt tot de volgende melding verder op zijn koers en snelheid, hooguit 30 seconden.",
+            "hold_hint": "Elk vliegtuig blijft staan waar de laatste melding het neerzette."
+          },
+          "plane_track": {
+            "label": "Spoor",
+            "hide": "Verbergen",
+            "show": "Tonen"
+          },
+          "plane_track_s": {
+            "label": "Lengte van het spoor",
+            "hint": "Seconden vlucht achter elk vliegtuig, van {low} tot {high}."
+          },
+          "plane_ground": {
+            "label": "Op de grond",
+            "hide": "Verbergen",
+            "show": "Tonen"
+          },
+          "altitude": {
+            "label": "Hoogte",
+            "min": "Van",
+            "max": "Tot",
+            "hint": "In voet. Alleen vliegtuigen tussen deze hoogtes worden getoond. De Flightradar24-integratie kan ook op hoogte filteren, wat verzoeken bespaart."
+          },
+          "plane_most": {
+            "label": "Hooguit",
+            "hint": "De vliegtuigen het dichtst bij het midden van de kaart, hooguit {high}."
+          }
         }
       },
       "controls": {

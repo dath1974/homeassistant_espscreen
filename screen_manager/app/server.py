@@ -39,6 +39,7 @@ import rest_mosaic
 import vacuum_card
 import speakers
 import map_card
+import aircraft
 import energy_flow
 import plugin_pictures
 import map_tiles
@@ -1095,6 +1096,11 @@ class Manager:
         self.preview_tiles = []
         self.map_pictures = OrderedDict()
         self.map_hits = {}
+        # Aircraft over map tiles (aircraft.py, docs/MAP.md "Aircraft"): where each plane of each source has been, and
+        # the cards a screen shows planes on, (inbox, "tile" or "full", tile index) -> what they are placed on and until
+        # when the screen keeps asking (air_card, answer_air).
+        self.air_tracks = aircraft.Tracks()
+        self.air_cards = {}
         # The action behind an alert's button (app 0.2.91): node -> (key, action, data) of the alert on that screen.
         self.alert_actions = {}
         self.store = LayoutStore(self.path, self.record_grid)
@@ -2804,6 +2810,8 @@ class Manager:
             watched |= {eid for inbox, layout in self.layouts.items() for tile in layout['tiles'] for eid in self.related_entities(tile, inbox)}
             watched |= {eid for device in self.setting_index().values() for eid in device.values()}
             watched |= set(savers)
+            # The sensors map tiles take their aircraft from (aircraft.py): their reports move the planes.
+            watched |= {aircraft.source_of(tile) for layout in self.layouts.values() for tile in layout['tiles']} - {''}
             self._watched_key, self._watched = key, watched
         return set(self._watched)
 
@@ -3230,6 +3238,10 @@ class Manager:
                                 event.get('inbox') if isinstance(event, dict) else '?', error)
             if hasattr(self.ha,'setting_events'): self.ha.setting_events.clear()
             dirty = self.rest_turn(self.take_dirty())
+            try:
+                await self.air_reports(dirty)
+            except Exception as error:
+                LOG.warning('Aircraft were not sent (%s)', type(error).__name__)
             if self.region.pinned and self.resolve_clock_pin():
                 self.language_changed()
             screens_key = self._screens_key
@@ -3473,6 +3485,10 @@ class Manager:
         inbox = self.aliases.get(request.get('inbox'), request.get('inbox'))
         entity = request.get('entity')
         screen = self.screen(inbox) if isinstance(inbox, str) else None
+        # A screen that shows aircraft over a map keeps asking for them while the card is on the glass (aircraft.py).
+        if 'air' in request:
+            await self.answer_air(inbox, screen, request)
+            return
         # The covers of a page of a player's library (app 0.4.42, firmware 0.24.0+): one atlas for all of them.
         if 'lib' in request:
             await self.library_art(inbox, screen, request)
@@ -3863,6 +3879,93 @@ class Manager:
             sheet['c'] = await self.map_sheet(focus)
         await self.send_auxiliary(inbox, {'v': 1, 'op': 'camera', 't': 'full', 'e': entity, 'u': url, 'm': sheet}, action, request)
         LOG.info('Map of %s full screen on %s%s%s', entity, screen['name'], f' around {focus}' if focus else '', '' if url else ': no image')
+
+    # How long a card keeps getting its planes after the screen last asked for them; the screen asks every 30 s.
+    AIR_LEASE_SECONDS = 75
+    AIR_CARDS_PER_SCREEN = 8
+
+    def air_message(self, key, screen):
+        """The op "air" for one card: its planes on the view its picture shows, in the screen's language and numbers."""
+        card = self.air_cards[key]
+        tile = card['tile']
+        source = aircraft.source_of(tile)
+        options = aircraft.options_of(tile)
+        board = map_card.Board(card['shape'])
+        view = map_card.view_for(tile, self.ha.states, card['size'], board, self.registry_index(), card['full'],
+                                 card['focus'] or None, card['move'])
+        metric = (getattr(self.ha, 'units', None) or {}).get('length') == 'km'
+        token = i18n.SCREEN.set(i18n.screen_context(screen))
+        try:
+            planes = aircraft.overlay(view, aircraft.flights_of(self.ha.states.get(source)), options, self.air_tracks, source,
+                                      card['size'], board.scale, card['full'], metric, number=i18n.screen_number,
+                                      suffix=i18n.unit_suffix)
+        finally:
+            i18n.SCREEN.reset(token)
+        return aircraft.message(key[1], key[2], card['size'], planes, aircraft.style_of(options), card['move_text'], card['focus'])
+
+    async def air_send(self, inbox, keys):
+        """The planes of these cards to one screen, each card its own message."""
+        screen = self.screen(inbox)
+        if not keys or not screen or not screen.get('online'):
+            return
+        action = self.transport(inbox, screen)
+        if not action:
+            return
+        for key in keys:
+            if key in self.air_cards:
+                await self.send_auxiliary(inbox, self.air_message(key, screen), action, self.page_scope(inbox))
+
+    async def answer_air(self, inbox, screen, request):
+        """A screen that shows aircraft over a map (its hello's `aircraft`) asks for them while the card is on the glass,
+        every 30 s and whenever another such card shows: `air` "tile" with `cards` (each tile and the size its picture
+        was drawn at, "3:180x120,5:400x300"), or "full" with the full view's tile (`idx`), its picture's `size` and its
+        `focus` and `move`. Each must be a map tile of the screen's layout with aircraft. Their planes go there now and
+        on every report of their source for AIR_LEASE_SECONDS."""
+        asked = request.get('air')
+        if not screen or not screen.get('online') or asked not in ('tile', 'full') or aircraft.FEATURE not in \
+                (getattr(self.page_senders.get(inbox), 'features', None) or ()):
+            return
+        tiles = self.layouts.get(inbox, {}).get('tiles', [])
+        shape = camera_feed.shape_of(screen)
+        # No picture is larger than the glass's longer side, whichever way it hangs.
+        cards = aircraft.cards_of(request, max(shape.get('width', 0), shape.get('height', 0)))
+        if asked == 'full':
+            for key in [k for k in self.air_cards if k[0] == inbox and k[1] == 'full']:
+                del self.air_cards[key]
+        until, keys = time.monotonic() + self.AIR_LEASE_SECONDS, []
+        for index, size in cards:
+            if not (0 <= index < len(tiles)) or not aircraft.source_of(tiles[index]) or \
+                    (tiles[index].get('options') or {}).get('display') != 'map':
+                continue
+            tile = tiles[index]
+            full = asked == 'full'
+            focus = request.get('focus') if full and request.get('focus') in map_card.shown(tile, self.ha.states, self.registry_index()) else ''
+            move_text = request.get('move') if full and isinstance(request.get('move'), str) else ''
+            key = (inbox, asked, index)
+            self.air_cards[key] = {'tile': tile, 'size': size, 'shape': shape, 'full': full, 'focus': focus,
+                                   'move': map_card.move_of(move_text) if full else None, 'move_text': move_text[:48], 'until': until}
+            keys.append(key)
+        mine = sorted((k for k in self.air_cards if k[0] == inbox), key=lambda k: self.air_cards[k]['until'])
+        for key in mine[:-self.AIR_CARDS_PER_SCREEN]:
+            del self.air_cards[key]
+        await self.air_send(inbox, keys)
+
+    async def air_reports(self, dirty):
+        """Each report of an aircraft source: its planes' tracks, then the planes to every card that shows them."""
+        now = time.monotonic()
+        for key in [k for k, card in self.air_cards.items() if card['until'] < now]:
+            del self.air_cards[key]
+        used = {aircraft.source_of(tile) for layout in self.layouts.values() for tile in layout['tiles']} - {''}
+        self.air_tracks.forget(used)
+        changed = used if dirty is None else used & dirty
+        for source in changed:
+            self.air_tracks.update(source, aircraft.flights_of(self.ha.states.get(source)), now)
+        due = {}
+        for key, card in self.air_cards.items():
+            if aircraft.source_of(card['tile']) in changed:
+                due.setdefault(key[0], []).append(key)
+        if due:
+            await asyncio.gather(*(self.air_send(inbox, keys) for inbox, keys in due.items()), return_exceptions=True)
 
     async def map_sheet(self, entity):
         """The card of a person or tracker picked on a full map, as Home Assistant's own map shows a selected one
@@ -4425,6 +4528,8 @@ def create_app(manager, development=False):
         payload['entities'] = entities
         # The device trackers a map card can show beside its person (app 0.4.35): no tiles of their own.
         payload['trackers'] = map_card.trackers(manager.ha.states)
+        # The sensors a map tile can take aircraft from (aircraft.py): those that list flights.
+        payload['aircraft'] = aircraft.sources(manager.ha.states)
         # Labels and help in the editor's language (app 0.2.90); ids and keys stay as they are.
         payload['backgrounds'] = backgrounds()
         payload['controls'] = controls_catalogue()
