@@ -328,7 +328,7 @@
    "inch": 4.0,
    "model": "FNK0104S",
    "name": "Freenove",
-   "order": 25,
+   "order": 26,
    "settings": [],
    "status": "experimental",
    "touch": "FT63X6"
@@ -1814,7 +1814,7 @@
    "inch": 4.0,
    "model": "Indicator D1, D1S, D1L, D1Pro (GX)",
    "name": "SenseCAP",
-   "order": 24,
+   "order": 25,
    "settings": [],
    "status": "experimental",
    "touch": "FT6336U"
@@ -2181,7 +2181,7 @@
    "inch": 10.1,
    "model": "ESP32-P4-WIFI6-Touch-LCD-10.1",
    "name": "Waveshare",
-   "order": 29,
+   "order": 30,
    "settings": [
     "media_player",
     "microphone",
@@ -2663,7 +2663,7 @@
    "inch": 4.0,
    "model": "ESP32-S3-Touch-LCD-4 V4.0",
    "name": "Waveshare",
-   "order": 23,
+   "order": 24,
    "settings": [],
    "status": "experimental",
    "touch": "GT911"
@@ -3410,7 +3410,7 @@
    "inch": 7.0,
    "model": "ESP32-P4-WIFI6-Touch-LCD-7",
    "name": "Waveshare",
-   "order": 28,
+   "order": 29,
    "settings": [
     "media_player",
     "microphone",
@@ -3545,7 +3545,7 @@
    "inch": 7.0,
    "model": "ESP32-P4-WIFI6-Touch-LCD-7B",
    "name": "Waveshare",
-   "order": 27,
+   "order": 28,
    "settings": [
     "media_player",
     "microphone",
@@ -3680,7 +3680,7 @@
    "inch": 3.5,
    "model": "WT32-SC01 Plus",
    "name": "WT32",
-   "order": 26,
+   "order": 27,
    "settings": [],
    "status": "experimental",
    "touch": "FT63X6"
@@ -4109,7 +4109,7 @@
    "inch": 4.0,
    "model": "FNK0104S",
    "name": "Freenove",
-   "order": 25,
+   "order": 26,
    "settings": [],
    "status": "experimental",
    "touch": "FT63X6"
@@ -5776,7 +5776,7 @@
    "inch": 4.0,
    "model": "FNK0104S",
    "name": "Freenove",
-   "order": 25,
+   "order": 26,
    "settings": [],
    "status": "experimental",
    "touch": "FT63X6"
@@ -7262,7 +7262,7 @@
    "inch": 4.0,
    "model": "Indicator D1, D1S, D1L, D1Pro (GX)",
    "name": "SenseCAP",
-   "order": 24,
+   "order": 25,
    "settings": [],
    "status": "experimental",
    "touch": "FT6336U"
@@ -7629,7 +7629,7 @@
    "inch": 10.1,
    "model": "ESP32-P4-WIFI6-Touch-LCD-10.1",
    "name": "Waveshare",
-   "order": 29,
+   "order": 30,
    "settings": [
     "media_player",
     "microphone",
@@ -8111,7 +8111,7 @@
    "inch": 4.0,
    "model": "ESP32-S3-Touch-LCD-4 V4.0",
    "name": "Waveshare",
-   "order": 23,
+   "order": 24,
    "settings": [],
    "status": "experimental",
    "touch": "GT911"
@@ -8858,7 +8858,7 @@
    "inch": 7.0,
    "model": "ESP32-P4-WIFI6-Touch-LCD-7",
    "name": "Waveshare",
-   "order": 28,
+   "order": 29,
    "settings": [
     "media_player",
     "microphone",
@@ -8993,7 +8993,7 @@
    "inch": 7.0,
    "model": "ESP32-P4-WIFI6-Touch-LCD-7B",
    "name": "Waveshare",
-   "order": 27,
+   "order": 28,
    "settings": [
     "media_player",
     "microphone",
@@ -9128,7 +9128,7 @@
    "inch": 3.5,
    "model": "WT32-SC01 Plus",
    "name": "WT32",
-   "order": 26,
+   "order": 27,
    "settings": [],
    "status": "experimental",
    "touch": "FT63X6"
@@ -9376,7 +9376,7 @@
    "inch": 4.0,
    "model": "Indicator D1, D1S, D1L, D1Pro (GX)",
    "name": "SenseCAP",
-   "order": 24,
+   "order": 25,
    "settings": [],
    "status": "experimental",
    "touch": "FT6336U"
@@ -9743,7 +9743,7 @@
    "inch": 10.1,
    "model": "ESP32-P4-WIFI6-Touch-LCD-10.1",
    "name": "Waveshare",
-   "order": 29,
+   "order": 30,
    "settings": [
     "media_player",
     "microphone",
@@ -10225,7 +10225,7 @@
    "inch": 4.0,
    "model": "ESP32-S3-Touch-LCD-4 V4.0",
    "name": "Waveshare",
-   "order": 23,
+   "order": 24,
    "settings": [],
    "status": "experimental",
    "touch": "GT911"
@@ -10972,7 +10972,7 @@
    "inch": 7.0,
    "model": "ESP32-P4-WIFI6-Touch-LCD-7",
    "name": "Waveshare",
-   "order": 28,
+   "order": 29,
    "settings": [
     "media_player",
     "microphone",
@@ -11107,7 +11107,7 @@
    "inch": 7.0,
    "model": "ESP32-P4-WIFI6-Touch-LCD-7B",
    "name": "Waveshare",
-   "order": 27,
+   "order": 28,
    "settings": [
     "media_player",
     "microphone",
@@ -11242,7 +11242,7 @@
    "inch": 3.5,
    "model": "WT32-SC01 Plus",
    "name": "WT32",
-   "order": 26,
+   "order": 27,
    "settings": [],
    "status": "experimental",
    "touch": "FT63X6"
