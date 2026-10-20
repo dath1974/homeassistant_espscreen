@@ -2397,6 +2397,65 @@
         "chosen": {
           "label": "Auf der Karte",
           "hint": "Wem diese Karte folgt, jeder in seiner eigenen Farbe. Ein Tracker ist ein Telefon, ein Auto oder ein Tag, dessen Standort Home Assistant kennt."
+        },
+        "aircraft": {
+          "label": "Flugzeuge",
+          "hint": "Ein Sensor, der Flüge auflistet, etwa der Sensor „Aktuell im Bereich“ der Flightradar24-Integration. Der Bildschirm bewegt jedes Flugzeug, sobald der Sensor es meldet.",
+          "none": "Noch kein Sensor listet Flüge auf. Füge eine Integration hinzu, die das kann, etwa Flightradar24, dann erscheint ihr Sensor „Aktuell im Bereich“ hier.",
+          "choose": "Keiner",
+          "search": "Sensoren durchsuchen",
+          "none_found": "Kein Sensor, der Flüge auflistet",
+          "remove": "{name} entfernen",
+          "plane_marker": {
+            "label": "Markierung",
+            "dot": "Punkt",
+            "arrow": "Punkt und Kurs",
+            "plane": "Flugzeug"
+          },
+          "plane_label": {
+            "label": "Beschriftung",
+            "auto": "Wo Platz ist",
+            "none": "Keine",
+            "callsign": "Rufzeichen",
+            "altitude": "Rufzeichen und Höhe",
+            "full": "Rufzeichen, Höhe, Geschwindigkeit und Route"
+          },
+          "plane_colour": {
+            "label": "Farbe",
+            "altitude": "Nach Höhe",
+            "accent": "Eine Farbe"
+          },
+          "plane_motion": {
+            "label": "Zwischen Meldungen",
+            "glide": "Weitergleiten",
+            "hold": "Stehen lassen",
+            "glide_hint": "Jedes Flugzeug fliegt bis zur nächsten Meldung mit seiner Geschwindigkeit auf seinem Kurs weiter, höchstens 30 Sekunden.",
+            "hold_hint": "Jedes Flugzeug bleibt, wo die letzte Meldung es hingesetzt hat."
+          },
+          "plane_track": {
+            "label": "Spur",
+            "hide": "Ausblenden",
+            "show": "Anzeigen"
+          },
+          "plane_track_s": {
+            "label": "Spurlänge",
+            "hint": "Sekunden Flug hinter jedem Flugzeug, von {low} bis {high}."
+          },
+          "plane_ground": {
+            "label": "Am Boden",
+            "hide": "Ausblenden",
+            "show": "Anzeigen"
+          },
+          "altitude": {
+            "label": "Höhe",
+            "min": "Von",
+            "max": "Bis",
+            "hint": "In Fuß. Nur Flugzeuge zwischen diesen Höhen werden gezeigt. Auch die Flightradar24-Integration kann nach Höhe filtern, das spart Anfragen."
+          },
+          "plane_most": {
+            "label": "Höchstens",
+            "hint": "Die Flugzeuge, die der Kartenmitte am nächsten sind, höchstens {high}."
+          }
         }
       },
       "controls": {
@@ -3149,10 +3208,20 @@
         "calibration": "Touch-Kalibrierung beim ersten Start"
       },
       "choice": {
-        "DISPLAY_MODEL": "Display-Controller"
+        "DISPLAY_MODEL": "Display-Controller",
+        "FLASH_SIZE": "Flash-Speicher",
+        "BOARD_VARIANT": "Board"
       },
       "choice_hint": {
-        "DISPLAY_MODEL": "Die meisten dieser Boards haben den ersten. Nimm den anderen, wenn der Bildschirm Rauschen oder ein verzerrtes Bild zeigt."
+        "DISPLAY_MODEL": "Nimm zuerst den ersten. Nimm den anderen, wenn der Bildschirm schwarz bleibt oder Rauschen oder ein verzerrtes Bild zeigt.",
+        "FLASH_SIZE": "Die meisten dieser Boards haben 16 MB. Nimm 8 MB, wenn der Bildschirm nach der Installation schwarz bleibt und immer wieder neu startet.",
+        "BOARD_VARIANT": "Nimm das Board, das du hast. Auf dem gelben Board ohne Gehäuse landet ein Tippen oben links sonst unten rechts."
+      },
+      "choice_option": {
+        "BOARD_VARIANT": {
+          "black": "Schwarz, im Gehäuse",
+          "yellow": "Gelb, ohne Gehäuse"
+        }
       },
       "choice_usual": "die meisten",
       "orientation_landscape": "Quer",

@@ -450,7 +450,7 @@ class TheApp(unittest.IsolatedAsyncioTestCase):
             m.send_auxiliary = send_auxiliary
             m.transport = lambda inbox, screen: 'esphome.d1_tiles'
 
-            async def base_url(request):
+            async def base_url(request, *args, **kwargs):
                 return 'http://addon:8098'
             original = camera_feed.base_url
             camera_feed.base_url = base_url

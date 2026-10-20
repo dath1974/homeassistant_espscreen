@@ -197,6 +197,9 @@ class Manifest(unittest.TestCase):
             [{'id': 'rain', 'name': 'rain', 'step': 'own', 'memory': 600, 'domains': ['weather'], 'when': 'sometimes'}],
             [{'id': 'deck', 'name': 'deck', 'step': 'media', 'memory': 900, 'taps': 'yes'}],
             [{'id': f's{i}', 'name': 'deck', 'step': 'clock', 'memory': 100} for i in range(5)],
+            # An option of kind entity is a tile's (plugin API 0.15): a step of an entity names its domains instead.
+            [{'id': 'rain', 'name': 'rain', 'step': 'own', 'memory': 600, 'domains': ['weather'],
+              'options': [{'id': 'other', 'kind': 'entity', 'label': 'rain', 'domains': ['sensor']}]}],
         ]
         for savers in bad:
             with self.assertRaises(pm.ManifestError, msg=savers):

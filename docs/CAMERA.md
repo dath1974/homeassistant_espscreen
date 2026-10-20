@@ -117,6 +117,17 @@ cut square with the tile's rounded corners, delivered as described below.
   double-width media player tile. The app fetches the player's picture only when its address changes (a new track);
   the screen asks again the moment the picture's mark in the player's state changes. A player without a picture keeps
   its icon; the tile over the whole page keeps the card's big cover.
+- **The library while nothing plays.** A media player's tile on *Album cover* that is 1 x 2, 2 x 2 or larger shows
+  the covers of the player's library while it has nothing to show (idle, on, off or standby, or paused with no song,
+  and no picture of its own), darkened as much as a cover under its track. The app takes the first folder of the
+  library that holds songs (Spotify's "Liked songs", newest first), else albums, else playlists, each picture once,
+  and reads it again every half hour. The covers stay square and all one size, two along the tile's shorter side and
+  as many along the longer one as fill it; what reaches past the tile is cut off evenly at both ends, never squeezed.
+  Every minute one of them moves on to the next cover of the folder: the one longest on the tile goes, and none shows
+  twice. It is the tile's own picture by a mark in the player's state, so the firmware asks for it as for a cover and
+  nothing in the firmware changed; a screen gets it once its firmware draws a player's extras (0.24.0+). A library
+  whose pictures the app may not fetch, such as Music Assistant's covers of files in the house, which come from an
+  address in the house, keeps the tile as it was. The rules are in `screen_manager/app/rest_mosaic.py`.
 - The tiles' pictures come through the third of the screen's three downloads (`picture_fetch::live`, decoded into
   PSRAM), bound in `packages/features/camera.yaml`, which every board with camera pictures includes; the CYD, the
   Waveshare 3.5 and the Hosyond have none.
@@ -363,6 +374,10 @@ board without PSRAM has no room for it.
 - **Home Assistant OS:** the app publishes port 8098 on the Home Assistant host. When another app
   already uses 8098, pick another port in the app's network settings: the app sends the screens
   links on the port you chose (app 0.4.24+). The screens need to reach Home Assistant's address on it.
+- **Home Assistant on more than one network:** each screen gets the address Home Assistant has on the screen's own
+  network, found from the screen's IP address and the networks Home Assistant lists. A screen on a network where Home
+  Assistant has no address of its own (one reached through a router) gets the address of Home Assistant's default
+  network, as every screen did before. It then needs a route to that address.
 - **Docker** (docs/DOCKER.md): the container uses the host network, so 8098 is open as is. When
   the screens reach the host under another address, set `SCREEN_CAMERA_URL`, for example
   `http://192.168.1.20:8098`.

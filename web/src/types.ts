@@ -95,6 +95,9 @@ export type PageTile = {
   appearance: { label: string; presentation?: "single" | "wide" | "tall" | "square" | "full" | `${number}x${number}`; display?: string; icon?: string; background?: string; historyHours?: number; refresh?: number; subtitle?: string; fit?: string; overlay?: string;
     mapEntities?: string[]; mapFraming?: string; mapDistance?: string; mapFollow?: string; mapMarkers?: string; mapNames?: string;
     mapZones?: string; mapStreets?: string; mapLook?: string; energyFlow?: string;
+    // Aircraft over the map tile (model/aircraft.ts): TileOptions' aircraft and plane_*.
+    airSource?: string; airMarker?: string; airLabel?: string; airColour?: string; airGround?: string; airMotion?: string;
+    airTrack?: string; airTrackSeconds?: number; airMost?: number; airMin?: number; airMax?: number;
     // A calendar card's choices (firmware 0.56.0): TileOptions' style, calendars, places, words, hide_words, all_day,
     // tentative, private, ahead, soon and start_view.
     calendarStyle?: string; calendarEntities?: string[]; calendarPlaces?: string[]; calendarWords?: string[]; calendarHideWords?: string[];
@@ -340,6 +343,8 @@ export type Inventory = {
   builtin?: Entity[];
   // Device trackers with a place, for a map card's "Also on the map" (app 0.4.35).
   trackers?: Entity[];
+  // Sensors that list flights, for the map tile's aircraft (aircraft.sources).
+  aircraft?: Entity[];
   // `seen`: Home Assistant found it on the network, waiting to be paired (app 0.4.32). `pairing`: the app adds it itself
   // (app 0.4.73), `failed` when Home Assistant asked something only the person can answer.
   pending?: { friendly: string; file: string; node?: string; installed?: boolean; downloaded?: boolean; api_key?: string; seen?: boolean; pairing?: "adding" | "failed" | null }[];

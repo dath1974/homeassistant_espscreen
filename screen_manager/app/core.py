@@ -13,6 +13,7 @@ from i18n import english, screen_t, t
 import calendar_feed
 import meter
 import catalogue
+import aircraft
 import tile_icons
 
 # The entity types a tile shows, as the tile catalogue has them (catalogue/*.yaml, catalogue.py): a type exists here only
@@ -254,7 +255,9 @@ ENERGY_MIN_FIRMWARE = (0, 47, 0)
 ENERGY_FLOWS = tuple(catalogue.of_type('screen')['energy']['flow'])
 MAP_DOMAINS = frozenset(MAP_CARD['with'])
 MAP_MAX_ENTITIES = MAP_CARD['max']
-MAP_OWN = ('map', *MAP_OPTIONS)
+# Aircraft over the map tile (docs/MAP.md, "Aircraft"): the sensor they come from and how they are drawn, the map tile's
+# alone (aircraft.validate). They stay in the app too: the screen gets the planes as pixels (op "air").
+MAP_OWN = ('map', *MAP_OPTIONS, *aircraft.OWN)
 # Displays that only work on a double-width card (`wide` in the catalogue).
 WIDE_ONLY = tuple(sorted({item['key'] for entry in catalogue.TYPES.values() for item in entry['displays'] if item.get('wide')}))
 
@@ -2076,7 +2079,12 @@ def validate_layout(data, stored=False, grid=DEFAULT_GRID):
                 # Following is the map tile's own: a person's map follows that person and who rides along.
                 # Chosen with nobody yet is a map of the zones until someone is added.
                 if tile['entity'] != MAP_TILE:
-                    options = {k: v for k, v in options.items() if k != 'follow'}
+                    options = {k: v for k, v in options.items() if k != 'follow' and k not in aircraft.OWN}
+                else:
+                    try:
+                        options = aircraft.validate(options)
+                    except ValueError as error:
+                        raise ValueError(t('addon.errors.layout.invalid_setting', setting=str(error))) from None
                 for key, choices in allowed.items():
                     if key in options and options[key] not in choices:
                         raise ValueError(t('addon.errors.layout.invalid_setting', setting=key))
@@ -2433,7 +2441,8 @@ def extras(tile, states, forecast=None, tz=None, hourly=None, now=None, device=N
     # nothing polls and no place goes out (map_card.fingerprint).
     if (tile.get('options') or {}).get('display') == 'map':
         import map_card
-        return {'mk': map_card.fingerprint(tile, states, entries)}
+        # `air`: the map tile has aircraft over it, which the screen asks for while the card is on the glass (op "air").
+        return {'mk': map_card.fingerprint(tile, states, entries), **({'air': 1} if aircraft.source_of(tile) else {})}
     if domain == 'light':
         # The effects page (app 0.2.83): the select and number entities of the light's device, named as Home Assistant
         # names them; the effect itself travels as the `effect` attribute.

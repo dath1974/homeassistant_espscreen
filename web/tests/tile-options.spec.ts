@@ -347,6 +347,70 @@ describe("the map tile (app 0.4.36)", () => {
     expect(saved.appearance).toMatchObject({ display: "map", mapFollow: "chosen", mapEntities: ["person.q"] });
     panel.unmount();
   });
+
+  it("takes aircraft from a sensor that lists flights, and saves how they are drawn without the defaults", async () => {
+    const tile: Tile = { entity: "screen.map", name: "", slot: 0, options: { display: "map", size: "wide" } };
+    appendTiles(tile);
+    Object.assign(useInventoryStore().inventory.screens[0], { firmware: "0.21.0", pictures: true });
+    useInventoryStore().inventory.aircraft = [{ id: "sensor.flightradar24_current_in_area", name: "Current in area" }];
+    let panel = mount(TileInspector, { props: { tile: current(tile)! } });
+    // No source yet: only the sensor to pick, none of the choices.
+    expect(panel.text()).toContain("Aircraft");
+    expect(panel.text()).not.toContain("Between reports");
+    expect(mapOf(panel).sources.map((item: { id: string }) => item.id)).toEqual(["sensor.flightradar24_current_in_area"]);
+    panel.unmount();
+    // Picked through the setter the picker calls.
+    const { setTileOption } = await import("../src/editor/tiles");
+    setTileOption(current(tile)!, "aircraft", "sensor.flightradar24_current_in_area");
+    panel = mount(TileInspector, { props: { tile: current(tile)! } });
+    expect(panel.text()).toContain("Between reports");
+    expect(panel.text()).not.toContain("Track length");
+    for (const label of ["Plane", "Callsign", "One colour", "Hold"]) {
+      await panel.findAll(".seg button").find((b) => b.text() === label)!.trigger("click");
+      panel.unmount();
+      panel = mount(TileInspector, { props: { tile: current(tile)! } });
+    }
+    // The track, its length in seconds, and the numbers kept within their ranges.
+    const trackRow = panel.findAll(".seg").find((row) => row.findAll("button").some((b) => b.text() === "Show") &&
+      row.element.closest(".prop")?.textContent?.includes("Track"));
+    await trackRow!.findAll("button").find((b) => b.text() === "Show")!.trigger("click");
+    panel.unmount();
+    panel = mount(TileInspector, { props: { tile: current(tile)! } });
+    expect(panel.text()).toContain("Track length");
+    mapOf(panel).setNumber("plane_track_s", "120");
+    mapOf(panel).setNumber("plane_most", "99");
+    mapOf(panel).setNumber("plane_min", "10000");
+    mapOf(panel).setNumber("plane_max", "");
+    await nextTick();
+    expect(current(tile)!.options).toMatchObject({ aircraft: "sensor.flightradar24_current_in_area", plane_marker: "plane", plane_label: "callsign",
+      plane_colour: "accent", plane_motion: "hold", plane_track: "show", plane_track_s: 120, plane_most: 20, plane_min: 10000 });
+    expect(current(tile)!.options?.plane_max).toBeUndefined();
+    expect(() => validatePages(doc.document!, doc.documentGrid!)).not.toThrow();
+    const saved = doc.document!.pages.flatMap((page) => page.tiles)[0];
+    expect(saved.appearance).toMatchObject({ airSource: "sensor.flightradar24_current_in_area", airMarker: "plane", airTrackSeconds: 120, airMost: 20 });
+    // A number set back to its default is no longer stored.
+    mapOf(panel).setNumber("plane_most", "15");
+    await nextTick();
+    expect(current(tile)!.options?.plane_most).toBeUndefined();
+    panel.unmount();
+  });
+});
+
+describe("aircraft options (model/aircraft.ts), as aircraft.validate takes them", () => {
+  it("keeps them to the map tile, refuses what the add-on refuses and never stores a default", async () => {
+    const { airProblem } = await import("../src/model/aircraft");
+    expect(airProblem({}, false)).toBe("");
+    expect(airProblem({ aircraft: "sensor.a" }, true)).toBe("");
+    expect(airProblem({ aircraft: "sensor.a" }, false)).toBe("normalization");
+    expect(airProblem({ plane_marker: "dot" }, true)).toBe("normalization");
+    expect(airProblem({ plane_marker: "jet" }, true)).toBe("invalid");
+    expect(airProblem({ aircraft: "person.me" }, true)).toBe("invalid");
+    expect(airProblem({ plane_most: 21 }, true)).toBe("invalid");
+    expect(airProblem({ plane_track_s: 60 }, true)).toBe("normalization");
+    expect(airProblem({ plane_min: 20000, plane_max: 10000 }, true)).toBe("invalid");
+    expect(canonicalOptions("person.p", { display: "map", aircraft: "sensor.a", plane_marker: "plane" })).toEqual({ display: "map" });
+    expect(canonicalOptions("screen.map", { display: "map", aircraft: "", plane_marker: "dot", plane_track_s: 60 })).toEqual({ display: "map" });
+  });
 });
 
 describe("what the panel offers, as functions of the tile, Home Assistant and the firmware (tile-options.ts)", () => {

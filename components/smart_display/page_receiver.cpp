@@ -340,6 +340,8 @@ std::string receive(const std::string &payload) {
         }
       if (!transfer.commit()) { result = "Error: incomplete layout"; return false; }
       model.configured = true;
+      // Another layout may give a tile's index to another map: its planes come again with the next ask (air_tick).
+      air_tiles.clear();
       if (shown_page) *shown_page = model.page_data.restore(previous_page_id, had_previous_page);
       if (layout_changed) layout_changed();
       prepare_start();  // every other page built ahead (firmware 0.3.2+)
@@ -406,6 +408,52 @@ std::string receive(const std::string &payload) {
         camera_map_sheet(next);
       }
       camera_answer(view, entity, url, number);
+      result = model.ready() ? "Synced" : "Loading tiles";
+      return true;
+    }
+    if (op == "air") {
+      // Aircraft over a map (docs/MAP.md, "Aircraft", screen_manager/app/aircraft.py): the planes of one card, as
+      // pixels on the picture the app drew for it (`w` x `h`), never a place. `t` "tile" for a map tile's card on the
+      // page, "full" for its full view, which also names the move of its keys and the one picked it was placed for.
+      // Checked whole before it replaces what the card showed.
+      const std::string target = string(root["t"], 8);
+      if ((target != "tile" && target != "full") || !root["i"].is<int>() || !root["w"].is<int>() || !root["h"].is<int>() ||
+          !root["a"].is<JsonArray>()) return false;
+      aircraft_plan::Overlay next;
+      next.full = target == "full";
+      next.index = root["i"].as<int>();
+      next.width = root["w"].as<int>();
+      next.height = root["h"].as<int>();
+      if (next.index < 0 || next.index >= (int) CELLS_MAX * 8 || next.width < 1 || next.width > 4096 || next.height < 1 ||
+          next.height > 4096) return false;
+      auto style = root["s"];
+      const std::string marker = string(style["m"], 8);
+      next.marker = marker == "plane" ? aircraft_plan::PLANE : marker == "arrow" ? aircraft_plan::ARROW : aircraft_plan::DOT;
+      next.by_altitude = string(style["c"], 10) != "accent";
+      next.glide = !(style["g"].is<int>() && style["g"].as<int>() == 0);
+      next.move = string(root["mv"], 48);
+      next.focus = string(root["f"], 120);
+      auto whole = [](JsonVariant v, int low, int high, int &out) {
+        if (!v.is<int>()) return false;
+        out = std::max(low, std::min(high, v.as<int>()));
+        return true;
+      };
+      for (JsonVariant item : root["a"].as<JsonArray>()) {
+        if (next.planes.size() >= aircraft_plan::MOST_PLANES) break;
+        if (!item.is<JsonArray>() || item.size() != 8) continue;
+        aircraft_plan::Plane plane;
+        if (!whole(item[0], -8192, 8192, plane.x) || !whole(item[1], -8192, 8192, plane.y) ||
+            !whole(item[2], -1, 359, plane.heading) || !whole(item[3], -1, aircraft_plan::BANDS - 1, plane.band) ||
+            !whole(item[4], -100000, 100000, plane.vx) || !whole(item[5], -100000, 100000, plane.vy)) continue;
+        plane.label = string(item[6], 96);
+        if (item[7].is<JsonArray>()) for (JsonVariant point : item[7].as<JsonArray>()) {
+          if (plane.track.size() >= 2 * aircraft_plan::MOST_TRACK || !point.is<int>()) break;
+          plane.track.push_back((int16_t) std::max(-8192, std::min(8192, point.as<int>())));
+        }
+        if (plane.track.size() % 2) plane.track.pop_back();
+        next.planes.push_back(std::move(plane));
+      }
+      air_receive(std::move(next));
       result = model.ready() ? "Synced" : "Loading tiles";
       return true;
     }
@@ -1054,6 +1102,7 @@ std::string receive(const std::string &payload) {
     next.subtitle_at = extra["sm"].is<unsigned>() ? extra["sm"].as<unsigned>() : 0;
     // A map card's movement mark (app 0.4.33): a hash, never a place. A changed mark is a changed picture.
     next.map_mark = string(extra["mk"], 16);
+    next.map_air = extra["air"].is<int>() && extra["air"].as<int>() == 1;
     // The energy card (app 0.4.77, firmware 0.47.0): the house now, split as Home Assistant's own live view splits it
     // (screen_manager/app/energy_flow.py): which sources it has, their power, the flows between them, the batteries'
     // charge, the sensor behind each source and the devices drawing power, biggest first.

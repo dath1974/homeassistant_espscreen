@@ -195,6 +195,23 @@ def bounded(value, limit=3200):
     return None
 
 
+def plugin_entities(entries, states, most=500):
+    """The entities of every domain a plugin names (a tile's `entity`, an input of kind entity, a screensaver step of
+    an entity, an entity option of a tile) that the editor's own list lacks, for its pickers and its check of tiles whose entity is gone: that list
+    has the domains Tessera draws tiles for and the top bar's (core.discover), and a plugin may add one it does not (a
+    plant, GitHub #262). Those the editor has stay out, so the `most` here go to the plugins' own domains alone."""
+    entries = list(entries)
+    domains = {d for entry in entries for tile in entry.manifest['tiles'] for d in tile['domains']}
+    domains |= {d for entry in entries for item in entry.manifest['inputs'] for d in item['domains']}
+    domains |= {d for entry in entries for saver in entry.manifest.get('savers', []) for d in saver.get('domains', [])}
+    domains |= {d for entry in entries for tile in entry.manifest['tiles'] for option in tile.get('options', [])
+                if option.get('kind') == 'entity' for d in option.get('domains', [])}
+    domains -= core.DOMAINS | core.HEADER_ONLY_DOMAINS
+    return sorted(({'id': eid, 'name': (state.get('attributes') or {}).get('friendly_name') or eid}
+                   for eid, state in states.items() if isinstance(eid, str) and eid.split('.')[0] in domains),
+                  key=lambda e: e['name'].lower())[:most]
+
+
 def trimmed(data, budget=X_BUDGET):
     """A tile's data within `budget` bytes (X_BUDGET, or less beside large options): the last items go first."""
     if not isinstance(data, dict):
@@ -945,14 +962,7 @@ class Plugins:
                 if item['kind'] == 'secret':
                     secrets.setdefault(entry.id, {})[item['id']] = self.secrets.has(
                         entry.id, item['id'], origin=None if entry.source == 'folder' else entry.origin)
-        # The entities of every domain a plugin names (a tile's `entity`, an input of kind entity): the editor's own list
-        # has only the domains Tessera draws tiles for, and a plugin may add one it does not (a calendar).
-        domains = {d for entry in listed.values() for tile in entry.manifest['tiles'] for d in tile['domains']}
-        domains |= {d for entry in listed.values() for item in entry.manifest['inputs'] for d in item['domains']}
-        states = getattr(self.manager.ha, 'states', {}) or {}
-        entities = sorted(({'id': eid, 'name': (state.get('attributes') or {}).get('friendly_name') or eid}
-                           for eid, state in states.items() if isinstance(eid, str) and eid.split('.')[0] in domains),
-                          key=lambda e: e['name'].lower())[:500]
+        entities = plugin_entities(listed.values(), getattr(self.manager.ha, 'states', {}) or {})
         # Per screen: the features its board and its plugins bring, and why a plugin cannot go on it when that is
         # something only the app knows (a feature nothing brings, a plugin it needs that does not fit, ESPHome too old).
         # The editor works out the board, PSRAM and room itself.
@@ -1484,21 +1494,22 @@ class Plugins:
             data['stale'] = True
         return trimmed(data)
 
-    def entity_part(self, kind, tile, budget=X_BUDGET):
-        """(entity, what the screen gets of it) for a tile that belongs to an entity: its state, its name, the
-        attributes its manifest names and the `fields` it takes out of them, bounded as every tile's: a text at 48
-        bytes, and the lists together within X_BUDGET, each shortened from the end to the same length only when they
-        do not fit (96 prices of a quarter of an hour fit, twice). An attribute named ..._at, ..._time or ...date that
-        holds a moment goes as seconds since 1970, so the screen says it in its words."""
-        entity = (tile.get('options') or {}).get('plugin_entity')
-        if not kind or not kind['domains'] or not entity:
+    def state_part(self, spec, entity, budget=X_BUDGET, updated=False):
+        """(entity, what the screen gets of it) for a tile that belongs to an entity, or one an entity option chose
+        (plugin API 0.15): its state, its name, the attributes `spec` names and the `fields` it takes out of them,
+        bounded as every tile's: a text at 48 bytes, and the lists together within `budget`, each shortened from the
+        end to the same length only when they do not fit (96 prices of a quarter of an hour fit, twice). An attribute
+        named ..._at, ..._time or ...date that holds a moment goes as seconds since 1970, so the screen says it in its
+        words. `updated`: also when Home Assistant last heard from the entity, in seconds since 1970 (an entity option's,
+        so a tile of several sources can say how old its values are)."""
+        if not spec or not spec.get('domains') or not entity:
             return None, None
-        if entity.split('.')[0] not in kind['domains']:
+        if entity.split('.')[0] not in spec['domains']:
             return entity, {'wait': 'wrong_entity'}
         state = self.manager.ha.states.get(entity) or {}
         attrs = state.get('attributes') or {}
         bounded = {}
-        for name in kind['attributes']:
+        for name in spec.get('attributes', ()):
             value = attrs.get(name)
             if name.endswith(('_at', '_time', 'date')) and isinstance(value, str):
                 moment = plugin_fetch.epoch_of(value, getattr(self.manager.ha, 'time_zone', None))
@@ -1515,16 +1526,32 @@ class Plugins:
                                  if isinstance(v, str) or (isinstance(v, (int, float)) and not isinstance(v, bool)
                                                            and math.isfinite(v))]
         zone = getattr(self.manager.ha, 'time_zone', None)
-        for name, field in (kind.get('fields') or {}).items():
+        for name, field in (spec.get('fields') or {}).items():
             bounded[name] = plugin_fetch.field_value(attrs, {**field, 'tz': field.get('tz') or zone})
         part = {'state': core.short(str(state.get('state', 'unavailable')), 160),
                 'name': core.short(attrs.get('friendly_name') or entity, 48), 'attributes': bounded}
+        moment = plugin_fetch.epoch_of(state.get('last_updated'), zone) if updated else None
+        if moment is not None:
+            part['updated'] = moment
         for items in LIST_STEPS:
             shaped = {**part, 'attributes': {name: value if not isinstance(value, list) or items is None else value[:items]
                                              for name, value in bounded.items()}}
             if json_size(shaped) <= budget:
                 return entity, shaped
         return entity, {'wait': 'too_large'}
+
+    def entity_part(self, kind, tile, budget=X_BUDGET):
+        """The tile's own entity (its `plugin_entity`), as state_part has it."""
+        entity = (tile.get('options') or {}).get('plugin_entity')
+        return self.state_part(kind, entity, budget)
+
+    @staticmethod
+    def option_entities(kind, chosen):
+        """The selected Home Assistant entities of a plugin tile's entity options (plugin API 0.15)."""
+        if not kind:
+            return ()
+        return tuple(value for option in kind.get('options', ()) if option['kind'] == 'entity'
+                     for value in (chosen.get(option['id']),) if isinstance(value, str) and value)
 
     async def tile_message(self, index, tile, ask=True, inbox=None):
         """The state message of a plugin tile (core.state_message's shape): no entity behind it, its options, its data.
@@ -1556,8 +1583,21 @@ class Plugins:
                    'state': 'ok', 'a': {}, 'o': wire}
         if kind:
             data = await self.tile_data(entry, kind, chosen, ask, inbox)
-            if part or data:
-                message['x'] = trimmed({**(part or {}), **(data or {})}, room)
+            # The entities its entity options chose (0.15), under x.entities.<option id>: they share what the tile's
+            # own entity and data leave of the room, so one with long attributes waits as too large on its own instead
+            # of taking the whole tile with it.
+            picked = [(option, chosen[option['id']]) for option in kind.get('options', ())
+                      if option['kind'] == 'entity' and isinstance(chosen.get(option['id']), str) and chosen[option['id']]]
+            entities = {}
+            if picked:
+                left = room - json_size({**(part or {}), **(data or {}), 'entities': {}})
+                share = left // len(picked) - max(len(option['id']) for option, _ in picked) - 4
+                for option, selected in picked:
+                    _, selected_part = self.state_part(option, selected, share, updated=True)
+                    if selected_part:
+                        entities[option['id']] = selected_part
+            if part or data or entities:
+                message['x'] = trimmed({**(part or {}), **(data or {}), **({'entities': entities} if entities else {})}, room)
         return message
 
     async def choices(self, plugin, fetch_id, values, inbox=None, search=''):
@@ -1771,7 +1811,15 @@ class Plugins:
             return None
         if isinstance(when, dict) and (states.get(entity) or {}).get('state') not in when['state']:
             return None
-        return trimmed({**(part or {}), **(data or {})}, room)
+        step = {**(part or {}), **(data or {})}
+        # The step's entity in its words (#286): the screen asks for the step's pictures `for` it, and the app shows
+        # Home Assistant's own only for the entity chosen for the step. On a step of an entity it is always the app's,
+        # so a field of the fetch's answer cannot stand in for it, and none while an entity of another domain waits.
+        if kind['domains']:
+            step.pop('entity', None)
+            if 'wait' not in part:
+                step['entity'] = entity
+        return trimmed(step, room)
 
     def saver_steps(self):
         """Every plugin step of a screensaver with a fetch, on a screen whose screensaver is on: [(inbox, key, entry,

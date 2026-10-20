@@ -52,6 +52,26 @@ class Manifest(unittest.TestCase):
         self.assertEqual(out['fetch'][0]['every'], 60)
         self.assertEqual(out['fetch'][0]['placeholders'], ['stop'])
 
+    def test_entity_option_names_domains_and_attributes(self):
+        data = manifest(api='0.15')
+        data['tiles'][0]['options'].append({'id': 'power', 'kind': 'entity', 'label': 'key',
+                                             'domains': ['sensor'], 'attributes': ['unit_of_measurement']})
+        option = pm.check(data, ENGLISH)['tiles'][0]['options'][-1]
+        self.assertEqual(pm.option_value(option, 'sensor.grid_power'), 'sensor.grid_power')
+        self.assertEqual(pm.option_value(option, ''), '')
+        for wrong in ('switch.grid', 'not-an-entity', 12):
+            with self.subTest(wrong), self.assertRaises(pm.ManifestError):
+                pm.option_value(option, wrong)
+        # It names the API that brought it, and belongs to a tile only.
+        with self.assertRaises(pm.ManifestError) as older:
+            pm.check({**data, 'api': '0.14'}, ENGLISH)
+        self.assertIn('0.15', str(older.exception))
+        for missing in ({'domains': []}, {'domains': ['Sensor']}):
+            broken = manifest(api='0.15')
+            broken['tiles'][0]['options'].append({'id': 'power', 'kind': 'entity', 'label': 'key', **missing})
+            with self.subTest(missing), self.assertRaises(pm.ManifestError):
+                pm.check(broken, ENGLISH)
+
     def test_the_real_plugins_pass(self):
         plugins = ROOT.parent / 'tessera-plugins'
         for folder in [*(plugins / 'plugins').glob('*'), plugins / 'template', *(ROOT / 'tests' / 'fixtures' / 'plugins').glob('*')]:
@@ -736,6 +756,143 @@ class EntityTile(unittest.IsolatedAsyncioTestCase):
         self.assertIsInstance(part['attributes']['next_date'], int)   # a date as seconds, for the screen's own words
         _, wrong = service.entity_part(kind, {'options': {'plugin_entity': 'light.kitchen'}})
         self.assertEqual(wrong, {'wait': 'wrong_entity'})
+
+    async def test_a_screensaver_step_names_its_entity(self):
+        # #286: the screen asks for a step's pictures `for` its x.entity, and the app shows Home Assistant's pictures
+        # only for the entity chosen for the step, so the step's x names it, after its fetch's answer.
+        import plugins as plugin_service
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        states = {'sensor.photo': {'state': '/api/image_proxy/image.holiday?v=1', 'attributes': {'friendly_name': 'Photo'}},
+                  'light.kitchen': {'state': 'on', 'attributes': {}}}
+
+        class FakeManager:
+            ha = type('HA', (), {'states': states, 'time_zone': 'UTC', 'changed': asyncio.Event(), 'dirty': set()})()
+            page_senders = {}
+        service = plugin_service.Plugins(FakeManager(), Path(tmp.name) / 'data', Path(tmp.name) / 'esphome')
+        kind = {'id': 'slideshow', 'domains': ['sensor'], 'attributes': [], 'options': [], 'data': True}
+        step = lambda entity: service.saver_step('hall', 'plugin:photos.slideshow', None, kind, {'entity': entity}, states)
+        service.saver_cache[('hall', 'plugin:photos.slideshow')] = {'entity': 'sensor.other', 'caption': 'Beach'}
+        x = step('sensor.photo')
+        self.assertEqual((x['entity'], x['state'], x['caption']), ('sensor.photo', states['sensor.photo']['state'], 'Beach'))
+        self.assertEqual(step('light.kitchen'), {'wait': 'wrong_entity', 'caption': 'Beach'})
+        self.assertIsNone(step(''))
+        # A step without an entity sends its fetch's answer as it is.
+        bare = {**kind, 'domains': []}
+        self.assertEqual(service.saver_step('hall', 'plugin:photos.slideshow', None, bare, {}, states),
+                         {'entity': 'sensor.other', 'caption': 'Beach'})
+
+
+class PluginEntities(unittest.TestCase):
+    def test_only_the_domains_the_editor_has_not(self):
+        # GitHub #262: a plugin's tile of a plant was called gone, as the editor's list has only Tessera's own domains.
+        # The add-on lists the entities of the domains plugins name that the editor lacks: a tile's, an input's and a
+        # screensaver step's, and none it already has (sensors, a top bar's counter), so a plant is never cut off.
+        import plugins as plugin_service
+        entry = lambda **manifest: type('Entry', (), {'manifest': {'tiles': [], 'inputs': [], **manifest}})()
+        states = {'plant.monstera': {'state': 'ok', 'attributes': {'friendly_name': 'Monstera'}},
+                  'todo.shopping': {'state': '2', 'attributes': {'friendly_name': 'Shopping'}},
+                  'schedule.heating': {'state': 'on', 'attributes': {}}, 'calendar.bins': {'state': 'off', 'attributes': {}},
+                  'sensor.moisture': {'state': '40', 'attributes': {}}, 'counter.visits': {'state': '3', 'attributes': {}}}
+        listed = [entry(tiles=[{'domains': ['sensor', 'plant']}], inputs=[{'domains': ['todo', 'counter', 'calendar']}]),
+                  entry(savers=[{'domains': ['schedule']}, {'step': 'clock', 'domains': []}])]
+        self.assertEqual(plugin_service.plugin_entities(listed, states),
+                         [{'id': 'plant.monstera', 'name': 'Monstera'}, {'id': 'schedule.heating', 'name': 'schedule.heating'},
+                          {'id': 'todo.shopping', 'name': 'Shopping'}])
+        self.assertEqual(len(plugin_service.plugin_entities(listed, states, most=1)), 1)
+        self.assertEqual(plugin_service.plugin_entities([entry()], states), [])
+    async def test_selected_entity_options_are_sent_together(self):
+        import plugins as plugin_service
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+
+        class FakeManager:
+            ha = type('HA', (), {'states': {
+                'sensor.grid': {'state': '120', 'attributes': {'friendly_name': 'Grid', 'unit_of_measurement': 'W'}},
+                'sensor.solar': {'state': '850', 'attributes': {'friendly_name': 'Solar', 'unit_of_measurement': 'W'}},
+            }, 'time_zone': 'Europe/Amsterdam', 'changed': asyncio.Event(), 'dirty': set()})()
+            page_senders = {}
+        service = plugin_service.Plugins(FakeManager(), Path(tmp.name) / 'data', Path(tmp.name) / 'esphome')
+        kind = {'id': 'flow', 'domains': [], 'attributes': [], 'options': [
+            {'id': 'grid', 'kind': 'entity', 'domains': ['sensor'], 'attributes': ['unit_of_measurement']},
+            {'id': 'solar', 'kind': 'entity', 'domains': ['sensor'], 'attributes': ['unit_of_measurement']},
+        ]}
+        chosen = {'grid': 'sensor.grid', 'solar': 'sensor.solar'}
+        self.assertEqual(service.option_entities(kind, chosen), ('sensor.grid', 'sensor.solar'))
+        _, grid = service.state_part(kind['options'][0], chosen['grid'])
+        self.assertEqual(grid['state'], '120')
+        self.assertEqual(grid['attributes'], {'unit_of_measurement': 'W'})
+
+
+class EntityOptions(unittest.IsolatedAsyncioTestCase):
+    """Plugin API 0.15 (PR #288): a tile's options of kind entity choose Home Assistant entities, which the app sends
+    under x.entities.<option id> and follows, without a new build."""
+
+    async def asyncSetUp(self):
+        import plugins as plugin_service
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        self.states = {'sensor.grid': {'state': '120', 'last_updated': '2026-10-19T06:00:00+00:00',
+                                       'attributes': {'friendly_name': 'Grid', 'unit_of_measurement': 'W'}},
+                       'sensor.solar': {'state': '850', 'attributes': {'friendly_name': 'Solar', 'unit_of_measurement': 'W',
+                                                                      'forecast': list(range(2000))}},
+                       'sensor.soc': {'state': '64', 'attributes': {'friendly_name': 'Battery'}}}
+
+        class FakeManager:
+            ha = type('HA', (), {'states': self.states, 'time_zone': 'UTC', 'changed': asyncio.Event(), 'dirty': set()})()
+            page_senders = {}
+        self.service = plugin_service.Plugins(FakeManager(), Path(tmp.name) / 'data', Path(tmp.name) / 'esphome')
+        data = manifest(api='0.15', tiles=[{'id': 'flow', 'name': 'tile', 'sizes': {'min': '1x1', 'max': '2x2'}, 'memory': 900,
+                                            'domains': ['sensor'], 'options': [
+            {'id': 'grid', 'kind': 'entity', 'label': 'stop', 'domains': ['sensor'], 'attributes': ['unit_of_measurement']},
+            {'id': 'solar', 'kind': 'entity', 'label': 'line', 'domains': ['sensor'], 'attributes': ['unit_of_measurement', 'forecast']}]}],
+            fetch=[])
+        checked = pm.check(data, ENGLISH)
+        self.kind = checked['tiles'][0]
+        kind = self.kind
+        self.entry = type('Entry', (), {'tile': lambda self, tile_id: kind, 'text': lambda self, key: 'Flow'})()
+        self.service.known = lambda plugin, inbox=None: self.entry
+
+        async def no_data(*args, **kwargs):
+            return None
+        self.service.tile_data = no_data
+
+    async def message(self, chosen, own=''):
+        options = {'plugin': chosen, **({'plugin_entity': own} if own else {})}
+        return await self.service.tile_message(0, {'entity': 'plugin:bus.flow', 'name': '', 'options': options})
+
+    async def test_each_chosen_entity_goes_with_its_state_its_attributes_and_its_moment(self):
+        x = (await self.message({'grid': 'sensor.grid'}, own='sensor.soc'))['x']
+        self.assertEqual(x['entities']['grid']['state'], '120')
+        self.assertEqual(x['entities']['grid']['attributes'], {'unit_of_measurement': 'W'})
+        self.assertEqual(x['entities']['grid']['updated'], 1792389600)
+        # The tile's own entity keeps the x it had before 0.15: no moment of its own.
+        self.assertEqual((x['state'], x['name']), ('64', 'Battery'))
+        self.assertNotIn('updated', x)
+        self.assertEqual(self.service.option_entities(self.kind, {'grid': 'sensor.grid', 'solar': ''}), ('sensor.grid',))
+
+    async def test_one_with_long_attributes_shares_the_room_and_never_takes_the_tile_with_it(self):
+        x = (await self.message({'grid': 'sensor.grid', 'solar': 'sensor.solar'}))['x']
+        self.assertEqual(x['entities']['grid']['state'], '120')
+        self.assertEqual(x['entities']['solar']['state'], '850')
+        self.assertLess(len(x['entities']['solar']['attributes']['forecast']), 2000)
+        self.assertLessEqual(len(json.dumps(x, separators=(',', ':')).encode()), plugin_service_budget())
+
+    async def test_a_choice_of_another_domain_is_left_out(self):
+        x = (await self.message({'grid': 'light.kitchen'})).get('x') or {}
+        self.assertNotIn('entities', x)
+
+    def test_the_editor_gets_the_entities_of_an_options_own_domain(self):
+        import plugins as plugin_service
+        entry = type('Entry', (), {'manifest': {'tiles': [{'domains': [], 'options': [
+            {'kind': 'entity', 'domains': ['plant', 'sensor']}, {'kind': 'text'}]}], 'inputs': []}})()
+        states = {'plant.fern': {'state': 'ok', 'attributes': {}}, 'sensor.moisture': {'state': '1', 'attributes': {}}}
+        self.assertEqual(plugin_service.plugin_entities([entry], states), [{'id': 'plant.fern', 'name': 'plant.fern'}])
+
+
+def plugin_service_budget():
+    import plugins as plugin_service
+    return plugin_service.X_BUDGET
 
 
 class BlamedBuilds(unittest.TestCase):

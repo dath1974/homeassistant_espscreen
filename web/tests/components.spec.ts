@@ -1467,6 +1467,16 @@ describe("the orientation of a new screen", () => {
     const third = await installer();
     await third.find('input[value="guition"]').setValue("guition");
     expect(third.find("#choice-DISPLAY_MODEL").exists()).toBe(false);
+    // A value with words of its own shows them (GitHub #289), and is sent as the value.
+    const fourth = await installer();
+    await fourth.find('input[value="jc1060p470"]').setValue("jc1060p470");
+    expect(fourth.find("#choice-BOARD_VARIANT legend").text()).toBe("Board");
+    expect(fourth.findAll("#choice-BOARD_VARIANT .choice b").map((b) => b.text())).toEqual(["Black, in a case", "Yellow, without a case"]);
+    await fourth.findAll("#choice-BOARD_VARIANT .choice input")[1].setValue("yellow");
+    await fourth.find("#friendly_name").setValue("Hall");
+    await fourth.find("#install-form").trigger("submit");
+    await flush();
+    expect(answers.pop()).toMatchObject({ board: "jc1060p470", choices: { BOARD_VARIANT: "yellow" } });
     // The grid is no board's choice any more (app 0.4.85): Advanced takes columns and rows within the board's range, and
     // only a grid that differs from the board's best goes along.
     expect(third.find("#choice-GRID_ROWS").exists()).toBe(false);

@@ -1,0 +1,222 @@
+"""Aircraft over a map tile (docs/MAP.md, "Aircraft"): a sensor that lists flights, as Flightradar24's Current in area
+does, read by the add-on and sent to the screen as pixels on the map's picture (op "air"), again on every report."""
+import json
+from pathlib import Path
+import sys
+import tempfile
+from types import SimpleNamespace
+import unittest
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / 'screen_manager/app'))
+import aircraft  # noqa: E402
+import map_card  # noqa: E402
+from core import extras, screen_options, validate_layout  # noqa: E402
+
+SOURCE = 'sensor.flightradar24_current_in_area'
+
+
+def flight(id='abc', lat=52.0, lon=5.0, altitude=35000, heading=90, speed=450, callsign='KLM123', **more):
+    return {'id': id, 'latitude': lat, 'longitude': lon, 'altitude': altitude, 'heading': heading, 'ground_speed': speed,
+            'callsign': callsign, 'aircraft_code': 'B738', 'airport_origin_code_iata': 'AMS',
+            'airport_destination_code_iata': 'LHR', 'on_ground': 0, **more}
+
+
+def state(*flights):
+    return {'state': str(len(flights)), 'attributes': {'friendly_name': 'Current in area', 'flights': list(flights)}}
+
+
+def tile(**options):
+    return {'entity': 'screen.map', 'options': {'display': 'map', 'aircraft': SOURCE, **options}}
+
+
+VIEW = map_card.View(52.0, 5.0, 10.0, (400, 300))
+
+
+class ReadingTest(unittest.TestCase):
+    def test_flightradar24_fields(self):
+        f = aircraft.flights_of(state(flight()))[0]
+        self.assertEqual((f.id, f.lat, f.lon, f.altitude, f.heading, f.speed, f.callsign, f.model, f.origin, f.destination),
+                         ('abc', 52.0, 5.0, 35000, 90, 450, 'KLM123', 'B738', 'AMS', 'LHR'))
+        self.assertFalse(f.on_ground)
+
+    def test_without_a_place_or_twice_is_left_out(self):
+        listed = state(flight(lat=None), flight(id='x', lat=95), flight(id='a'), flight(id='a'), 'nonsense')
+        self.assertEqual([f.id for f in aircraft.flights_of(listed)], ['a'])
+
+    def test_no_list_no_flights(self):
+        self.assertEqual(aircraft.flights_of({'attributes': {'flights': 'none'}}), [])
+        self.assertEqual(aircraft.flights_of(None), [])
+
+    def test_sources_are_sensors_that_list_flights(self):
+        states = {SOURCE: state(), 'sensor.other': {'state': '1', 'attributes': {}},
+                  'binary_sensor.x': {'state': 'on', 'attributes': {'flights': []}}}
+        self.assertEqual([s['id'] for s in aircraft.sources(states)], [SOURCE])
+
+
+class ChoosingTest(unittest.TestCase):
+    def options(self, **chosen):
+        return aircraft.options_of(tile(**chosen))
+
+    def test_altitudes_and_ground(self):
+        flights = aircraft.flights_of(state(flight('low', altitude=2000), flight('high', altitude=38000),
+                                            flight('parked', altitude=0, on_ground=1)))
+        self.assertEqual([f.id for f in aircraft.shown(flights, self.options(), VIEW)], ['low', 'high'])
+        self.assertEqual([f.id for f in aircraft.shown(flights, self.options(plane_min=10000), VIEW)], ['high'])
+        self.assertEqual(sorted(f.id for f in aircraft.shown(flights, self.options(plane_ground='show'), VIEW)), ['high', 'low', 'parked'])
+
+    def test_closest_first_and_at_most(self):
+        flights = aircraft.flights_of(state(flight('far', lon=5.2), flight('near', lon=5.01), flight('mid', lon=5.1)))
+        self.assertEqual([f.id for f in aircraft.shown(flights, self.options(plane_most=2), VIEW)], ['near', 'mid'])
+
+    def test_outside_the_frame(self):
+        flights = aircraft.flights_of(state(flight('gone', lat=53.5)))
+        self.assertEqual(aircraft.shown(flights, self.options(), VIEW), [])
+
+
+class LabelTest(unittest.TestCase):
+    def test_each_kind(self):
+        f = aircraft.flights_of(state(flight()))[0]
+        self.assertEqual(aircraft.label_of(f, 'none', False), '')
+        self.assertEqual(aircraft.label_of(f, 'callsign', False), 'KLM123')
+        self.assertEqual(aircraft.label_of(f, 'altitude', False), 'KLM123\n35000 ft')
+        self.assertEqual(aircraft.label_of(f, 'full', False), 'KLM123 · B738\n35000 ft · 450 kn\nAMS → LHR')
+        self.assertEqual(aircraft.label_of(f, 'altitude', True), 'KLM123\n10670 m')
+
+    def test_auto_follows_the_room(self):
+        options = aircraft.options_of(tile())
+        self.assertEqual(aircraft.label_kind(options, (120, 120), 1.0, False), 'none')
+        self.assertEqual(aircraft.label_kind(options, (200, 200), 1.0, False), 'callsign')
+        self.assertEqual(aircraft.label_kind(options, (400, 300), 1.0, False), 'altitude')
+        self.assertEqual(aircraft.label_kind(options, (120, 120), 1.0, True), 'altitude')
+
+
+class OverlayTest(unittest.TestCase):
+    def test_a_plane_on_the_frame(self):
+        flights = aircraft.flights_of(state(flight()))
+        [plane] = aircraft.overlay(VIEW, flights, aircraft.options_of(tile()))
+        x, y, heading, band, vx, vy, label, track = plane
+        self.assertEqual((x, y, heading, band, track), (200, 150, 90, 4, []))
+        # 450 knots due east at zoom 10 over 52 degrees north: about 151 pixels a minute.
+        self.assertTrue(140 < vx < 160 and vy == 0, (vx, vy))
+        self.assertEqual(label, 'KLM123\n35000 ft')
+
+    def test_hold_sends_no_motion(self):
+        [plane] = aircraft.overlay(VIEW, aircraft.flights_of(state(flight())), aircraft.options_of(tile(plane_motion='hold')))
+        self.assertEqual(plane[4:6], [0, 0])
+
+    def test_track_is_the_last_seconds(self):
+        tracks = aircraft.Tracks()
+        for moment, lon in ((0, 4.9), (30, 4.95), (60, 5.0)):
+            tracks.update(SOURCE, aircraft.flights_of(state(flight(lon=lon))), moment)
+        options = aircraft.options_of(tile(plane_track='show', plane_track_s=40))
+        [plane] = aircraft.overlay(VIEW, aircraft.flights_of(state(flight())), options, tracks, SOURCE, now=60)
+        track = plane[7]
+        self.assertEqual(len(track), 4)
+        self.assertEqual(track[-2:], [200, 150])
+        self.assertLess(track[0], 200)
+
+    def test_a_plane_gone_is_forgotten(self):
+        tracks = aircraft.Tracks()
+        tracks.update(SOURCE, aircraft.flights_of(state(flight())), 0)
+        tracks.update(SOURCE, [], aircraft.FORGET_SECONDS + 1)
+        self.assertEqual(tracks.of(SOURCE, 'abc', 900, aircraft.FORGET_SECONDS + 1), [])
+
+    def test_message_fits_the_screen(self):
+        planes = [[100 + n, 100, 90, 3, 50, 0, 'CALLSIGN' + str(n) + '\n35000 ft · 450 kn\nAMS → LHR', list(range(40))] for n in range(20)]
+        body = aircraft.message('tile', 3, (400, 300), planes, {'m': 'dot', 'c': 'altitude', 'g': 1})
+        self.assertLessEqual(len(json.dumps(body, ensure_ascii=False, separators=(',', ':')).encode()), aircraft.MESSAGE_BYTES)
+        self.assertGreater(len(body['a']), 5)
+        self.assertEqual((body['op'], body['t'], body['i'], body['w'], body['h']), ('air', 'tile', 3, 400, 300))
+
+    def test_the_cards_a_screen_asks_for(self):
+        self.assertEqual(aircraft.cards_of({'air': 'tile', 'cards': '3:180x120,5:400x300,3:1x1,x:2x2,7:9000x10'}, 800),
+                         [(3, (180, 120)), (5, (400, 300))])
+        self.assertEqual(aircraft.cards_of({'air': 'full', 'idx': '4', 'size': '800x480'}, 800), [(4, (800, 480))])
+        self.assertEqual(aircraft.cards_of({'air': 'full', 'idx': '4', 'size': '0x480'}, 800), [])
+
+
+class LayoutTest(unittest.TestCase):
+    def save(self, entity='screen.map', **options):
+        return validate_layout({'title': 'x', 'tiles': [{'entity': entity, 'options': {'display': 'map', **options}}]})['tiles'][0]
+
+    def test_the_map_tile_keeps_its_choices_without_defaults(self):
+        saved = self.save(aircraft=SOURCE, plane_marker='dot', plane_track='show', plane_track_s=120, plane_most=15)
+        self.assertEqual(saved['options'], {'display': 'map', 'aircraft': SOURCE, 'plane_track': 'show', 'plane_track_s': 120})
+
+    def test_wrong_choices_are_refused(self):
+        for wrong in ({'plane_most': 21}, {'plane_marker': 'jet'}, {'aircraft': 'person.me'}, {'plane_min': 20000, 'plane_max': 10000},
+                      {'plane_track_s': True}):
+            with self.subTest(wrong=wrong), self.assertRaises(ValueError):
+                self.save(**wrong)
+
+    def test_a_persons_map_has_no_aircraft(self):
+        self.assertEqual(self.save('person.me', aircraft=SOURCE, plane_marker='plane')['options'], {'display': 'map'})
+
+    def test_the_screen_gets_a_flag_and_no_choice(self):
+        saved = self.save(aircraft=SOURCE, plane_marker='plane')
+        self.assertEqual(screen_options(saved, {}), {'display': 'map'})
+        self.assertEqual(extras(saved, {})['air'], 1)
+        self.assertNotIn('air', extras(self.save(), {}))
+
+
+class ScreenTest(unittest.IsolatedAsyncioTestCase):
+    """A screen that asks for the planes of its map cards gets them as op "air", and again on every report."""
+
+    async def test_asked_answered_and_followed(self):
+        from manager_fixtures import with_screen_grid, seed_layout
+        from test_camera import fake_ha
+        from test_map_card import STATES
+        from server import Manager
+        with tempfile.TemporaryDirectory() as tmp:
+            ha = fake_ha()
+            ha.states.update(STATES)
+            ha.states['sensor.d1_fw']['state'] = '0.21.0'
+            # Over the home zone of STATES, and one far away.
+            ha.states[SOURCE] = state(flight('near', lat=52.3587, lon=4.8682), flight('far', lat=10.0, lon=10.0))
+            m = Manager(with_screen_grid(ha), Path(tmp) / 'screens.json')
+            seed_layout(m, 'text.d1_tiles', validate_layout({'title': 'Home', 'tiles': [
+                {'entity': 'screen.map', 'name': '', 'options': {'size': 'wide', 'framing': 'home', 'aircraft': SOURCE,
+                                                                 'plane_track': 'show'}},
+                {'entity': 'person.sam', 'name': ''}]}))
+
+            def sent():
+                out = [entry[2] for entry in ha.log if entry[0] == 'send' and entry[2].get('op') == 'air']
+                ha.log.clear()
+                return out
+            ask = {'inbox': 'text.d1_tiles', 'air': 'tile', 'cards': '0:448x118,1:200x118'}
+            # A screen whose firmware draws no aircraft is sent none.
+            await m.answer_camera(ask)
+            self.assertEqual(sent(), [])
+            m.page_senders['text.d1_tiles'] = SimpleNamespace(features={'aircraft'}, protocol=None, session=None, confirmed=None)
+            await m.answer_camera(ask)
+            [message] = sent()
+            self.assertEqual((message['t'], message['i'], message['w'], message['h']), ('tile', 0, 448, 118))
+            [plane] = message['a']
+            self.assertEqual(plane[:2], [224, 59], 'the plane over home stands in the middle of a map around home')
+            # A report of the sensor moves it on every card that asked, with its track behind it.
+            ha.states[SOURCE] = state(flight('near', lat=52.3587, lon=4.8700))
+            m.ha.states[SOURCE] = ha.states[SOURCE]
+            await m.air_reports({SOURCE})
+            [message] = sent()
+            self.assertGreater(message['a'][0][0], 224)
+            # Another sensor's report sends nothing; nor does a card the screen stopped asking for.
+            await m.air_reports({'sensor.other'})
+            self.assertEqual(sent(), [])
+            for card in m.air_cards.values():
+                card['until'] = 0
+            await m.air_reports({SOURCE})
+            self.assertEqual(sent(), [])
+            # The full view: its tile, its picture's size, its focus and move come back with the planes.
+            await m.answer_camera({'inbox': 'text.d1_tiles', 'air': 'full', 'idx': '0', 'size': '400x300', 'move': '1,0.00,0.00', 'focus': ''})
+            [message] = sent()
+            self.assertEqual((message['t'], message['w'], message['mv'], message['f']), ('full', 400, '1,0.00,0.00', ''))
+            # A tile that is no map with aircraft is never answered.
+            await m.answer_camera({'inbox': 'text.d1_tiles', 'air': 'full', 'idx': '1', 'size': '400x300'})
+            self.assertEqual(sent(), [])
+            # The sensor is watched, so its reports reach the sync loop.
+            self.assertIn(SOURCE, m.watched_entities())
+
+
+if __name__ == '__main__':
+    unittest.main()

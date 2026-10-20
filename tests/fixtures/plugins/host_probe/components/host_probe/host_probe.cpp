@@ -374,6 +374,12 @@ void HostProbe::ask_once() {
 void HostProbe::on_message(JsonObjectConst message) {
   // A message of the harness that asks for a closer: {"do": "<mode>", "tile": <the layout's tile it opens from>}.
   const char *what = message["do"] | "";
+  // {"do": "wake"}: the plugin wakes the screen (plugin API 0.16), as one that senses someone come does.
+  if (std::string(what) == "wake") {
+    ESP_LOGI(TAG, "wake");
+    tessera::wake(this);
+    return;
+  }
   if (*what) {
     ProbeCloser::mode = what;
     ESP_LOGI(TAG, "do %s", what);

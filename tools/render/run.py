@@ -1031,6 +1031,18 @@ class Run:
             await self.until(lambda l: probe(l, 'standby dark=1'), 10, 'on_standby(true)', start)
             await self.call('render_standby', enter=0)
             await self.until(lambda l: probe(l, 'standby dark=0'), 10, 'on_standby(false)', start)
+            # A plugin wakes the screen as Home Assistant's Wake button does (tessera::wake, plugin API 0.16): the same
+            # script (wake_from) with the plugin's name in the log, and the plugin hears the screen come back. On a lit
+            # screen it only counts the standby time from now.
+            start = len(self.lines)
+            await self.call('render_standby', enter=1)
+            await self.until(lambda l: probe(l, 'standby dark=1'), 10, 'on_standby(true) before the plugin wakes it', start)
+            await self.send({'v': 2, 'op': 'plugin', 'p': 'host_probe', 'm': {'do': 'wake'}})
+            await self.until(lambda l: 'Wake from plugin host_probe, screen in standby' in l, 10, 'tessera::wake took wake_from', start)
+            await self.until(lambda l: probe(l, 'standby dark=0'), 10, 'on_standby(false) after tessera::wake', start)
+            start = len(self.lines)
+            await self.send({'v': 2, 'op': 'plugin', 'p': 'host_probe', 'm': {'do': 'wake'}})
+            await self.until(lambda l: 'Wake from plugin host_probe, screen on' in l, 10, 'tessera::wake on a lit screen', start)
         await self.call('render_page', page=0)
         await self.page_done(0)
         # A card that closes itself, or opens another in its place, from inside one of its own calls (the probe's

@@ -385,6 +385,12 @@ void refresh() {
   if (rt::refresh) rt::refresh();
 }
 
+// The screen wakes as Home Assistant's Wake button does (0.16): packages/core.yaml points plugin_host::wake at the
+// script every wake that is not a finger takes (wake_from), which logs who asked.
+void wake(const Plugin *plugin) {
+  if (plugin_host::wake) plugin_host::wake(std::string("plugin ") + (plugin ? plugin->plugin_id() : "?"));
+}
+
 namespace ui {
 // The screen's fixed fonts (docs/RESPONSIVE.md, "Fonts"), the ones packages/core.yaml hands runtime_tiles at boot: the
 // same ids on every board, sized by its look. Nothing here depends on which tiles happen to stand on the glass.

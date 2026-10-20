@@ -105,6 +105,42 @@ switching the look asks for the other map.
   where someone is to anyone who can read that traffic. Keep that in mind for a screen on a guest network.
 - A screen only gets a map for a map tile on its own saved layout, drawn from that saved tile.
 
+## Aircraft
+
+The map tile can show the planes around you. Under **Aircraft** in its settings, pick a sensor that lists flights:
+the **Current in area** sensor of the [Flightradar24 integration](https://github.com/AlexandrErohin/home-assistant-flightradar24)
+is one. Any sensor whose `flights` attribute is a list of aircraft with a `latitude` and a `longitude` works; `altitude`
+(feet), `heading`, `ground_speed` (knots), `callsign`, `aircraft_code`, `on_ground` and the origin and destination
+codes are used where they are there.
+
+The map stays the picture Tessera draws. The planes are not in it: the screen draws them over it and moves them in
+place each time the sensor reports, so a plane moves without a new picture. Tessera sends the screen where each plane
+stands on that picture, which way it flies and how far it goes in a minute, its label and its track, all in pixels.
+No place reaches the screen, as with the people on the map.
+
+| Choice | What it does |
+| --- | --- |
+| **Marker** | **Dot**, the smallest. **Dot and heading**: a short line the way it flies. **Plane**: a plane seen from above, turned to its heading. |
+| **Label** | **Where there is room** (the callsign on a small card, with the altitude on a larger one and the full view), none, the callsign, the callsign and altitude, or also the speed, type and route. |
+| **Colour** | **By altitude**, from the ground up: grey on the ground, then orange, green, blue and purple (below 5,000, 15,000 and 30,000 ft, and above). Or the screen's accent for every plane. |
+| **Between reports** | **Glide**: each plane flies on along its heading at its speed until the next report, for at most 30 seconds, so the map moves smoothly. **Hold**: each plane stays where the last report put it. |
+| **Track** | The line a plane flew, for the number of seconds you choose (10 to 900). Tessera keeps each plane's places with their time itself, so a track works the same whatever the source keeps. |
+| **On the ground** | Show or hide planes the source reports on the ground. |
+| **Altitude** | Only planes between these altitudes, in feet. The Flightradar24 integration can filter by altitude too, which saves it requests; the tile's own range lets two maps show different heights. |
+| **At most** | The planes closest to the middle of the map, up to 20. |
+
+Altitudes and speeds on the labels follow Home Assistant's unit system: feet and knots, or meters and kilometers per
+hour.
+
+**How fresh it is.** A plane is as recent as the sensor's last report. Flightradar24 updates as often as its scan
+interval in the integration's options, and it limits requests that come too often, so every 10 to 15 seconds is a
+sensible pace. Glide fills the time in between.
+
+**On the screen.** While a map card with aircraft is on the glass, or its full view is open, the screen asks Tessera for
+its planes every 30 seconds and whenever another such card shows. Tessera answers at once and then sends the planes
+again on each report of the sensor, for 75 seconds after the last ask. A screen that stops asking (another page, the
+full view closed) gets nothing more. A screen with older firmware shows the map without planes.
+
 ## For developers
 
 | Piece | Where |
@@ -117,5 +153,10 @@ switching the look asks for the other map.
 | The firmware | `Tile::is_map()`, `card_art`, `live_wanted` (the mark and `dark`), the tap into `camera_open`, `MapSheet` and `map_sheet_draw` in `components/smart_display` |
 | The editor | `TileInspector.vue`, `model/tile-options.ts`, `model/page-validation.ts` |
 | Tests and renders | `tests/test_map_card.py`, `tools/render/map_tiles.py` |
+| Aircraft: reading a source, choosing, labels, tracks, pixels and the message | `screen_manager/app/aircraft.py`, `catalogue/person.yaml` (`map.aircraft`) |
+| Aircraft: the screen's ask, its cards and every report | `Manager.answer_air`, `air_reports`, `air_message` in `server.py` |
+| Aircraft on the screen | `aircraft_plan.h` (where a plane is, its outline, its label), `aircraft_view.cpp` (one object over the picture), `air_tick`, `air_receive` in `runtime_tiles.h`, op `air` in `page_receiver.cpp`, `theme.h` (`AIRCRAFT_*`) |
+| Aircraft in the editor | `MapSection.vue`, `model/aircraft.ts` |
+| Aircraft tests and renders | `tests/test_aircraft.py`, `tests/test_aircraft_plan.cpp`, `tools/render/aircraft.py` |
 
 The picture pipeline the map shares is described in [CAMERA.md](CAMERA.md).

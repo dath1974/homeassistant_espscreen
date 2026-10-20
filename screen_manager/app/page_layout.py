@@ -28,6 +28,10 @@ APPEARANCE = {
     # How a map looks and, on the map tile, whom it follows (app 0.4.36).
     "mapFollow": "follow", "mapMarkers": "markers", "mapNames": "names", "mapZones": "zones", "mapStreets": "streets",
     "mapLook": "look",
+    # Aircraft over the map tile (aircraft.py): the sensor they come from and how the screen draws them.
+    "airSource": "aircraft", "airMarker": "plane_marker", "airLabel": "plane_label", "airColour": "plane_colour",
+    "airGround": "plane_ground", "airMotion": "plane_motion", "airTrack": "plane_track", "airTrackSeconds": "plane_track_s",
+    "airMost": "plane_most", "airMin": "plane_min", "airMax": "plane_max",
     # How the energy card shows power along a line: running dots or calm lines (catalogue/screen.yaml `energy`).
     "energyFlow": "flow",
     # A calendar card (firmware 0.56.0, calendar_feed.py): its look, its calendars and filters, how far it looks, when an

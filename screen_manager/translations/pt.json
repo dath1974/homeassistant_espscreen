@@ -2397,6 +2397,65 @@
         "chosen": {
           "label": "No mapa",
           "hint": "Quem este mapa segue, cada um com a sua cor. Um localizador é um telemóvel, um carro ou uma etiqueta cuja localização o Home Assistant conhece."
+        },
+        "aircraft": {
+          "label": "Aviões",
+          "hint": "Um sensor que lista voos, como o sensor «Atualmente na área» da integração Flightradar24. O ecrã move cada avião quando o sensor o comunica.",
+          "none": "Ainda nenhum sensor lista voos. Adicione uma integração que o faça, como a Flightradar24, e o seu sensor «Atualmente na área» aparece aqui.",
+          "choose": "Nenhum",
+          "search": "Procurar sensores",
+          "none_found": "Nenhum sensor que liste voos",
+          "remove": "Remover {name}",
+          "plane_marker": {
+            "label": "Marcador",
+            "dot": "Ponto",
+            "arrow": "Ponto e rumo",
+            "plane": "Avião"
+          },
+          "plane_label": {
+            "label": "Etiqueta",
+            "auto": "Onde houver espaço",
+            "none": "Nenhuma",
+            "callsign": "Indicativo",
+            "altitude": "Indicativo e altitude",
+            "full": "Indicativo, altitude, velocidade e rota"
+          },
+          "plane_colour": {
+            "label": "Cor",
+            "altitude": "Pela altitude",
+            "accent": "Uma cor"
+          },
+          "plane_motion": {
+            "label": "Entre relatórios",
+            "glide": "Deslizar",
+            "hold": "Parar",
+            "glide_hint": "Cada avião segue no seu rumo à sua velocidade até ao relatório seguinte, durante no máximo 30 segundos.",
+            "hold_hint": "Cada avião fica onde o último relatório o pôs."
+          },
+          "plane_track": {
+            "label": "Rasto",
+            "hide": "Ocultar",
+            "show": "Mostrar"
+          },
+          "plane_track_s": {
+            "label": "Comprimento do rasto",
+            "hint": "Segundos de voo atrás de cada avião, de {low} a {high}."
+          },
+          "plane_ground": {
+            "label": "Em terra",
+            "hide": "Ocultar",
+            "show": "Mostrar"
+          },
+          "altitude": {
+            "label": "Altitude",
+            "min": "De",
+            "max": "Até",
+            "hint": "Em pés. Só são mostrados os aviões entre estas altitudes. A integração Flightradar24 também pode filtrar por altitude, o que poupa pedidos."
+          },
+          "plane_most": {
+            "label": "No máximo",
+            "hint": "Os aviões mais próximos do centro do mapa, no máximo {high}."
+          }
         }
       },
       "controls": {
@@ -3149,10 +3208,20 @@
         "calibration": "Calibração do toque no primeiro arranque"
       },
       "choice": {
-        "DISPLAY_MODEL": "Controlador do ecrã"
+        "DISPLAY_MODEL": "Controlador do ecrã",
+        "FLASH_SIZE": "Memória flash",
+        "BOARD_VARIANT": "Placa"
       },
       "choice_hint": {
-        "DISPLAY_MODEL": "A maioria destas placas tem o primeiro. Escolha o outro se o ecrã mostrar ruído ou uma imagem distorcida."
+        "DISPLAY_MODEL": "Comece pelo primeiro. Escolha o outro se o ecrã ficar preto ou mostrar ruído ou uma imagem distorcida.",
+        "FLASH_SIZE": "A maioria destas placas tem 16 MB. Escolha 8 MB se o ecrã ficar preto após a instalação e reiniciar uma e outra vez.",
+        "BOARD_VARIANT": "Escolha a que tem. Na placa amarela sem caixa, um toque no canto superior esquerdo iria parar ao canto inferior direito."
+      },
+      "choice_option": {
+        "BOARD_VARIANT": {
+          "black": "Preta, com caixa",
+          "yellow": "Amarela, sem caixa"
+        }
       },
       "choice_usual": "a maioria",
       "orientation_landscape": "Na horizontal",

@@ -64,7 +64,10 @@ namespace tessera {
 // `backdrop: true`, the step's own picture (moving, for the photos) under the whole saver; and wish(), a
 // value a finger changed, shown at once and squared with Home Assistant as every control of the screen does; drift(),
 // the slow circle against burn-in, for a saver that moves only some of its parts.
-constexpr uint8_t PLUGIN_API_MAJOR = 0, PLUGIN_API_MINOR = 14;
+// 0.15: an option of kind `entity`; the add-on follows its selected Home Assistant entity and puts the bounded state
+// under `entities.<option id>` in the tile's data. This adds no firmware-side symbols.
+// 0.16: wake(), the screen wakes as Home Assistant's Wake button does, for a plugin that senses someone come.
+constexpr uint8_t PLUGIN_API_MAJOR = 0, PLUGIN_API_MINOR = 16;
 
 // The screen's fixed fonts, largest first. A tile takes the largest that fits; a plugin brings no font of its own.
 // VALUE is the big number of a watch card, HEADLINE a card's large words, TITLE a card's name, BODY its second line,
@@ -465,6 +468,15 @@ Point drift(uint32_t epoch);
 uint32_t send(const Plugin *plugin, JsonObjectConst request);
 // The card on the glass draws again in its next pass (after a change made outside on_state or on_tick).
 void refresh();
+// Wake the screen as Home Assistant's Wake button does (0.16), for a plugin that senses someone come (motion in front of
+// a camera, a light coming on): the one way every wake takes that is not a finger on the glass. A dimmed screen lights
+// up at its brightness, also at night, its screensaver goes and a Sleep is over; it goes back to page 1 at once when
+// that time ran out during standby. A screen that is on only counts its standby time from now. It is no tap: Back to
+// page 1 keeps counting from the last touch, so waking on every motion holds no card or page 2 up. The log names the
+// plugin. Call it from the plugin's own calls (the screen's loop, as every call here), never from a task of its own,
+// and at most once a second or two while what it senses goes on. A plugin that wakes the screen by what it senses has
+// a setting for it, off until someone turns it on (docs/PLUGINS.md, "Waking the screen").
+void wake(const Plugin *plugin);
 // A Home Assistant action on an entity, as a tile's tap sends it: action("light.toggle", entity), or with one field
 // (action("climate.set_temperature", entity, "temperature", "21")). The screen must be allowed to perform actions.
 // The plugin's manifest names every action it calls under permissions.home_assistant_actions so that a person can read

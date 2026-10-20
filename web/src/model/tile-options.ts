@@ -16,10 +16,12 @@ import type { Capability, PageTile, Tile, TileOptions } from "../types";
 import { BUILTIN_CARDS, type BuiltinName } from "../types";
 import { PLUGIN_TILE, PLUGIN_TILE_OPTIONS } from "./plugins";
 import { canonicalMeter } from "./meter";
+import { AIR_APPEARANCE, AIR_DEFAULTS, AIR_OWN } from "./aircraft";
 
 const APPEARANCE = { display: "display", icon: "icon", background: "background", historyHours: "history_hours", refresh: "refresh", subtitle: "sub", fit: "fit", overlay: "overlay",
   mapEntities: "map", mapFraming: "framing", mapDistance: "distance",
   mapFollow: "follow", mapMarkers: "markers", mapNames: "names", mapZones: "zones", mapStreets: "streets", mapLook: "look",
+  ...AIR_APPEARANCE,
   energyFlow: "flow",
   calendarStyle: "style", calendarEntities: "calendars", calendarPlaces: "places", calendarWords: "words", calendarHideWords: "hide_words",
   calendarAllDay: "all_day", calendarTentative: "tentative", calendarPrivate: "private", calendarAhead: "ahead", calendarSoon: "soon",
@@ -30,7 +32,7 @@ const INTERACTION = ["tap", "inline", "controls", "action", "play", "speaker", "
 const PICTURE_OWN = ["refresh", ...Object.keys(rules.picture)];
 // A map card's own choices (app 0.4.33); its name on the picture is the live picture's `overlay`.
 const MAP = ofType("person")?.map;
-const MAP_OWN = ["map", "framing", "distance", "follow", "markers", "names", "zones", "streets", "look"];
+const MAP_OWN = ["map", "framing", "distance", "follow", "markers", "names", "zones", "streets", "look", ...AIR_OWN];
 // The map tile of the screen's own cards (app 0.4.36): a map and nothing else.
 const MAP_TILE = "screen.map";
 
@@ -47,7 +49,7 @@ const SAMPLE_ACTION = { action: "homeassistant.turn_on" };
 // The value an option means when it is not stored, where the add-on drops the stored one (core.validate_layout).
 export const DEFAULTS: Record<string, unknown> = { sub: "auto", fit: rules.picture.fit[0], overlay: rules.picture.overlay[0],
   framing: MAP?.framing[0], distance: MAP?.distance[0], follow: MAP?.follow[0], markers: MAP?.markers[0], names: MAP?.names[0],
-  zones: MAP?.zones[0], streets: MAP?.streets[0], look: MAP?.look[0], flow: rules.energyFlow[0],
+  zones: MAP?.zones[0], streets: MAP?.streets[0], look: MAP?.look[0], flow: rules.energyFlow[0], ...AIR_DEFAULTS,
   ...Object.fromEntries(Object.entries(CALENDAR_DEFAULTS).filter(([key]) => !["places", "words", "hide_words", "calendars"].includes(key))),
   // A sensor's meter (firmware 0.56.0, meter.validate): the ring and one segment are what nothing means.
   meter: rules.meter.styles[0], segments: rules.meter.segments[0], tilt_open: "100" };
@@ -78,8 +80,9 @@ export function canonicalOptions(entity: string, options: TileOptions = {}, key 
   if (out.display !== "favorite") { delete out.play; delete out.speaker; delete out.shuffle; delete out.repeat; }
   else { delete out.inline; delete out.controls; if (out.tap === "action") delete out.tap; }
   if (Array.isArray(out.map) && !out.map.length) delete out.map;
-  // Following is the map tile's own; a person's map follows that person.
-  if (entity !== MAP_TILE) delete out.follow;
+  // Following is the map tile's own; a person's map follows that person. So are its aircraft, and no source is none.
+  if (entity !== MAP_TILE) { delete out.follow; for (const field of AIR_OWN) delete out[field]; }
+  if (out.aircraft === "") delete out.aircraft;
   // How power shows along a line is the energy card's own (catalogue/screen.yaml `energy`).
   if (entity !== "screen.energy") delete out.flow;
   // A calendar card keeps its choices (firmware 0.56.0); no other tile has them, and an empty list is none.

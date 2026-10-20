@@ -54,6 +54,9 @@ export const usePluginsStore = defineStore("plugins", () => {
   const previews = ref<Record<string, { items: PreviewRow[]; at: number }>>({});
   // Entities of the domains the plugins name that the editor's own list lacks (a calendar), from the add-on.
   const entities = ref<{ id: string; name: string }[]>([]);
+  // Whether api/plugins answered once, so `entities` says which entities of a plugin's own domains there are.
+  const received = ref(false);
+  const pluginEntities = computed(() => new Map(entities.value.map((e) => [e.id, e])));
   const folders = ref<{ path: string; errors: Record<string, string> }>({ path: "", errors: {} });
   // The features each screen has (its board's and its plugins'), by inbox, and whether this app agreed once that a like
   // counts in a public number (plugin_likes.py).
@@ -115,6 +118,7 @@ export const usePluginsStore = defineStore("plugins", () => {
       secrets.value = data.secrets || {};
       folders.value = data.folders || { path: "", errors: {} };
       entities.value = data.entities || [];
+      received.value = true;
       features.value = data.features || {};
       likeConsent.value = Boolean(data.likes?.consented);
       appFit.value = data.fit || {};
@@ -571,7 +575,7 @@ export const usePluginsStore = defineStore("plugins", () => {
   }
 
   return {
-    index, installed, loaded, secrets, files, choices, previews, entities, folders, features, likeConsent, appFit,
+    index, installed, loaded, received, secrets, files, choices, previews, entities, pluginEntities, folders, features, likeConsent, appFit,
     values, parts, attached, focus, consented, plans, providers, tray, pluginsEnabled, trayGroups,
     // What the Plugins page, a screen's tab and the cards read as they draw (stores/lookup.ts); choicesFor, previewFor and
     // planOn answer at once and ask the add-on for what they do not have yet.

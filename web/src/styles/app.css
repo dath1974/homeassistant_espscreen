@@ -627,6 +627,10 @@ button.insp-sec-head:hover h3 { color: var(--ink); }
 .map-remove { display: grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; font-size: 13px; color: var(--muted); }
 .map-remove:hover { background: var(--line); color: var(--ink); }
 .map-with .map-add { flex: 1 1 140px; min-width: 0; }
+/* Aircraft over the map tile: whole numbers typed over, and the altitudes a plane is shown between. */
+.map-number { width: 84px; min-width: 0; height: 30px; padding: 4px 8px; font-size: 13px; border-radius: 7px; }
+.map-range { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.map-range label { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
 /* A favourite (app 0.4.42): what it plays, and the key that opens the player's library under it. */
 .favorite-chosen { display: flex; align-items: center; gap: 8px; width: 100%; min-width: 0; }
 .favorite-title { flex: 1; min-width: 0; font-weight: 500; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

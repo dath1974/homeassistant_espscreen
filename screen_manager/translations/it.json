@@ -2397,6 +2397,65 @@
         "chosen": {
           "label": "Sulla mappa",
           "hint": "Chi segue questa mappa, ognuno con il proprio colore. Un tracker è un telefono, un'auto o un tag di cui Home Assistant conosce la posizione."
+        },
+        "aircraft": {
+          "label": "Aerei",
+          "hint": "Un sensore che elenca voli, come il sensore «Attuali nell’area» dell’integrazione Flightradar24. Lo schermo sposta ogni aereo quando il sensore lo segnala.",
+          "none": "Nessun sensore elenca ancora voli. Aggiungi un’integrazione che lo fa, come Flightradar24, e il suo sensore «Attuali nell’area» comparirà qui.",
+          "choose": "Nessuno",
+          "search": "Cerca sensori",
+          "none_found": "Nessun sensore che elenca voli",
+          "remove": "Rimuovi {name}",
+          "plane_marker": {
+            "label": "Indicatore",
+            "dot": "Punto",
+            "arrow": "Punto e rotta",
+            "plane": "Aereo"
+          },
+          "plane_label": {
+            "label": "Etichetta",
+            "auto": "Dove c’è spazio",
+            "none": "Nessuna",
+            "callsign": "Nominativo",
+            "altitude": "Nominativo e quota",
+            "full": "Nominativo, quota, velocità e rotta"
+          },
+          "plane_colour": {
+            "label": "Colore",
+            "altitude": "Per quota",
+            "accent": "Un colore"
+          },
+          "plane_motion": {
+            "label": "Tra due rapporti",
+            "glide": "Scorri",
+            "hold": "Fermo",
+            "glide_hint": "Ogni aereo prosegue sulla sua rotta alla sua velocità fino al rapporto successivo, per al massimo 30 secondi.",
+            "hold_hint": "Ogni aereo resta dove lo ha messo l’ultimo rapporto."
+          },
+          "plane_track": {
+            "label": "Traccia",
+            "hide": "Nascondi",
+            "show": "Mostra"
+          },
+          "plane_track_s": {
+            "label": "Lunghezza della traccia",
+            "hint": "Secondi di volo dietro ogni aereo, da {low} a {high}."
+          },
+          "plane_ground": {
+            "label": "A terra",
+            "hide": "Nascondi",
+            "show": "Mostra"
+          },
+          "altitude": {
+            "label": "Quota",
+            "min": "Da",
+            "max": "A",
+            "hint": "In piedi. Sono mostrati solo gli aerei tra queste quote. Anche l’integrazione Flightradar24 può filtrare per quota, risparmiando richieste."
+          },
+          "plane_most": {
+            "label": "Al massimo",
+            "hint": "Gli aerei più vicini al centro della mappa, al massimo {high}."
+          }
         }
       },
       "controls": {
@@ -3149,10 +3208,20 @@
         "calibration": "Calibrazione del touch al primo avvio"
       },
       "choice": {
-        "DISPLAY_MODEL": "Controller del display"
+        "DISPLAY_MODEL": "Controller del display",
+        "FLASH_SIZE": "Memoria flash",
+        "BOARD_VARIANT": "Scheda"
       },
       "choice_hint": {
-        "DISPLAY_MODEL": "La maggior parte di queste schede ha il primo. Scegli l'altro se lo schermo mostra rumore o un'immagine disturbata."
+        "DISPLAY_MODEL": "Inizia con il primo. Scegli l'altro se lo schermo resta nero o mostra rumore o un'immagine disturbata.",
+        "FLASH_SIZE": "La maggior parte di queste schede ha 16 MB. Scegli 8 MB se lo schermo resta nero dopo l'installazione e si riavvia di continuo.",
+        "BOARD_VARIANT": "Scegli quella che hai. Sulla scheda gialla senza custodia, un tocco in alto a sinistra finirebbe altrimenti in basso a destra."
+      },
+      "choice_option": {
+        "BOARD_VARIANT": {
+          "black": "Nera, in custodia",
+          "yellow": "Gialla, senza custodia"
+        }
       },
       "choice_usual": "la maggior parte",
       "orientation_landscape": "In orizzontale",

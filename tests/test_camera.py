@@ -1332,5 +1332,58 @@ class PublishedPort(unittest.IsolatedAsyncioTestCase):
             self.assertIsNone(await camera_feed.base_url(silent))
 
 
+class TwoNetworks(unittest.IsolatedAsyncioTestCase):
+    """GitHub #276: a Home Assistant on two networks gave every screen its address on the default one, which a screen on
+    the other network cannot reach, so it got no pictures. Each screen now gets the address on its own network."""
+
+    ADAPTERS = {'adapters': [
+        {'name': 'eth0', 'default': True, 'ipv4': [{'address': '192.168.1.5', 'network_prefix': 24}]},
+        {'name': 'eth1', 'default': False, 'ipv4': [{'address': '10.0.50.2', 'network_prefix': 24}]},
+        {'name': 'hassio', 'default': False, 'ipv4': [{'address': '172.30.32.1', 'network_prefix': 23}]}]}
+
+    async def asyncSetUp(self):
+        camera_feed.base_url.__defaults__[0].clear()
+        self.addCleanup(camera_feed.base_url.__defaults__[0].clear)
+
+    async def base(self, near, adapters=None, env=None):
+        from unittest import mock
+
+        async def request(kind, **data):
+            return adapters or self.ADAPTERS
+        with mock.patch.dict('os.environ', env or {}, clear=True):
+            return await camera_feed.base_url(request, near=near)
+
+    async def test_each_screen_gets_the_address_on_its_own_network(self):
+        self.assertEqual(await self.base('10.0.50.33'), 'http://10.0.50.2:8098')
+        self.assertEqual(await self.base('192.168.1.40'), 'http://192.168.1.5:8098')
+
+    async def test_a_screen_on_none_of_them_or_unknown_keeps_the_default(self):
+        for near in ('10.9.0.7', None, '', 'not an address', 'fe80::1'):
+            with self.subTest(near=near):
+                self.assertEqual(await self.base(near), 'http://192.168.1.5:8098')
+
+    async def test_an_adapter_without_a_prefix_is_never_matched(self):
+        adapters = {'adapters': [{'default': True, 'ipv4': [{'address': '192.168.1.5'}]},
+                                 {'default': False, 'ipv4': [{'address': '10.0.50.2'}]}]}
+        self.assertEqual(await self.base('10.0.50.33', adapters), 'http://192.168.1.5:8098')
+
+    async def test_the_setting_of_its_own_still_wins(self):
+        self.assertEqual(await self.base('10.0.50.33', env={'SCREEN_CAMERA_URL': 'http://pictures:9000/'}), 'http://pictures:9000')
+
+    async def test_the_manager_asks_for_the_screens_own_network(self):
+        import server
+        asked = []
+
+        async def base_url(request, *args, near=None):
+            asked.append(near)
+            return 'http://x:8098'
+        from unittest import mock
+        manager = type('M', (), {'ha': type('HA', (), {'request': None})()})()
+        with mock.patch.object(camera_feed, 'base_url', base_url):
+            await server.Manager.link_base(manager, {'ip': '10.0.50.33'})
+            await server.Manager.link_base(manager, None)
+        self.assertEqual(asked, ['10.0.50.33', None])
+
+
 if __name__ == '__main__':
     unittest.main()

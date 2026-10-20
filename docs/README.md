@@ -33,12 +33,19 @@
 - [WAVESHARE35.md](WAVESHARE35.md): the Waveshare ESP32-S3-Touch-LCD-3.5.
 - [WAVESHAREAMOLED241.md](WAVESHAREAMOLED241.md): the Waveshare ESP32-S3-Touch-AMOLED-2.41, its brightness and the
   panel's offset.
+- [WT32SC01PLUS.md](WT32SC01PLUS.md): the Wireless-Tag WT32-SC01 Plus, 3.5 inch.
 - [WAVESHARE4B.md](WAVESHARE4B.md): the Waveshare ESP32-S3-Touch-LCD-4B.
+- [WAVESHARE4V4.md](WAVESHARE4V4.md): the Waveshare ESP32-S3-Touch-LCD-4, revision 4.0 (without the "B").
 - [WAVESHARE5.md](WAVESHARE5.md): the Waveshare ESP32-S3-Touch-LCD-5, the 4.3-inch's board with 5-inch glass.
 - [WAVESHAREP4.md](WAVESHAREP4.md): the Waveshare ESP32-P4-86-Panel-ETH-2RO, 4 inch, 720 × 720, using Wi-Fi.
+- [WAVESHAREP47B.md](WAVESHAREP47B.md): the Waveshare ESP32-P4-WIFI6-Touch-LCD-7B, 7 inch, rev3 ESP32-P4.
+- [WAVESHAREP47.md](WAVESHAREP47.md): the Waveshare ESP32-P4-WIFI6-Touch-LCD-7, 7 inch, 1280 × 720.
+- [WAVESHARE101.md](WAVESHARE101.md): the Waveshare ESP32-P4-WIFI6-Touch-LCD-10.1, 10.1 inch, 1280 × 800.
 - [WAVESHARE7.md](WAVESHARE7.md): the Waveshare ESP32-S3-Touch-LCD-7, and the backlight mod that makes it dim.
 - [WAVESHARE7B.md](WAVESHARE7B.md): the Waveshare ESP32-S3-Touch-LCD-7B.
 - [HOSYOND40.md](HOSYOND40.md): the Hosyond 4-inch ESP32-32E.
+- [FREENOVEFNK0104S.md](FREENOVEFNK0104S.md): the Freenove FNK0104S, 4 inch.
+- [SENSECAP_INDICATOR.md](SENSECAP_INDICATOR.md): the Seeed SenseCAP Indicator D1 series with the GX panel, 4 inch.
 - [SUNTON8048S070.md](SUNTON8048S070.md): the Sunton ESP32-8048S070, 7 inch.
 
 ## Recipes for changing the code

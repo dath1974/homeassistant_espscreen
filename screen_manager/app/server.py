@@ -35,9 +35,11 @@ import light_effects
 import light_groups
 import cover_groups
 import media_library
+import rest_mosaic
 import vacuum_card
 import speakers
 import map_card
+import aircraft
 import energy_flow
 import plugin_pictures
 import map_tiles
@@ -1085,12 +1087,20 @@ class Manager:
         self.shelves, self.folders, self.browsable, self.browse_probes = {}, OrderedDict(), {}, {}
         self.grounds, self.ground_reads, self.started = OrderedDict(), {}, {}
         self.thumbnails = OrderedDict()
+        # The covers a player at rest shows on its cover tile (rest_mosaic.py): its folder's covers (entity ->
+        # (monotonic, [(thumbnail, title)])), the reads on their way, the players that showed them last and the turn.
+        self.rest_pools, self.rest_reads, self.resting, self.rest_step = {}, {}, set(), None
         # Where a player plays (speakers.py): the speaker this app started each player's music on, which its card
         # follows, and the top of each player's library as far as it names accounts (entity -> (monotonic, ids)).
         self.outputs, self.accounts, self.account_probes = {}, {}, {}
         self.preview_tiles = []
         self.map_pictures = OrderedDict()
         self.map_hits = {}
+        # Aircraft over map tiles (aircraft.py, docs/MAP.md "Aircraft"): where each plane of each source has been, and
+        # the cards a screen shows planes on, (inbox, "tile" or "full", tile index) -> what they are placed on and until
+        # when the screen keeps asking (air_card, answer_air).
+        self.air_tracks = aircraft.Tracks()
+        self.air_cards = {}
         # The action behind an alert's button (app 0.2.91): node -> (key, action, data) of the alert on that screen.
         self.alert_actions = {}
         self.store = LayoutStore(self.path, self.record_grid)
@@ -1407,6 +1417,10 @@ class Manager:
         screens = self.screens()
         inbox = self.aliases.get(inbox, inbox)
         return next((s for s in screens if s['id'] == inbox), None)
+
+    async def link_base(self, screen):
+        """Where `screen` fetches this app's pictures: Home Assistant's address on the screen's own network (GitHub #276)."""
+        return await camera_feed.base_url(self.ha.request, near=(screen or {}).get('ip'))
 
     def device_prefixes(self, device):
         registry = getattr(self.ha, 'registry', [])
@@ -2003,6 +2017,60 @@ class Manager:
             self.ha.dirty.add(entity)
             self.ha.changed.set()
 
+    # ----- The covers of a player at rest (rest_mosaic.py) -----
+    def rest_pool(self, entity, widest):
+        """The covers a player at rest shows, [] until its folder is read; read again after POOL_SECONDS."""
+        known = self.rest_pools.get(entity)
+        if (not known or time.monotonic() - known[0] >= rest_mosaic.POOL_SECONDS) and entity not in self.rest_reads \
+                and getattr(self.ha, 'online', False) and self.player_browsable(entity, widest):
+            self.rest_reads[entity] = asyncio.ensure_future(self.read_rest_pool(entity))
+        return known[1] if known else []
+
+    async def read_rest_pool(self, entity):
+        pool = None
+        try:
+            top = await self.read_folder(entity, None)
+            folder = rest_mosaic.folder_for(top)
+            pool = rest_mosaic.pool_of(await self.read_folder(entity, folder) if folder else top)
+            # The first covers fetched at once: a library whose pictures this app may not fetch (a server's own address
+            # in the house) gives no mosaic, rather than a dark card of empty squares.
+            first = await asyncio.gather(*(self.thumbnail(entity, thumb, title) for thumb, title in pool[:rest_mosaic.MIN_COVERS]))
+            if sum(raw is not None for raw in first) <= rest_mosaic.MIN_COVERS // 2:
+                pool = []
+        except Exception as error:
+            LOG.info('No covers at rest for %s (%s)', entity, type(error).__name__)
+        finally:
+            self.rest_reads.pop(entity, None)
+        before = self.rest_pools.get(entity)
+        # A read that failed keeps the covers there were, and is tried again after the same while.
+        self.rest_pools[entity] = (time.monotonic(), pool if pool is not None else (before[1] if before else []))
+        if pool is not None and (not before or before[1] != pool):
+            LOG.info('Covers at rest for %s: %d', entity, len(pool))
+            self.ha.dirty.add(entity)
+            self.ha.changed.set()
+
+    def rest_render(self, entity):
+        """A player's mosaic for the page's strip (camera_feed.live `renders`): its mark now, and the covers of this
+        turn drawn into the card's frame."""
+        pool = (self.rest_pools.get(entity) or (0, []))[1]
+
+        async def draw(width, height):
+            columns, lines, *_ = rest_mosaic.grid_of(width, height)
+            order = rest_mosaic.shown(len(pool), columns * lines, rest_mosaic.step_at(time.time()))
+            raws = await asyncio.gather(*(self.thumbnail(entity, pool[n][0], pool[n][1]) for n in order))
+            return await asyncio.get_running_loop().run_in_executor(None, rest_mosaic.draw, list(raws), width, height)
+        return (lambda: rest_mosaic.mark(pool, rest_mosaic.step_at(time.time())), draw)
+
+    def rest_turn(self, dirty):
+        """Every ROTATE_SECONDS the players that show covers at rest are drawn again: one cover moves on."""
+        step = rest_mosaic.step_at(time.time())
+        if step != self.rest_step:
+            self.rest_step = step
+            if dirty is not None:
+                dirty |= self.resting
+            self.resting = set()
+        return dirty
+
     # ----- Where a player plays (speakers.py) -----
     def platform_lookup(self, entity):
         lookup = getattr(self.ha, 'platform_of', None)
@@ -2295,7 +2363,7 @@ class Manager:
             return raw
         raws = await asyncio.gather(*(thumbnail(item) for item in items))
         url = ''
-        base = await camera_feed.base_url(self.ha.request)
+        base = await self.link_base(screen)
         if base and any(raws):
             image = await asyncio.get_running_loop().run_in_executor(
                 None, lambda: camera_feed.tile_art.encode(list(raws), [ground] * len(raws), atlas, compact=camera_feed.compact_pictures(screen)))
@@ -2431,14 +2499,21 @@ class Manager:
         device = self.registry_index().get(entity, {}).get('device_id')
         return self._by_device.get(device, []) if device else []
 
-    def related_entities(self, tile):
+    def related_entities(self, tile, inbox=None):
         """Entities a card reads besides its own: a vacuum's cleaning mode and water selects and its battery sensor, a
-        cover's battery sensor."""
+        cover's battery sensor, the entities a plugin tile's entity options chose. `inbox`: the screen it is on, whose
+        own plugin of that id says what its options are."""
         from core import cover_related, vacuum_related
-        # A plugin tile that belongs to an entity (docs/PLUGINS.md) is sent again when that entity changes.
+        # A plugin tile that belongs to an entity (docs/PLUGINS.md) is sent again when that entity changes, and when one
+        # its entity options chose does (plugin API 0.15).
         if plugin_tile(tile['entity']):
-            entity = (tile.get('options') or {}).get('plugin_entity')
-            return (entity,) if entity else ()
+            plugin, tile_id = plugin_tile(tile['entity'])
+            entry = self.plugins.known(plugin, inbox)
+            kind = entry.tile(tile_id) if entry else None
+            options = tile.get('options') or {}
+            chosen = self.plugins.values_of(entry, kind, options.get('plugin')) if kind else {}
+            entity = options.get('plugin_entity')
+            return tuple(dict.fromkeys((([entity] if entity else []) + list(self.plugins.option_entities(kind, chosen)))))
         if tile['entity'].startswith('vacuum.'):
             device = self.device_entries(tile['entity'])
             return tuple(dict.fromkeys((*vacuum_related(tile['entity'], device, self.ha.states).values(),
@@ -2732,9 +2807,11 @@ class Manager:
             watched |= {item['entity'] for record in self.store.records().values() if record['format'] == PAGE_FORMAT
                         for page in record['layout']['pages'] for item in bar_items(page) if item['type'] == 'entity'}
             watched |= {item['entity_id'] for item in self.screen_registry()}
-            watched |= {eid for layout in self.layouts.values() for tile in layout['tiles'] for eid in self.related_entities(tile)}
+            watched |= {eid for inbox, layout in self.layouts.items() for tile in layout['tiles'] for eid in self.related_entities(tile, inbox)}
             watched |= {eid for device in self.setting_index().values() for eid in device.values()}
             watched |= set(savers)
+            # The sensors map tiles take their aircraft from (aircraft.py): their reports move the planes.
+            watched |= {aircraft.source_of(tile) for layout in self.layouts.values() for tile in layout['tiles']} - {''}
             self._watched_key, self._watched = key, watched
         return set(self._watched)
 
@@ -2891,6 +2968,12 @@ class Manager:
                 started=self.started.get(tile['entity']) if media_library.holds_media(states.get(tile['entity'])) else None
                 word=screen_t(f"addon.screen.media.{play.get('class') or 'music'}") if (play.get('class') or 'music') in FAVORITE_KINDS else ''
                 message.setdefault('x',{}).update(media_library.favorite_extras(play,options.get('speaker'),attributes if state_now in ('playing','paused') else {},started,word))
+            # A cover tile of a player at rest: the covers of its library, as a mosaic the screen asks for by its mark.
+            if rest_mosaic.wants(options):
+                pool=self.rest_pool(tile['entity'],widest) if rest_mosaic.at_rest(states.get(tile['entity'])) else []
+                if pool:
+                    message.setdefault('x',{})['pic']=rest_mosaic.mark(pool,rest_mosaic.step_at(time.time()))
+                    self.resting.add(tile['entity'])
         # Home Assistant's word where the screen would show the raw state (firmware 0.2.58+ shows it).
         state=states.get(tile['entity'],{})
         word=ha_catalogue.screen_word(tile['entity'],message['state'],state.get('attributes'),entry,getattr(self.ha,'state_words',None))
@@ -3045,7 +3128,7 @@ class Manager:
                 header_msg = previous['header']
         states = []
         for i, tile in enumerate(tiles):
-            reuse = not full and i < len(previous['states']) and tile['entity'] not in dirty and dirty.isdisjoint(self.related_entities(tile))
+            reuse = not full and i < len(previous['states']) and tile['entity'] not in dirty and dirty.isdisjoint(self.related_entities(tile, inbox))
             if reuse and tile['entity'].startswith('weather.') and self.forecast_due(tile['entity']):
                 reuse = False
             if reuse and tile['entity'].startswith('calendar.') and self.calendar_due(tile):
@@ -3154,7 +3237,11 @@ class Manager:
                     LOG.warning('A setting %s reported by %s was not kept (%s)', event.get('key') if isinstance(event, dict) else '?',
                                 event.get('inbox') if isinstance(event, dict) else '?', error)
             if hasattr(self.ha,'setting_events'): self.ha.setting_events.clear()
-            dirty = self.take_dirty()
+            dirty = self.rest_turn(self.take_dirty())
+            try:
+                await self.air_reports(dirty)
+            except Exception as error:
+                LOG.warning('Aircraft were not sent (%s)', type(error).__name__)
             if self.region.pinned and self.resolve_clock_pin():
                 self.language_changed()
             screens_key = self._screens_key
@@ -3365,7 +3452,7 @@ class Manager:
         is the one this screen's glass asks for, which on a board that is not square differs between a screen built
         lying down and one built standing up (camera_feed.box)."""
         url = ''
-        base = await camera_feed.base_url(self.ha.request)
+        base = await self.link_base(screen)
         box = box or camera_feed.box(screen, view)
         if not base:
             LOG.warning('Camera images: no address for this app on the LAN; set SCREEN_CAMERA_URL')
@@ -3381,7 +3468,7 @@ class Manager:
         """The screen message for a camera live (live_feed.py): a link to its stream of pictures, for the full view or
         for a live tile (`view` 'live', `fit` the tile's: a picture that fills the card is cut by the screen, a whole one
         is shown on black, and the link says which). `screen` is the inbox that asked."""
-        base = await camera_feed.base_url(self.ha.request)
+        base = await self.link_base(self.screen(screen) if screen else None)
         if not base:
             LOG.warning('Camera images: no address for this app on the LAN; set SCREEN_CAMERA_URL')
         contain = fit == 'contain'
@@ -3398,6 +3485,10 @@ class Manager:
         inbox = self.aliases.get(request.get('inbox'), request.get('inbox'))
         entity = request.get('entity')
         screen = self.screen(inbox) if isinstance(inbox, str) else None
+        # A screen that shows aircraft over a map keeps asking for them while the card is on the glass (aircraft.py).
+        if 'air' in request:
+            await self.answer_air(inbox, screen, request)
+            return
         # The covers of a page of a player's library (app 0.4.42, firmware 0.24.0+): one atlas for all of them.
         if 'lib' in request:
             await self.library_art(inbox, screen, request)
@@ -3438,7 +3529,7 @@ class Manager:
             # With the camera's sound for a screen with a speaker (firmware dev).
             message = await self.live_message(entity, live_box, sound=request.get('sound') == '1', screen=inbox)
         else:
-            message = await self.cover_message(entity, *cover) if cover else await self.camera_message(
+            message = await self.cover_message(entity, *cover, screen=screen) if cover else await self.camera_message(
                 entity, 'full', screen, box=camera_feed.box(screen, 'full', camera_feed.picture_cap(request)))
         await self.send_auxiliary(inbox, message, action, request)
         LOG.info('%s %s on %s%s', 'Cover of' if cover else 'Camera', entity, screen['name'], '' if message['u'] else ': no image')
@@ -3457,7 +3548,7 @@ class Manager:
         width, height, background = asked
         found = vacuum_card.map_entity(entity, self.device_entries(entity), self.ha.states)
         url = ''
-        base = await camera_feed.base_url(self.ha.request)
+        base = await self.link_base(screen)
         dark = camera_feed.live_dark(request)
         if base and found and await self.camera.vacuum_map(found['e'], found['m'], (width, height), background, dark):
             url = f"{base}/camera/{self.camera.link(entity, (width, height), vacuum=(found['e'], found['m'], background, dark))}.bmp"
@@ -3484,7 +3575,7 @@ class Manager:
             if colours and colours != '-':
                 ground = int(colours.split(',')[0], 16)
         url = ''
-        base = await camera_feed.base_url(self.ha.request)
+        base = await self.link_base(screen)
         if base and await self.camera.saver(entity, box, kind, ground):
             url = f'{base}/camera/{self.camera.link(entity, box, saver=(kind, ground))}.bmp'
         if not url and kind == 'media' and self.camera.cover_pending(entity):
@@ -3526,7 +3617,7 @@ class Manager:
                 return
             token = self.camera.link(screen_saver.PHOTOS_ENTITY, tuple(moving or box), still=image)
             self.photo_links[inbox] = (key, token)
-        base = await camera_feed.base_url(self.ha.request)
+        base = await self.link_base(screen)
         if not base:
             return
         url = f'{base}/camera/{token}.bmp'
@@ -3612,7 +3703,10 @@ class Manager:
             dark = camera_feed.live_dark(request)
             shape = camera_feed.shape_of(screen)
             renders = [self.map_render(tile, shape, dark) if mapped(tile) else None for tile in placed]
-        if any(favored(tile) for tile in placed_tiles if tile['entity'] in entities):
+        # A player's cover tile at rest (rest_mosaic.py) is the covers of its library, as the state that tile shows.
+        rested = lambda tile: rest_mosaic.wants(tile.get('options')) and camera_feed.cover_supported(tile['entity']) and \
+            rest_mosaic.at_rest(self.ha.states.get(self.followed(tile['entity']))) and bool((self.rest_pools.get(tile['entity']) or (0, []))[1])
+        if any(favored(tile) or rested(tile) for tile in placed_tiles if tile['entity'] in entities):
             if not atlas:
                 return
             placed = [placed_tiles[own[n]] if own is not None else next(t for t in placed_tiles if t['entity'] == entity and pictured(t))
@@ -3621,11 +3715,13 @@ class Manager:
             for n, tile in enumerate(placed):
                 if favored(tile):
                     renders[n] = self.favorite_render(tile)
+                elif rested(tile):
+                    renders[n] = self.rest_render(tile['entity'])
             # The pictures of a page's favourites at once, not one after the other.
             await asyncio.gather(*(self.thumbnail(tile['entity'], tile['options']['play']['thumb'], tile['options']['play'].get('title'))
                                    for tile in placed if favored(tile)))
         url, listing = '', ','.join(entities)
-        base = await camera_feed.base_url(self.ha.request)
+        base = await self.link_base(screen)
         if base:
             # A screen whose decoder reads 8-bit colour gets a third of the bytes (app 0.3.8).
             extra = {'compact': camera_feed.compact_pictures(screen), **({'atlas': atlas, 'modes': modes} if atlas else {}),
@@ -3687,7 +3783,7 @@ class Manager:
                                       if url == plugin_pictures.SAVER_PICTURE else
                                       self.plugins.pictures.fetch(url, entry.manifest, kind, of_entity)
                                       for url in question.sources))
-        base = await camera_feed.base_url(self.ha.request)
+        base = await self.link_base(screen)
         if not base:
             LOG.warning('Plugin pictures: no address for this app on the LAN; set SCREEN_CAMERA_URL')
         elif any(raw is not None for raw in raws):
@@ -3773,7 +3869,7 @@ class Manager:
         extra = {'compact': camera_feed.compact_pictures(screen), 'atlas': (width, height, ((0, 0, width, height, 0, 0),)),
                  'modes': [('fill', False)], 'renders': [render]}
         url = ''
-        base = await camera_feed.base_url(self.ha.request)
+        base = await self.link_base(screen)
         if base and await self.camera.live([entity], camera_feed.LIVE_SIZES[1], [0], [0], **extra):
             token = self.camera.link(entity, box, live=([entity], camera_feed.LIVE_SIZES[1], [0], [0], extra))
             url = f'{base}/camera/{token}.bmp'
@@ -3783,6 +3879,93 @@ class Manager:
             sheet['c'] = await self.map_sheet(focus)
         await self.send_auxiliary(inbox, {'v': 1, 'op': 'camera', 't': 'full', 'e': entity, 'u': url, 'm': sheet}, action, request)
         LOG.info('Map of %s full screen on %s%s%s', entity, screen['name'], f' around {focus}' if focus else '', '' if url else ': no image')
+
+    # How long a card keeps getting its planes after the screen last asked for them; the screen asks every 30 s.
+    AIR_LEASE_SECONDS = 75
+    AIR_CARDS_PER_SCREEN = 8
+
+    def air_message(self, key, screen):
+        """The op "air" for one card: its planes on the view its picture shows, in the screen's language and numbers."""
+        card = self.air_cards[key]
+        tile = card['tile']
+        source = aircraft.source_of(tile)
+        options = aircraft.options_of(tile)
+        board = map_card.Board(card['shape'])
+        view = map_card.view_for(tile, self.ha.states, card['size'], board, self.registry_index(), card['full'],
+                                 card['focus'] or None, card['move'])
+        metric = (getattr(self.ha, 'units', None) or {}).get('length') == 'km'
+        token = i18n.SCREEN.set(i18n.screen_context(screen))
+        try:
+            planes = aircraft.overlay(view, aircraft.flights_of(self.ha.states.get(source)), options, self.air_tracks, source,
+                                      card['size'], board.scale, card['full'], metric, number=i18n.screen_number,
+                                      suffix=i18n.unit_suffix)
+        finally:
+            i18n.SCREEN.reset(token)
+        return aircraft.message(key[1], key[2], card['size'], planes, aircraft.style_of(options), card['move_text'], card['focus'])
+
+    async def air_send(self, inbox, keys):
+        """The planes of these cards to one screen, each card its own message."""
+        screen = self.screen(inbox)
+        if not keys or not screen or not screen.get('online'):
+            return
+        action = self.transport(inbox, screen)
+        if not action:
+            return
+        for key in keys:
+            if key in self.air_cards:
+                await self.send_auxiliary(inbox, self.air_message(key, screen), action, self.page_scope(inbox))
+
+    async def answer_air(self, inbox, screen, request):
+        """A screen that shows aircraft over a map (its hello's `aircraft`) asks for them while the card is on the glass,
+        every 30 s and whenever another such card shows: `air` "tile" with `cards` (each tile and the size its picture
+        was drawn at, "3:180x120,5:400x300"), or "full" with the full view's tile (`idx`), its picture's `size` and its
+        `focus` and `move`. Each must be a map tile of the screen's layout with aircraft. Their planes go there now and
+        on every report of their source for AIR_LEASE_SECONDS."""
+        asked = request.get('air')
+        if not screen or not screen.get('online') or asked not in ('tile', 'full') or aircraft.FEATURE not in \
+                (getattr(self.page_senders.get(inbox), 'features', None) or ()):
+            return
+        tiles = self.layouts.get(inbox, {}).get('tiles', [])
+        shape = camera_feed.shape_of(screen)
+        # No picture is larger than the glass's longer side, whichever way it hangs.
+        cards = aircraft.cards_of(request, max(shape.get('width', 0), shape.get('height', 0)))
+        if asked == 'full':
+            for key in [k for k in self.air_cards if k[0] == inbox and k[1] == 'full']:
+                del self.air_cards[key]
+        until, keys = time.monotonic() + self.AIR_LEASE_SECONDS, []
+        for index, size in cards:
+            if not (0 <= index < len(tiles)) or not aircraft.source_of(tiles[index]) or \
+                    (tiles[index].get('options') or {}).get('display') != 'map':
+                continue
+            tile = tiles[index]
+            full = asked == 'full'
+            focus = request.get('focus') if full and request.get('focus') in map_card.shown(tile, self.ha.states, self.registry_index()) else ''
+            move_text = request.get('move') if full and isinstance(request.get('move'), str) else ''
+            key = (inbox, asked, index)
+            self.air_cards[key] = {'tile': tile, 'size': size, 'shape': shape, 'full': full, 'focus': focus,
+                                   'move': map_card.move_of(move_text) if full else None, 'move_text': move_text[:48], 'until': until}
+            keys.append(key)
+        mine = sorted((k for k in self.air_cards if k[0] == inbox), key=lambda k: self.air_cards[k]['until'])
+        for key in mine[:-self.AIR_CARDS_PER_SCREEN]:
+            del self.air_cards[key]
+        await self.air_send(inbox, keys)
+
+    async def air_reports(self, dirty):
+        """Each report of an aircraft source: its planes' tracks, then the planes to every card that shows them."""
+        now = time.monotonic()
+        for key in [k for k, card in self.air_cards.items() if card['until'] < now]:
+            del self.air_cards[key]
+        used = {aircraft.source_of(tile) for layout in self.layouts.values() for tile in layout['tiles']} - {''}
+        self.air_tracks.forget(used)
+        changed = used if dirty is None else used & dirty
+        for source in changed:
+            self.air_tracks.update(source, aircraft.flights_of(self.ha.states.get(source)), now)
+        due = {}
+        for key, card in self.air_cards.items():
+            if aircraft.source_of(card['tile']) in changed:
+                due.setdefault(key[0], []).append(key)
+        if due:
+            await asyncio.gather(*(self.air_send(inbox, keys) for inbox, keys in due.items()), return_exceptions=True)
 
     async def map_sheet(self, entity):
         """The card of a person or tracker picked on a full map, as Home Assistant's own map shows a selected one
@@ -3898,11 +4081,11 @@ class Manager:
                 out[entity] = self.map_pictures[address]
         return out
 
-    async def cover_message(self, entity, size, background):
+    async def cover_message(self, entity, size, background, screen=None):
         """The screen message with a link to a media player's cover at `size` with `background` behind the corners,
         or an empty link when the player shows no picture (the card keeps its placeholder)."""
         url = ''
-        base = await camera_feed.base_url(self.ha.request)
+        base = await self.link_base(screen)
         if base:
             token = self.camera.link(entity, (size, size), cover=(size, background)) if await self.camera.cover(entity, size, background) else None
             url = f'{base}/camera/{token}.bmp' if token else ''
@@ -3925,8 +4108,10 @@ class Manager:
         picture = await self.camera.snapshot_size(camera) if drawn else None
         groups = {}
         for screen in drawn:
-            groups.setdefault(camera_feed.alert_box(screen, picture), []).append(screen)
-        async def send(box, group):
+            # And by the address the screen fetches from: a Home Assistant on two networks has one for each (#276).
+            groups.setdefault((camera_feed.alert_box(screen, picture), await self.link_base(screen)), []).append(screen)
+        async def send(key, group):
+            box = key[0]
             # A box made for this picture's proportions is filled exactly; the 16:9 frame of older firmware gets the
             # picture fitted inside it, as before.
             exact = picture is not None and box != camera_feed.box(group[0], 'thumb')
@@ -3939,7 +4124,7 @@ class Manager:
 
         # Every size at once, so no screen waits for another board's picture to be made. Each frame() reads the same
         # snapshot before its first await, so every screen shows the same moment.
-        await asyncio.gather(*(send(box, group) for box, group in groups.items()))
+        await asyncio.gather(*(send(key, group) for key, group in groups.items()))
 
     async def broadcast(self, event_type, data):
         """An alert event for every screen, or for the screens its `screen` names (app 0.2.133): the matching action on each
@@ -4343,6 +4528,8 @@ def create_app(manager, development=False):
         payload['entities'] = entities
         # The device trackers a map card can show beside its person (app 0.4.35): no tiles of their own.
         payload['trackers'] = map_card.trackers(manager.ha.states)
+        # The sensors a map tile can take aircraft from (aircraft.py): those that list flights.
+        payload['aircraft'] = aircraft.sources(manager.ha.states)
         # Labels and help in the editor's language (app 0.2.90); ids and keys stay as they are.
         payload['backgrounds'] = backgrounds()
         payload['controls'] = controls_catalogue()
@@ -4441,7 +4628,9 @@ def create_app(manager, development=False):
                     await response.write(f'data: {body}\n\n'.encode())
                     sent = body
                 else:
-                    await response.write(b': keepalive\n\n')
+                    # A ping the page hears (a comment it would not), so it knows a stream gone silent is dead
+                    # (web/src/stores/inventory.ts SILENT_MS); an older page's onmessage never sees it.
+                    await response.write(b'event: ping\ndata: {}\n\n')
         except (ConnectionResetError, asyncio.CancelledError):
             pass
         finally:
@@ -4878,7 +5067,19 @@ def create_app(manager, development=False):
     async def firmware_status(request):
         # New screen asks what is taken while the name is typed, so a clash is said before anything is written. The build
         # line itself goes with the live inventory (`line`); this answer has ESPHome's job and the log of what runs now.
-        return web.json_response({**manager.firmware.status(), 'taken': manager.taken_names()})
+        status = manager.firmware.status()
+        # A profile of a paired screen carries the address its Update goes to (updates.resolve: the screen's IP address,
+        # else the one kept from before), so Firmware & USB fills it in; none when two screens claim the profile.
+        profiles, addresses = manager.firmware.profile_names(), {}
+        for screen in manager.screens():
+            profile, host = manager.updates.resolve(screen, profiles)
+            if profile:
+                addresses.setdefault(profile, []).append(host)
+        for profile in status['profiles']:
+            matches = addresses.get(profile['file'], [])
+            if len(matches) == 1 and matches[0]:
+                profile['host'] = matches[0]
+        return web.json_response({**status, 'taken': manager.taken_names()})
     async def firmware_start(request):
         """Firmware & USB and the YAML check: one ESPHome action, which waits its turn in the build line. The answer is
         that build (BuildQueue.view), followed by its `id` in the firmware answer's `builds`."""

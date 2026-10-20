@@ -9,13 +9,143 @@
 - **A media player's tile says what it plays.** The line under the name now reads "Playing · " and the title, cut off
   at the end where it is too long, as the editor's preview already showed it. Before, a tile without room for its
   play and volume keys said only "Playing".
+- **Aircraft over the map.** The Map tile can show the planes around you, from a sensor that lists flights, such as
+  the Current in area sensor of the Flightradar24 integration. Choose it under Aircraft in the tile's settings. The
+  screen draws each plane over the map as a dot, a dot with its heading, or a plane turned the way it flies, coloured
+  by altitude or in one colour, with its callsign, altitude, speed and route where the card has room, and its track of
+  the last seconds you choose. It moves the planes on every report of the sensor, without a new picture, and in
+  between lets them fly on along their heading for up to 30 seconds. You choose the altitudes a plane is shown
+  between, whether planes on the ground show, and how many at most. Tap the map to see the planes over the whole
+  screen. A screen needs this update's firmware to draw them.
+- **Speaker and microphone on the Guition and Waveshare ESP32-P4 screens, experimental.** The Guition JC8012P4A1
+  (10.1 inch, also its V2 and V3), JC1060P470 (7 inch, also its V2) and JC4880P443 (4.3 inch) now use their speaker and
+  microphone, both at once, and the Waveshare ESP32-P4-WIFI6-Touch-LCD-7B, LCD-7 and LCD-10.1 their speaker and two
+  microphones with echo cancellation, as the Waveshare P4 86 panel does. Such a screen is a media player in Home
+  Assistant for announcements and music, has Volume and Microphone under Settings, Extras (the Waveshare boards also
+  Microphone gain, Automatic gain and Echo cancellation), and fits the plugins that need a speaker or a microphone.
+  Thanks to @Eugen417, who runs this audio on a Guition JC8012P4A1 V3 (#259), and to @Nulifier, who ran it on the
+  Waveshare LCD-7 (#274); on the other boards it is untried yet. These screens now build with ESPHome 2026.9.0 or newer,
+  the one the app has.
+- **The Guition 7 inch on the yellow board without a case (#289).** The JC1060P470 also comes as a yellow board
+  without a case, sold as a 7-inch CYD, and on that one every tap landed half a turn round: a tap on the top left
+  reached the bottom right. New screen now asks under Board whether it is the black one in a case, as before first, or
+  the yellow one, which gets its touch turned round and the speaker and microphone on its own pins. Screens you already
+  have keep what they have; a yellow one gets the same with `BOARD_VARIANT: "yellow"` under `substitutions:` in its
+  Override YAML. Thanks to [@svenar-nl](https://github.com/svenar-nl), who found it and tried the fix.
+- **Your music while nothing plays.** A media player's tile on Album cover that is 1 x 2 or 2 x 2 was an empty block
+  while nothing played. It now shows the covers of the player's library side by side, darkened, with the player's
+  name and state over them: for Spotify the covers of your Liked songs, newest first. Every minute one cover moves on
+  to the next. A tap opens the player as before. Screens out there get it with the app, without a new build. Music
+  Assistant shows the covers it gets from streaming services; covers of your own files keep the tile as it was.
+- **Plugins fit a 4 MB screen again (#292).** Since 0.4.88 the app refused every plugin for a CYD, a CYD ILI9342 or
+  a Hosyond 4 inch once it had built that screen, and said the screen had room for about 0 KB more. The app kept a
+  plugin under 93 % of the screen's update slot, and the firmware of these boards alone is now past that. Plugins may
+  now fill the slot up to 97 %, which leaves about 50 KB for plugins on a CYD.
+- **A vacuum's second line set to Nothing shows nothing (#293).** A vacuum tile with Second line "Nothing" still
+  showed " / 100 %" under its name, and its own text or a value of the entity got the battery added after it too. The
+  battery now ends only the automatic line ("Docked / 100 %"), and not the Unavailable word either.
 - **A new screen swipes out of the box.** A screen set up with New screen now has Swipe between pages on from the
   start, so it swipes through its pages, opens its settings from the top edge and opens the Dock from the bottom edge
   without turning anything on first. Screens you already have keep the setting they have through the update. Turn it
   off under the screen's Settings, Swipe between pages.
+- **A tap stays a tap on the Waveshare 7B.** On the 7-inch Waveshare ESP32-S3-Touch-LCD-7B a short tap could count
+  as holding the tile: a plugin's tile then did nothing and only showed its press, and a large tile could open its
+  card instead of switching. The screen heard a finger let go one step late, and on this large glass the redraw of a
+  pressed tile can take longer than the time that makes a touch a hold. A touch screen now takes the moment the finger
+  lets go from its touch panel as soon as the panel reads it. Holding a tile still opens its card. Comes with the
+  next build of the screen.
 - **A plugin's screensaver follows its options at once.** Changing an option of a plugin's clock or screensaver
   face (a colour, seconds on or off) now shows on the screen right away, as Tessera's own clock does, instead of only
   after the screensaver was turned off and on again. On main since 2026-10-18 for screens that are built again.
+- **New screen accepts a secrets.yaml of comments only (#263).** ESPHome Device Builder can leave a `secrets.yaml`
+  with only comments in it, and the Wi-Fi step of New screen called that file invalid and stopped. It now reads it as
+  a file without Wi-Fi yet, as ESPHome does, and adds the two Wi-Fi lines below the comments. A file that is not a list
+  of secrets is still left alone.
+- **The M5Stack Tab5 with an ST7123 display (#240).** The Tab5 is sold with an ST7121 or an ST7123 display controller,
+  and the wrong one leaves the screen black. New screen now asks which one the Tab5 has, with the ST7121 as before
+  first. Tab5 screens you already have keep the ST7121. Thanks to @pedromfa and @the-make-r, who found and tested the
+  ST7123.
+- **The Waveshare 4.3 inch with 8 MB of flash (#265).** Some Waveshare ESP32-S3-Touch-LCD-4.3 boards carry 8 MB of
+  flash instead of 16 MB, and a screen built for 16 MB started over and over on them with a black glass. New screen
+  now asks how much flash the board has, with 16 MB as before first. Screens you already have keep what they have.
+- **A plugin's screensaver step shows its entity's picture (#286).** A plugin's own step of the screensaver that shows
+  a picture of its entity, such as a photo of an image entity, got every picture refused. The step now tells the
+  screen which entity it belongs to, so its pictures arrive, as they already did on the plugin's tile. Screens out
+  there get it with the app, without a new build.
+- **Pictures reach screens on a second network (#276).** When Home Assistant is on two networks, for example the
+  home network and a separate one for devices, screens on the second network got the picture address of the first
+  and showed no camera images, covers or maps. Each screen now gets the address Home Assistant has on its own network.
+  With one network nothing changes.
+- **Firmware & USB knows a screen's address (#143).** Installing over Wi-Fi from Firmware & USB asked for the
+  screen's address, although the app already knew it for the screen's Update. It now fills in the address of a paired
+  screen when you choose its profile. An address you type yourself stays as you typed it. Thanks to @woozer for the
+  change.
+- **A plugin tile can follow several Home Assistant entities (plugin API 0.15, #288).** A plugin may now ask in a
+  tile's options for entities to choose, each with its own searchable list, such as the grid, the solar panels and
+  the battery of an energy dashboard. Tessera sends each chosen entity's state to the tile and follows it, and a new
+  choice takes effect without building the screen again. Thanks to @vajpeters, who built it for the Victron plugin.
+- **Plugins can wake the screen (plugin API 0.16).** A plugin can now wake a screen the way Home Assistant's Wake
+  button does, for example when a camera sees someone come: a screen in standby lights up, and one that is on stays on
+  for its standby time from then, while Back to page 1 keeps counting from the last touch. A plugin that does this has
+  a setting of its own for it, off until you turn it on. Thanks to @Heronimonimo, who asked for it for the Screen
+  camera plugin.
+- **Opening a page from Home Assistant wakes a screen that is still preparing.** A layout that reaches a screen in
+  standby is prepared once the screen is lit, and the Show page action did nothing in between. It now wakes the screen
+  first, and the page it asked for opens as soon as the pages are ready.
+- **A plugin tile of a plant is no longer called gone (#262).** The editor said that a plugin's tile of an entity
+  Tessera has no tile of its own for, such as a plant, showed an entity that no longer exists. It now knows those
+  entities from the plugins' own list, and calls one gone only when Home Assistant really no longer has it.
+- **The editor finds its way back after hours in the background.** Opened again in the Home Assistant app on a phone
+  after a few hours, Tessera said that ESP Screen Manager could not be reached and kept saying so for minutes, until
+  you went to another page of Home Assistant and back. Home Assistant renews the app's access within a minute of
+  coming back, but the editor waited up to five minutes before it asked again. It now asks every ten seconds until it
+  gets an answer, and opens its live connection again when that connection has gone quiet.
+- **Russian (#259).** The screens, the editor and the app's messages now speak Russian, the first language in another
+  script than Latin. A screen built in Russian carries the Cyrillic letters in its fonts, so names and states in
+  Cyrillic show on it; no screen in another language spends flash on them (a Russian CYD takes about 33 KB more).
+  Choose it under Settings, Language & region, then update the screen; the editor follows the language of your Home
+  Assistant profile. Thanks to [@e2ret](https://github.com/e2ret), who translated the screen's texts. The rest is a
+  first draft that no native speaker has checked yet: corrections are welcome.
+- **A new board, experimental: the Waveshare ESP32-S3-Touch-LCD-4 V4.0**, the 4-inch board without the "B" in its
+  revision 4.0, with Waveshare's CH32V003 expander, 480 x 480 glass, GT911 touch and a dimmable backlight. Its board
+  file is the one Simismin ran on such a board ([wish 117](https://tessera-maxgramser.on-forge.com/wishlist/117)),
+  brought in by [@PedanticAvenger](https://github.com/PedanticAvenger)
+  ([#275](https://github.com/MaxGramser/homeassistant_espscreen/pull/275)), who ran it with Home Assistant, rotation
+  and touch; [@leonardospina](https://github.com/leonardospina) ran the same board with a board file of their own
+  ([#213](https://github.com/MaxGramser/homeassistant_espscreen/pull/213)). Earlier revisions of the same name have
+  another expander and are not supported. Choose it under New screen.
+- **A new board, experimental: the Seeed SenseCAP Indicator D1 series with the GX panel**, 3.95-inch 480 x 480 glass
+  with FT6336U touch and a dimmable backlight on its ESP32-S3. The D1, D1S, D1L and D1Pro share that side of the board;
+  the RP2040, its sensors and the LoRa radio stay as they are. Run on a D1L by
+  [@sillevl](https://github.com/sillevl) ([#277](https://github.com/MaxGramser/homeassistant_espscreen/pull/277)), who
+  checked touch, rotation, brightness, standby and a cold start. The DX panel is not covered. Choose it under New
+  screen.
+- **A new board, experimental: the Freenove FNK0104S**, a 4-inch ESP32-S3 board with 480 x 320 ST7796 glass over SPI,
+  FT6336 touch and a dimmable backlight. Run by [@bwalshin](https://github.com/bwalshin)
+  ([#285](https://github.com/MaxGramser/homeassistant_espscreen/pull/285)), who checked its colours and the touch in the
+  middle and the corners. Choose it under New screen.
+- **A new board, experimental: the Wireless-Tag WT32-SC01 Plus**, a 3.5-inch ESP32-S3 board with 480 x 320 glass on an
+  8-bit bus, FT6336U touch and a dimmable backlight. Run by [@cjd](https://github.com/cjd)
+  ([#238](https://github.com/MaxGramser/homeassistant_espscreen/pull/238)), who checked touch, colours, dimming and
+  standby, and by [@wiktorschmidt](https://github.com/wiktorschmidt). Choose it under New screen, as WT32.
+- **A new board, experimental: the Waveshare ESP32-P4-WIFI6-Touch-LCD-7B**, the 7-inch ESP32-P4 board with 1024 x 600
+  MIPI-DSI glass, GT911 touch and a dimmable backlight, built for the rev3 silicon Waveshare ships now (a board with the
+  earlier silicon needs one line of Override YAML). Run by [@tomvanoosterwyck](https://github.com/tomvanoosterwyck)
+  ([#271](https://github.com/MaxGramser/homeassistant_espscreen/pull/271)), who checked the picture, touch, brightness,
+  standby and the wake. Its speaker and microphones are in use too (the first entry here). Choose it under New screen.
+- **A new board, experimental: the Waveshare ESP32-P4-WIFI6-Touch-LCD-7**, the 7-inch ESP32-P4 board with 1280 x 720
+  MIPI-DSI glass, GT911 touch and a dimmable backlight, built for the earlier ESP32-P4 silicon (a board with rev3 needs
+  one line of Override YAML). Run by [@Nulifier](https://github.com/Nulifier)
+  ([#274](https://github.com/MaxGramser/homeassistant_espscreen/pull/274)), who checked the picture, rotation, touch,
+  the backlight and Wi-Fi. Its speaker and microphones are in use too (the first entry here). Choose it under New
+  screen.
+- **A new board, experimental: the Waveshare ESP32-P4-WIFI6-Touch-LCD-10.1**, the 10.1-inch board of the same series,
+  with 1280 x 800 MIPI-DSI glass, GT911 touch and a dimmable backlight, on the earlier ESP32-P4 silicon. Its display,
+  touch and backlight are those of a configuration Amazingwun runs on the board
+  ([wish 125](https://tessera-maxgramser.on-forge.com/wishlist/125)), in a board file by
+  [@icodeforyou](https://github.com/icodeforyou) ([#281](https://github.com/MaxGramser/homeassistant_espscreen/pull/281)).
+  This board file itself has not been run on one yet. Its speaker and microphones are in use too (the first entry here).
+  Choose it under New screen.
 
 ## 0.4.89 (firmware 0.57.0)
 

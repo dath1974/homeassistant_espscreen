@@ -195,7 +195,7 @@ async def sync_pages(manager, inbox, record, screen, dirty=None, force=False, co
         dependencies = cached['dependencies']
     values = []
     for i, tile in enumerate(tiles):
-        reuse = not full and tile['entity'] not in dirty and dirty.isdisjoint(manager.related_entities(tile))
+        reuse = not full and tile['entity'] not in dirty and dirty.isdisjoint(manager.related_entities(tile, inbox))
         if reuse and tile['entity'].startswith('weather.') and manager.forecast_due(tile['entity']): reuse = False
         if reuse and tile['entity'].startswith('calendar.') and manager.calendar_due(tile): reuse = False
         values.append(cached['values'][i] if reuse else await manager.tile_message(i, tile, lamps=lamps, features=features, inbox=inbox))

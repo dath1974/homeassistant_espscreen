@@ -93,4 +93,9 @@ void standby(bool dark);
 void before_update();
 // plugin_api and plugins ([{id, version, tiles}]) in the screen's answer to the add-on's hello.
 void hello(JsonObject root);
+
+// What the core does for a plugin that only the YAML can do. tessera::wake (plugin API 0.16): the screen wakes as Home
+// Assistant's Wake button does, through the one way every wake that is not a finger takes (packages/core.yaml, the script
+// wake_from); `source` names the plugin in the log.
+inline void (*wake)(const std::string &source) = nullptr;
 }  // namespace plugin_host
