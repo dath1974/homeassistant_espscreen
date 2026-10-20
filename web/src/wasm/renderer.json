@@ -64,6 +64,10 @@
     {
       "dpi": 294,
       "look": "standard"
+    },
+    {
+      "dpi": 311,
+      "look": "compact"
     }
   ]
 }
