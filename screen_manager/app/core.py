@@ -14,6 +14,7 @@ import calendar_feed
 import meter
 import catalogue
 import aircraft
+import map_card
 import tile_icons
 
 # The entity types a tile shows, as the tile catalogue has them (catalogue/*.yaml, catalogue.py): a type exists here only
@@ -241,7 +242,8 @@ PICTURE_OPTIONS = {key: tuple(catalogue.of_type('camera')['picture'][key]) for k
 # default and is never stored. `map` lists who rides along beside the tile's own person, people and device trackers.
 # None of it reaches a screen (screen_options): the screen gets pixels, never a place.
 MAP_CARD = catalogue.of_type('person')['map']
-MAP_OPTIONS = {key: tuple(MAP_CARD[key]) for key in ('framing', 'distance', 'follow', 'markers', 'names', 'zones', 'streets', 'look')}
+MAP_OPTIONS = {key: tuple(MAP_CARD[key]) for key in ('framing', 'distance', 'follow', 'markers', 'names', 'zones', 'streets', 'look',
+                                                     'show')}
 # The map of the screen's own cards (app 0.4.36, firmware 0.21.0): the same map without a person of its own, following
 # everyone Home Assistant knows the place of or the people and trackers chosen (`follow`).
 MAP_TILE = 'screen.map'
@@ -257,7 +259,8 @@ MAP_DOMAINS = frozenset(MAP_CARD['with'])
 MAP_MAX_ENTITIES = MAP_CARD['max']
 # Aircraft over the map tile (docs/MAP.md, "Aircraft"): the sensor they come from and how they are drawn, the map tile's
 # alone (aircraft.validate). They stay in the app too: the screen gets the planes as pixels (op "air").
-MAP_OWN = ('map', *MAP_OPTIONS, *aircraft.OWN)
+# `centre` is where a map framed on a place of its own (`framing: place`) has its middle, [latitude, longitude].
+MAP_OWN = ('map', 'centre', *MAP_OPTIONS, *aircraft.OWN)
 # Displays that only work on a double-width card (`wide` in the catalogue).
 WIDE_ONLY = tuple(sorted({item['key'] for entry in catalogue.TYPES.values() for item in entry['displays'] if item.get('wide')}))
 
@@ -2075,11 +2078,17 @@ def validate_layout(data, stored=False, grid=DEFAULT_GRID):
             elif options.get('display') == 'map':
                 if 'map' in options:
                     options = {**options, 'map': map_entities(options['map'], tile['entity'])}
+                if 'centre' in options:
+                    try:
+                        options = {**options, 'centre': map_card.validate_centre(options['centre'])}
+                    except ValueError:
+                        raise ValueError(t('addon.errors.layout.invalid_setting', setting='centre')) from None
                 allowed = {**MAP_OPTIONS, 'overlay': PICTURE_OPTIONS['overlay']}
-                # Following is the map tile's own: a person's map follows that person and who rides along.
+                # Following is the map tile's own: a person's map follows that person and who rides along. So is what it
+                # shows: a person's map always shows its people.
                 # Chosen with nobody yet is a map of the zones until someone is added.
                 if tile['entity'] != MAP_TILE:
-                    options = {k: v for k, v in options.items() if k != 'follow' and k not in aircraft.OWN}
+                    options = {k: v for k, v in options.items() if k not in ('follow', 'show') and k not in aircraft.OWN}
                 else:
                     try:
                         options = aircraft.validate(options)

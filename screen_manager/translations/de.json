@@ -2343,10 +2343,24 @@
       },
       "map": {
         "framing": {
-          "label": "Zeigen",
+          "label": "Zentrieren auf",
           "everyone": "Alle",
           "home": "Rund um das Zuhause",
-          "person": "Rund um diese Person"
+          "person": "Rund um diese Person",
+          "place": "Ein Ort"
+        },
+        "show": {
+          "label": "Zeigen",
+          "both": "Personen und Flugzeuge",
+          "people": "Personen",
+          "aircraft": "Flugzeuge"
+        },
+        "centre": {
+          "label": "Ort",
+          "lat": "Breitengrad",
+          "lon": "Längengrad",
+          "hint": "Die Mitte der Karte in Dezimalgrad, etwa 51.4700 und -0.4543. Du kannst beide auf einmal einfügen. Ohne Ort ist die Karte um das Zuhause zentriert.",
+          "wrong": "Gib einen Breitengrad von -85 bis 85 und einen Längengrad von -180 bis 180 ein."
         },
         "distance": {
           "label": "Entfernung",
@@ -2399,7 +2413,7 @@
           "hint": "Wem diese Karte folgt, jeder in seiner eigenen Farbe. Ein Tracker ist ein Telefon, ein Auto oder ein Tag, dessen Standort Home Assistant kennt."
         },
         "aircraft": {
-          "label": "Flugzeuge",
+          "label": "Quelle",
           "hint": "Ein Sensor, der Flüge auflistet, etwa der Sensor „Aktuell im Bereich“ der Flightradar24-Integration. Der Bildschirm bewegt jedes Flugzeug, sobald der Sensor es meldet.",
           "none": "Noch kein Sensor listet Flüge auf. Füge eine Integration hinzu, die das kann, etwa Flightradar24, dann erscheint ihr Sensor „Aktuell im Bereich“ hier.",
           "choose": "Keiner",
@@ -2455,7 +2469,28 @@
           "plane_most": {
             "label": "Höchstens",
             "hint": "Die Flugzeuge, die der Kartenmitte am nächsten sind, höchstens {high}."
+          },
+          "watch": {
+            "label": "Beobachtet",
+            "hint": "Kennzeichen oder Rufzeichen, etwa N12345 oder BAW432, höchstens {most}. Ein beobachtetes Flugzeug wird immer gezeigt, in jeder Höhe und wie viele andere es auch gibt: größer, mit einem Ring und seiner Beschriftung, in seiner eigenen Farbe.",
+            "wrong": "2 bis 10 Buchstaben, Ziffern oder Bindestriche, etwa G-EZAB.",
+            "placeholder": "Kennzeichen oder Rufzeichen",
+            "add": "Hinzufügen",
+            "remove": "{name} entfernen",
+            "colour": "Farbe von {name}",
+            "colours": {
+              "red": "Rot",
+              "orange": "Orange",
+              "amber": "Bernstein",
+              "green": "Grün",
+              "blue": "Blau",
+              "purple": "Lila"
+            }
           }
+        },
+        "group": {
+          "people": "Personen",
+          "aircraft": "Flugzeuge"
         }
       },
       "controls": {

@@ -98,7 +98,7 @@ export function validatePageShape(layout: PageLayout, plugins = false) {
       fields(tile, ['id', 'content', 'placement', 'appearance', 'interaction', 'children'], ['id', 'content', 'placement', 'appearance', 'interaction']);
       fields(tile.placement, ['row', 'column', 'columns', 'rows']);
       fields(tile.appearance, ['label', 'presentation', 'display', 'icon', 'background', 'historyHours', 'refresh', 'subtitle', 'fit', 'overlay',
-        'mapEntities', 'mapFraming', 'mapDistance', 'mapFollow', 'mapMarkers', 'mapNames', 'mapZones', 'mapStreets', 'mapLook', 'energyFlow',
+        'mapEntities', 'mapFraming', 'mapDistance', 'mapFollow', 'mapMarkers', 'mapNames', 'mapZones', 'mapStreets', 'mapLook', 'mapShow', 'mapCentre', 'energyFlow',
         ...AIR_FIELDS,
         ...CALENDAR_FIELDS, ...CALENDAR_MORE, ...METER_FIELDS], ['label']);
       fields(tile.interaction, ['tap', 'inline', 'controls', 'action', 'guard', 'play', 'speaker', 'shuffle', 'repeat', 'tilt_open'], []);
@@ -170,8 +170,16 @@ export function validateCardOptions(tile: PageTile, entityId: string, size: stri
   const map = ofType('person')?.map;
   for (const [value, choices] of [[a.mapFraming, map?.framing ?? []], [a.mapDistance, map?.distance ?? []], [a.mapFollow, map?.follow ?? []],
     [a.mapMarkers, map?.markers ?? []], [a.mapNames, map?.names ?? []], [a.mapZones, map?.zones ?? []], [a.mapStreets, map?.streets ?? []],
-    [a.mapLook, map?.look ?? []]] as [string | undefined, string[]][])
+    [a.mapLook, map?.look ?? []], [a.mapShow, map?.show ?? []]] as [string | undefined, string[]][])
     if (value !== undefined && (a.display !== 'map' || !choices.includes(value) || value === choices[0])) fail('normalization');
+  // A map's own middle (framing `place`): [latitude, longitude], as map_card.validate_centre checks it.
+  if (a.mapCentre !== undefined) {
+    const c = a.mapCentre;
+    if (a.display !== 'map') fail('normalization');
+    if (!Array.isArray(c) || c.length !== 2 || !c.every((v) => typeof v === 'number' && Number.isFinite(v)) ||
+        Math.abs(c[0]) > 85.05112878 || Math.abs(c[1]) > 180) fail();
+    if (c.some((v) => Math.round(v * 1e5) / 1e5 !== v)) fail('normalization');
+  }
   // How the energy card shows power along a line: the energy card's own, the default (dots) never stored.
   if (a.energyFlow !== undefined && (entityId !== 'screen.energy' || !rules.energyFlow.includes(a.energyFlow) || a.energyFlow === rules.energyFlow[0])) fail('normalization');
   // A calendar card (firmware 0.56.0), as calendar_feed.validate checks it: its own choices, a default never stored.
@@ -218,7 +226,7 @@ export function validateCardOptions(tile: PageTile, entityId: string, size: stri
   // The map tile (app 0.4.36) is a map, follows everyone or whom it lists, and alone has the choice.
   const mapTile = entityId === 'screen.map';
   if (mapTile && a.display !== 'map') fail('normalization');
-  if (a.mapFollow !== undefined && !mapTile) fail('normalization');
+  if ((a.mapFollow !== undefined || a.mapShow !== undefined) && !mapTile) fail('normalization');
   // Aircraft over the map tile (docs/MAP.md, "Aircraft"), as aircraft.validate checks them: the map tile's alone.
   const air = airProblem(Object.fromEntries(AIR_FIELDS.filter((f) => a[f] !== undefined).map((f) => [AIR_APPEARANCE[f], a[f]])),
     mapTile && a.display === 'map');

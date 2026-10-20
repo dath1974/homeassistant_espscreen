@@ -2343,10 +2343,24 @@
       },
       "map": {
         "framing": {
-          "label": "Pokaż",
+          "label": "Wyśrodkuj na",
           "everyone": "Wszyscy",
           "home": "Wokół domu",
-          "person": "Wokół tej osoby"
+          "person": "Wokół tej osoby",
+          "place": "Miejsce"
+        },
+        "show": {
+          "label": "Pokaż",
+          "both": "Osoby i samoloty",
+          "people": "Osoby",
+          "aircraft": "Samoloty"
+        },
+        "centre": {
+          "label": "Miejsce",
+          "lat": "Szerokość",
+          "lon": "Długość",
+          "hint": "Środek mapy w stopniach dziesiętnych, np. 51.4700 i -0.4543. Możesz wkleić oba naraz. Bez miejsca mapa jest wyśrodkowana na domu.",
+          "wrong": "Wpisz szerokość od -85 do 85 i długość od -180 do 180."
         },
         "distance": {
           "label": "Odległość",
@@ -2399,7 +2413,7 @@
           "hint": "Kogo śledzi ta mapa, każdy w swoim kolorze. Lokalizator to telefon, samochód lub tag, którego położenie zna Home Assistant."
         },
         "aircraft": {
-          "label": "Samoloty",
+          "label": "Źródło",
           "hint": "Czujnik, który wymienia loty, na przykład czujnik „Obecnie w obszarze” integracji Flightradar24. Ekran przesuwa każdy samolot, gdy czujnik go zgłosi.",
           "none": "Żaden czujnik nie wymienia jeszcze lotów. Dodaj integrację, która to robi, na przykład Flightradar24, a jej czujnik „Obecnie w obszarze” pojawi się tutaj.",
           "choose": "Brak",
@@ -2455,7 +2469,28 @@
           "plane_most": {
             "label": "Najwyżej",
             "hint": "Samoloty najbliżej środka mapy, najwyżej {high}."
+          },
+          "watch": {
+            "label": "Obserwowane",
+            "hint": "Znaki rejestracyjne lub znaki wywoławcze, np. N12345 lub BAW432, najwyżej {most}. Obserwowany samolot widać zawsze, na każdej wysokości i bez względu na liczbę innych: większy, z pierścieniem i etykietą, w swoim kolorze.",
+            "wrong": "Od 2 do 10 liter, cyfr lub myślników, np. G-EZAB.",
+            "placeholder": "Rejestracja lub znak wywoławczy",
+            "add": "Dodaj",
+            "remove": "Usuń {name}",
+            "colour": "Kolor {name}",
+            "colours": {
+              "red": "Czerwony",
+              "orange": "Pomarańczowy",
+              "amber": "Bursztynowy",
+              "green": "Zielony",
+              "blue": "Niebieski",
+              "purple": "Fioletowy"
+            }
           }
+        },
+        "group": {
+          "people": "Osoby",
+          "aircraft": "Samoloty"
         }
       },
       "controls": {

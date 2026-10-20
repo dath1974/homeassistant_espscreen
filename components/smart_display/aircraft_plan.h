@@ -22,7 +22,12 @@ constexpr int BANDS = 5, NO_BAND = -1, NO_HEADING = -1;
 // How long a plane glides on after its report: a source that stopped reporting leaves its planes where the last report
 // and this much flight put them.
 constexpr uint32_t GLIDE_MS = 30000;
-constexpr size_t MOST_PLANES = 20, MOST_TRACK = 24;
+// Watched aircraft (aircraft.WATCH_COLOURS): a plane's colour is 1 to WATCH_COLOURS, 0 for one nobody watches.
+constexpr int WATCH_COLOURS = 6;
+// A watched plane is drawn this much larger, with a ring around it.
+constexpr float WATCH_SCALE = 1.35f;
+// The app's 20 nearest and the watched ones beside them (catalogue/person.yaml map.watch max).
+constexpr size_t MOST_PLANES = 28, MOST_TRACK = 24;
 
 struct Plane {
   int x = 0, y = 0;            // on the picture the app drew, `width` x `height`
@@ -31,6 +36,7 @@ struct Plane {
   int vx = 0, vy = 0;          // pixels a minute
   std::string label;           // its lines, joined by '\n'
   std::vector<int16_t> track;  // x, y, x, y ... oldest first, ending where the plane is
+  int watch = 0;               // 1 to WATCH_COLOURS for a watched plane, in its colour
 };
 
 struct Overlay {

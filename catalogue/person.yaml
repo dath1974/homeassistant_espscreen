@@ -15,13 +15,16 @@ displays:
 # report a place (a phone, a car, a tag), eight in all.
 # The map tile of the screen's own cards (screen.map, firmware 0.21.0) has the same choices, and `follow`: everyone
 # Home Assistant knows the place of, as its own map card's show_all, or the people and trackers chosen.
+# `place` centres it on a point of its own, `centre` [latitude, longitude] on the tile. The map tile also has `show`:
+# people and aircraft, only its people, or only its aircraft.
 # How the map looks (app 0.4.36): a person's photo in their marker as Home Assistant shows it or their initials, the
 # first names beside the markers, the zones, the streets or a plain ground, and the screen's look or one of its own.
 map:
-  framing: [everyone, home, person]
+  framing: [everyone, home, person, place]
   distance: [neighbourhood, street, town, region]
   overlay: [name, none]
   follow: [everyone, chosen]
+  show: [both, people, aircraft]
   markers: [photo, initials]
   names: [auto, always, never]
   zones: [show, hide]
@@ -46,3 +49,8 @@ map:
     plane_most: [15, 1, 20]
     plane_min: [0, 0, 60000]
     plane_max: [60000, 0, 60000]
+  # Watched aircraft on the map tile (`plane_watch`): up to `max` registrations or callsigns, each with one of these
+  # colours (Home Assistant's own, theme.h ha::). A watched plane is always shown and labelled, larger and ringed.
+  watch:
+    colours: [red, orange, amber, green, blue, purple]
+    max: 8

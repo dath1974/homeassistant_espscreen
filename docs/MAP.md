@@ -38,8 +38,9 @@ middle, so each stays to be seen; the one a finger picked never moves.
 | --- | --- |
 | **Follow** (map tile) | **Everyone**: every person, and every device tracker that is not already someone's, as Home Assistant's own map card does with `show_all`. **Chosen**: the list under it. |
 | **On the map** / **Also on the map** | People and device trackers, up to eight. A device tracker is anything Home Assistant reports a place for: a phone through the Companion app, a car through its integration, a tag. One that only knows home or away has no place and is not offered. |
-| **Show** | **Everyone**: the smallest view that holds everyone, with the zone each is in. **Around home**: your home zone in the middle. **Around this person** (a person's map): that person in the middle. |
-| **Distance** | How far Around home and Around this person reach: street, neighborhood, town or region. Someone outside the view is a small marker at the edge, pointing the way. |
+| **Show** (map tile) | **People and aircraft**, **People** only, or **Aircraft** only. With aircraft only, the map has no people and no zones, and its people's settings are hidden. |
+| **Center on** | **Everyone**: the smallest view that holds everyone, with the zone each is in (not offered with aircraft only). **Around home**: your home zone in the middle. **Around this person** (a person's map): that person in the middle. **A place**: a latitude and longitude of your own in the middle, in decimal degrees (you can paste both at once, as a map site copies them); without one it is around home. |
+| **Distance** | How far Around home, Around this person and A place reach: street, neighborhood, town or region. Someone outside the view is a small marker at the edge, pointing the way. |
 | **Markers** | **Photo**: a person's picture in their marker, as Home Assistant shows it, and their initials when they have none. **Initials**: always the letters. |
 | **Names** | First names beside the markers: where the card has room (from about 200 pixels high, and always over the whole screen), always, or never. |
 | **Zones** | Your zones as soft circles, or none. |
@@ -110,8 +111,8 @@ switching the look asks for the other map.
 The map tile can show the planes around you. Under **Aircraft** in its settings, pick a sensor that lists flights:
 the **Current in area** sensor of the [Flightradar24 integration](https://github.com/AlexandrErohin/home-assistant-flightradar24)
 is one. Any sensor whose `flights` attribute is a list of aircraft with a `latitude` and a `longitude` works; `altitude`
-(feet), `heading`, `ground_speed` (knots), `callsign`, `aircraft_code`, `on_ground` and the origin and destination
-codes are used where they are there.
+(feet), `heading`, `ground_speed` (knots), `callsign`, `flight_number`, `aircraft_registration`, `aircraft_code`,
+`on_ground` and the origin and destination codes are used where they are there.
 
 The map stays the picture Tessera draws. The planes are not in it: the screen draws them over it and moves them in
 place each time the sensor reports, so a plane moves without a new picture. Tessera sends the screen where each plane
@@ -128,6 +129,7 @@ No place reaches the screen, as with the people on the map.
 | **On the ground** | Show or hide planes the source reports on the ground. |
 | **Altitude** | Only planes between these altitudes, in feet. The Flightradar24 integration can filter by altitude too, which saves it requests; the tile's own range lets two maps show different heights. |
 | **At most** | The planes closest to the middle of the map, up to 20. |
+| **Watched** | Up to eight registrations or callsigns, such as N12345 or BAW432, each in a color of its own: red, orange, amber, green, blue or purple. A watched plane is always shown when it is on the map, whatever its altitude, on the ground or not and however many others there are. It is drawn larger, with a ring and its label, in its color and over the other planes. Dashes and case don't matter: G-EZAB and gezab are the same. |
 
 Altitudes and speeds on the labels follow Home Assistant's unit system: feet and knots, or meters and kilometers per
 hour.
@@ -155,7 +157,8 @@ full view closed) gets nothing more. A screen with older firmware shows the map 
 | Tests and renders | `tests/test_map_card.py`, `tools/render/map_tiles.py` |
 | Aircraft: reading a source, choosing, labels, tracks, pixels and the message | `screen_manager/app/aircraft.py`, `catalogue/person.yaml` (`map.aircraft`) |
 | Aircraft: the screen's ask, its cards and every report | `Manager.answer_air`, `air_reports`, `air_message` in `server.py` |
-| Aircraft on the screen | `aircraft_plan.h` (where a plane is, its outline, its label), `aircraft_view.cpp` (one object over the picture), `air_tick`, `air_receive` in `runtime_tiles.h`, op `air` in `page_receiver.cpp`, `theme.h` (`AIRCRAFT_*`) |
+| Aircraft on the screen | `aircraft_plan.h` (where a plane is, its outline, its label), `aircraft_view.cpp` (one object over the picture), `air_tick`, `air_receive` in `runtime_tiles.h`, op `air` in `page_receiver.cpp`, `theme.h` (`AIRCRAFT_*`, the watched colours from `ha::`) |
+| What the map tile shows, its own place | `people_shown`, `centre_of`, `frame_view` in `map_card.py`; `aircraft.source_of` |
 | Aircraft in the editor | `MapSection.vue`, `model/aircraft.ts` |
 | Aircraft tests and renders | `tests/test_aircraft.py`, `tests/test_aircraft_plan.cpp`, `tools/render/aircraft.py` |
 

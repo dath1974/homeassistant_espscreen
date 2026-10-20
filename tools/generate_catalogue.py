@@ -235,7 +235,7 @@ def normalise(tile, types, translations, facts, commands=None):
         map_options = data.get('map')
         if map_options is not None:
             check_keys(f'{where} map', map_options, {'framing', 'distance', 'overlay', 'follow', 'markers', 'names', 'zones', 'streets',
-                                                     'look', 'with', 'max', 'aircraft'})
+                                                     'look', 'with', 'max', 'aircraft', 'show', 'watch'})
             if 'map' not in displays:
                 fail(where, 'map options need the map display')
         # What a favourite sets as it starts (app 0.4.84): its shuffle and repeat, each with what it needs.

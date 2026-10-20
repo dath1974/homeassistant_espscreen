@@ -1,6 +1,7 @@
 """Render aircraft over map tiles (docs/MAP.md, "Aircraft") with the real firmware on the host (tools/render/host.py)
 and the add-on's own aircraft.py: planes as a dot, a dot with its heading and a plane, their labels and tracks, on a
-square card, two single cards and the full view, light and dark, and each card again after 20 s more of flight.
+square card, two single cards and the full view, light and dark, and each card again after 20 s more of flight; a
+watched plane by its registration and one by its callsign; and a map of aircraft only, centred on a place of its own.
 
     python3 tools/render/aircraft.py guition waveshare43 [--tiles DIR]
 
@@ -37,6 +38,8 @@ PLANES = [
     ('a5', 'TRA6312', 'B738', 52.310, 4.765, 0, 180, 12, 'AMS', 'AGP', True),
     ('a6', 'RYR8812', 'B38M', 52.250, 4.860, 31000, 10, 440, 'BCN', 'OSL', False),
 ]
+# Registrations, which a watched plane can be matched on as well as its callsign.
+REGISTRATIONS = {'a1': 'PH-BXA', 'a3': 'G-EUXC', 'a6': 'EI-IFB'}
 NOW = 1000.0
 
 
@@ -49,7 +52,8 @@ def state_at(seconds):
         lon2 = lon + metres * math.sin(math.radians(heading)) / (111320 * math.cos(math.radians(lat)))
         flights.append({'id': key, 'callsign': callsign, 'aircraft_code': model, 'latitude': lat2, 'longitude': lon2,
                         'altitude': feet, 'heading': heading, 'ground_speed': knots, 'airport_origin_code_iata': origin,
-                        'airport_destination_code_iata': destination, 'on_ground': 1 if ground else 0})
+                        'airport_destination_code_iata': destination, 'on_ground': 1 if ground else 0,
+                        'aircraft_registration': REGISTRATIONS.get(key, '')})
     return {'state': str(len(flights)), 'attributes': {'friendly_name': 'Current in area', 'flights': flights}}
 
 
@@ -58,9 +62,15 @@ def state_at(seconds):
 AROUND = {'framing': 'home', 'distance': 'region', 'aircraft': SOURCE, 'follow': 'chosen', 'plane_motion': 'hold'}
 # The pages map_tiles drives: its names are the ones it opens over the whole glass with a tap.
 PAGES = [
-    ('square', [('screen.map', 'Overhead', 'square', {**AROUND, 'plane_marker': 'plane', 'plane_track': 'show', 'plane_track_s': 120})]),
+    ('square', [('screen.map', 'Overhead', 'square', {**AROUND, 'plane_marker': 'plane', 'plane_track': 'show', 'plane_track_s': 120,
+                                                      'plane_watch': [{'id': 'PH-BXA', 'colour': 'red'}, {'id': 'RYR8812', 'colour': 'blue'}]})]),
     ('singles', [('screen.map', 'Dots', 'single', {**AROUND, 'plane_track': 'show'}),
                  ('screen.map', 'Arrows', 'single', {**AROUND, 'plane_marker': 'arrow', 'plane_label': 'callsign', 'plane_colour': 'accent'})]),
+    # Aircraft only, around the airport rather than home: no people, no zones; the parked plane is watched, so it shows.
+    ('place', [('screen.map', 'Schiphol', 'square', {'show': 'aircraft', 'framing': 'place', 'centre': [52.3105, 4.7683],
+                                                    'distance': 'town', 'aircraft': SOURCE, 'plane_motion': 'hold',
+                                                    'plane_marker': 'plane', 'plane_most': 3,
+                                                    'plane_watch': [{'id': 'TRA6312', 'colour': 'amber'}]})]),
 ]
 
 

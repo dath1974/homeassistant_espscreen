@@ -440,7 +440,8 @@ std::string receive(const std::string &payload) {
       };
       for (JsonVariant item : root["a"].as<JsonArray>()) {
         if (next.planes.size() >= aircraft_plan::MOST_PLANES) break;
-        if (!item.is<JsonArray>() || item.size() != 8) continue;
+        // The ninth, a watched plane's colour (aircraft.watch_colour), came with watched aircraft.
+        if (!item.is<JsonArray>() || item.size() < 8 || item.size() > 9) continue;
         aircraft_plan::Plane plane;
         if (!whole(item[0], -8192, 8192, plane.x) || !whole(item[1], -8192, 8192, plane.y) ||
             !whole(item[2], -1, 359, plane.heading) || !whole(item[3], -1, aircraft_plan::BANDS - 1, plane.band) ||
@@ -451,6 +452,7 @@ std::string receive(const std::string &payload) {
           plane.track.push_back((int16_t) std::max(-8192, std::min(8192, point.as<int>())));
         }
         if (plane.track.size() % 2) plane.track.pop_back();
+        if (item.size() == 9 && !whole(item[8], 0, aircraft_plan::WATCH_COLOURS, plane.watch)) plane.watch = 0;
         next.planes.push_back(std::move(plane));
       }
       air_receive(std::move(next));

@@ -2343,10 +2343,24 @@
       },
       "map": {
         "framing": {
-          "label": "Mostra",
+          "label": "Centra su",
           "everyone": "Tutti",
           "home": "Intorno a casa",
-          "person": "Intorno a questa persona"
+          "person": "Intorno a questa persona",
+          "place": "Un luogo"
+        },
+        "show": {
+          "label": "Mostra",
+          "both": "Persone e aerei",
+          "people": "Persone",
+          "aircraft": "Aerei"
+        },
+        "centre": {
+          "label": "Luogo",
+          "lat": "Latitudine",
+          "lon": "Longitudine",
+          "hint": "Il centro della mappa in gradi decimali, ad esempio 51.4700 e -0.4543. Puoi incollarli entrambi insieme. Senza luogo la mappa è centrata sulla casa.",
+          "wrong": "Inserisci una latitudine da -85 a 85 e una longitudine da -180 a 180."
         },
         "distance": {
           "label": "Distanza",
@@ -2399,7 +2413,7 @@
           "hint": "Chi segue questa mappa, ognuno con il proprio colore. Un tracker è un telefono, un'auto o un tag di cui Home Assistant conosce la posizione."
         },
         "aircraft": {
-          "label": "Aerei",
+          "label": "Fonte",
           "hint": "Un sensore che elenca voli, come il sensore «Attuali nell’area» dell’integrazione Flightradar24. Lo schermo sposta ogni aereo quando il sensore lo segnala.",
           "none": "Nessun sensore elenca ancora voli. Aggiungi un’integrazione che lo fa, come Flightradar24, e il suo sensore «Attuali nell’area» comparirà qui.",
           "choose": "Nessuno",
@@ -2455,7 +2469,28 @@
           "plane_most": {
             "label": "Al massimo",
             "hint": "Gli aerei più vicini al centro della mappa, al massimo {high}."
+          },
+          "watch": {
+            "label": "Osservati",
+            "hint": "Marche o nominativi, ad esempio N12345 o BAW432, al massimo {most}. Un aereo osservato si vede sempre, a qualsiasi quota e per quanti altri ce ne siano: più grande, con un anello e la sua etichetta, nel suo colore.",
+            "wrong": "Da 2 a 10 lettere, cifre o trattini, ad esempio G-EZAB.",
+            "placeholder": "Marche o nominativo",
+            "add": "Aggiungi",
+            "remove": "Rimuovi {name}",
+            "colour": "Colore di {name}",
+            "colours": {
+              "red": "Rosso",
+              "orange": "Arancione",
+              "amber": "Ambra",
+              "green": "Verde",
+              "blue": "Blu",
+              "purple": "Viola"
+            }
           }
+        },
+        "group": {
+          "people": "Persone",
+          "aircraft": "Aerei"
         }
       },
       "controls": {
