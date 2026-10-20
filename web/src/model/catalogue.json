@@ -1591,7 +1591,8 @@
     "framing": [
      "everyone",
      "home",
-     "person"
+     "person",
+     "place"
     ],
     "distance": [
      "neighbourhood",
@@ -1606,6 +1607,11 @@
     "follow": [
      "everyone",
      "chosen"
+    ],
+    "show": [
+     "both",
+     "people",
+     "aircraft"
     ],
     "markers": [
      "photo",
@@ -1683,6 +1689,17 @@
       0,
       60000
      ]
+    },
+    "watch": {
+     "colours": [
+      "red",
+      "orange",
+      "amber",
+      "green",
+      "blue",
+      "purple"
+     ],
+     "max": 8
     }
    },
    "keypad": null

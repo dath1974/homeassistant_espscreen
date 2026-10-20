@@ -1968,10 +1968,24 @@
       },
       "map": {
         "framing": {
-          "label": "Show",
+          "label": "Center on",
           "everyone": "Everyone",
           "home": "Around home",
-          "person": "Around this person"
+          "person": "Around this person",
+          "place": "A place"
+        },
+        "show": {
+          "label": "Show",
+          "both": "People and aircraft",
+          "people": "People",
+          "aircraft": "Aircraft"
+        },
+        "centre": {
+          "label": "Place",
+          "lat": "Latitude",
+          "lon": "Longitude",
+          "hint": "The middle of the map in decimal degrees, such as 51.4700 and -0.4543. You can paste both at once. Without a place the map centers on home.",
+          "wrong": "Enter a latitude from -85 to 85 and a longitude from -180 to 180."
         },
         "distance": {
           "label": "Distance",
@@ -2024,7 +2038,7 @@
           "hint": "Who this map follows, each in their own colour. A tracker is a phone, a car or a tag Home Assistant knows the place of."
         },
         "aircraft": {
-          "label": "Aircraft",
+          "label": "Source",
           "hint": "A sensor that lists flights, such as the Current in area sensor of the Flightradar24 integration. The screen moves each plane as the sensor reports it.",
           "none": "No sensor lists flights yet. Add an integration that does, such as Flightradar24, and its Current in area sensor shows up here.",
           "choose": "None",
@@ -2080,7 +2094,28 @@
           "plane_most": {
             "label": "At most",
             "hint": "The planes closest to the middle of the map, at most {high}."
+          },
+          "watch": {
+            "label": "Watched",
+            "hint": "Registrations or callsigns, such as N12345 or BAW432, at most {most}. A watched plane always shows, at any altitude and however many others there are: larger, with a ring and its label, in its own color.",
+            "wrong": "2 to 10 letters, digits or dashes, such as G-EZAB.",
+            "placeholder": "Registration or callsign",
+            "add": "Add",
+            "remove": "Remove {name}",
+            "colour": "Color of {name}",
+            "colours": {
+              "red": "Red",
+              "orange": "Orange",
+              "amber": "Amber",
+              "green": "Green",
+              "blue": "Blue",
+              "purple": "Purple"
+            }
           }
+        },
+        "group": {
+          "people": "People",
+          "aircraft": "Aircraft"
         }
       },
       "controls": {

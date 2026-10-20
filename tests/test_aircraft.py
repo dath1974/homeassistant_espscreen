@@ -95,7 +95,7 @@ class OverlayTest(unittest.TestCase):
     def test_a_plane_on_the_frame(self):
         flights = aircraft.flights_of(state(flight()))
         [plane] = aircraft.overlay(VIEW, flights, aircraft.options_of(tile()))
-        x, y, heading, band, vx, vy, label, track = plane
+        x, y, heading, band, vx, vy, label, track, watched = plane
         self.assertEqual((x, y, heading, band, track), (200, 150, 90, 4, []))
         # 450 knots due east at zoom 10 over 52 degrees north: about 151 pixels a minute.
         self.assertTrue(140 < vx < 160 and vy == 0, (vx, vy))
@@ -134,6 +134,88 @@ class OverlayTest(unittest.TestCase):
                          [(3, (180, 120)), (5, (400, 300))])
         self.assertEqual(aircraft.cards_of({'air': 'full', 'idx': '4', 'size': '800x480'}, 800), [(4, (800, 480))])
         self.assertEqual(aircraft.cards_of({'air': 'full', 'idx': '4', 'size': '0x480'}, 800), [])
+
+
+class WatchTest(unittest.TestCase):
+    """Watched aircraft: a registration or callsign with a colour each, shown whatever the rest of the choices say."""
+    WATCH = [{'id': 'G-EZAB', 'colour': 'red'}, {'id': 'BAW432', 'colour': 'blue'}]
+
+    def options(self, **chosen):
+        return aircraft.options_of(tile(plane_watch=self.WATCH, **chosen))
+
+    def test_matched_by_registration_or_callsign(self):
+        by_registration = aircraft.flights_of(state(flight('a', callsign='EZY1', aircraft_registration='GEZAB')))[0]
+        by_callsign = aircraft.flights_of(state(flight('b', callsign='BAW432')))[0]
+        nobody = aircraft.flights_of(state(flight('c', callsign='KLM1')))[0]
+        watched = self.options()['plane_watch']
+        self.assertEqual([aircraft.watch_colour(f, watched) for f in (by_registration, by_callsign, nobody)],
+                         [1, aircraft.WATCH_COLOURS.index('blue') + 1, 0])
+
+    def test_shown_beyond_altitude_ground_and_most_and_last(self):
+        flights = aircraft.flights_of(state(flight('near', lon=5.01), flight('mid', lon=5.05),
+                                            flight('low', altitude=500, callsign='BAW432', lon=5.1),
+                                            flight('parked', altitude=0, on_ground=1, callsign='X', aircraft_registration='G-EZAB')))
+        shown = aircraft.shown(flights, self.options(plane_most=1, plane_min=10000), VIEW)
+        self.assertEqual([f.id for f in shown], ['near', 'low', 'parked'])
+        # Still not off the frame: there is nowhere to draw it.
+        far = aircraft.flights_of(state(flight('far', lat=53.5, callsign='BAW432')))
+        self.assertEqual(aircraft.shown(far, self.options(), VIEW), [])
+
+    def test_always_labelled_with_its_colour(self):
+        flights = aircraft.flights_of(state(flight('a', callsign='KLM1'), flight('b', callsign='BAW432', lon=5.02)))
+        planes = aircraft.overlay(VIEW, flights, self.options(plane_label='none'))
+        self.assertEqual([(p[6], p[8]) for p in planes], [('', 0), ('BAW432', aircraft.WATCH_COLOURS.index('blue') + 1)])
+
+    def test_kept_when_the_message_is_too_long(self):
+        planes = [[100 + n, 100, 90, 3, 50, 0, 'CALLSIGN' + str(n) + '\n35000 ft · 450 kn\n' + 'A' * 160, list(range(40)), 0] for n in range(20)]
+        planes.append([5, 5, 90, 3, 0, 0, 'BAW432', [], 4])
+        body = aircraft.message('tile', 0, (400, 300), planes, {'m': 'dot', 'c': 'altitude', 'g': 1})
+        self.assertEqual(body['a'][-1][6], 'BAW432')
+        self.assertLess(len(body['a']), 21)
+
+    def test_saved_in_capitals_once_each(self):
+        saved = validate_layout({'title': 'x', 'tiles': [{'entity': 'screen.map', 'options': {'display': 'map', 'plane_watch': [
+            {'id': 'g-ezab', 'colour': 'red'}, {'id': 'GEZAB', 'colour': 'blue'}, {'id': 'BAW432', 'colour': 'green'}]}}]})['tiles'][0]
+        self.assertEqual(saved['options']['plane_watch'], [{'id': 'G-EZAB', 'colour': 'red'}, {'id': 'BAW432', 'colour': 'green'}])
+        for wrong in ([{'id': 'X', 'colour': 'red'}], [{'id': 'BAW432', 'colour': 'pink'}], [{'id': 'BAW432'}], 'BAW432',
+                      [{'id': f'AB{n}', 'colour': 'red'} for n in range(aircraft.WATCH_MOST + 1)]):
+            with self.subTest(wrong=wrong), self.assertRaises(ValueError):
+                validate_layout({'title': 'x', 'tiles': [{'entity': 'screen.map', 'options': {'display': 'map', 'plane_watch': wrong}}]})
+
+
+class ShowTest(unittest.TestCase):
+    """What the map tile shows: its people and aircraft, its people only or its aircraft only."""
+
+    def test_people_only_asks_for_no_planes(self):
+        self.assertEqual(aircraft.source_of(tile(show='people')), '')
+        self.assertEqual(aircraft.source_of(tile(show='aircraft')), SOURCE)
+        self.assertNotIn('air', extras(tile(show='people'), {}))
+
+    def test_aircraft_only_has_nobody_and_no_zones(self):
+        self.assertEqual(map_card.shown(tile(show='aircraft', follow='chosen', map=['person.sam'])), [])
+        self.assertFalse(map_card.people_shown(tile(show='aircraft')))
+        self.assertTrue(map_card.people_shown({'entity': 'person.me', 'options': {'display': 'map', 'show': 'aircraft'}}))
+
+    def test_a_place_of_its_own(self):
+        view = map_card.frame_view('place', 'town', [], [], (400, 300), centre=(51.47, -0.4543))
+        self.assertEqual((view.lat, view.lon), (51.47, -0.4543))
+        home = SimpleNamespace(home=True, lat=52.0, lon=5.0, radius=100)
+        view = map_card.frame_view('place', 'town', [], [home], (400, 300))
+        self.assertEqual((view.lat, view.lon), (52.0, 5.0), 'home while it has no place')
+        # Everyone with nobody to fit is around home too.
+        self.assertEqual((map_card.frame_view('everyone', 'town', [], [home], (400, 300)).lat), 52.0)
+
+    def test_saved(self):
+        def save(entity='screen.map', **options):
+            return validate_layout({'title': 'x', 'tiles': [{'entity': entity, 'options': {'display': 'map', **options}}]})['tiles'][0]['options']
+        self.assertEqual(save(show='both', framing='place', centre=[51.4700012, -0.454321]),
+                         {'display': 'map', 'framing': 'place', 'centre': [51.47, -0.45432]})
+        self.assertEqual(save(show='aircraft'), {'display': 'map', 'show': 'aircraft'})
+        self.assertEqual(save('person.me', show='aircraft', framing='place', centre=[1, 2]),
+                         {'display': 'map', 'framing': 'place', 'centre': [1.0, 2.0]})
+        for wrong in ({'show': 'planes'}, {'centre': [91, 0]}, {'centre': [1]}, {'centre': 'here'}, {'centre': [True, 1]}):
+            with self.subTest(wrong=wrong), self.assertRaises(ValueError):
+                save(**wrong)
 
 
 class LayoutTest(unittest.TestCase):

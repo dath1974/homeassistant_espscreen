@@ -413,6 +413,94 @@ describe("aircraft options (model/aircraft.ts), as aircraft.validate takes them"
   });
 });
 
+describe("the map tile's people, aircraft, place and watched aircraft", () => {
+  it("shows what it is set to show, centres on a place and keeps watched aircraft as the add-on does", async () => {
+    const tile: Tile = { entity: "screen.map", name: "", slot: 0, options: { display: "map", size: "wide", aircraft: "sensor.flightradar24_current_in_area" } };
+    appendTiles(tile);
+    Object.assign(useInventoryStore().inventory.screens[0], { firmware: "0.21.0", pictures: true });
+    useInventoryStore().inventory.aircraft = [{ id: "sensor.flightradar24_current_in_area", name: "Current in area" }];
+    const { setTileOption } = await import("../src/editor/tiles");
+    setTileOption(current(tile)!, "aircraft", "sensor.flightradar24_current_in_area");
+    let panel = mount(TileInspector, { props: { tile: current(tile)! } });
+    // Both: the people's group and the aircraft's.
+    expect(panel.text()).toContain("Follow");
+    expect(panel.text()).toContain("Watched");
+    panel.unmount();
+    setTileOption(current(tile)!, "show", "aircraft");
+    panel = mount(TileInspector, { props: { tile: current(tile)! } });
+    expect(panel.text()).not.toContain("Follow");
+    expect(panel.text()).not.toContain("Zones");
+    // Nobody to fit: Everyone is no choice, and the map is around home.
+    expect(panel.findAll(".seg button").map((b) => b.text())).not.toContain("Everyone");
+    expect(mapOf(panel).framing).toBe("home");
+    panel.unmount();
+    setTileOption(current(tile)!, "show", "people");
+    panel = mount(TileInspector, { props: { tile: current(tile)! } });
+    expect(panel.text()).not.toContain("Watched");
+    panel.unmount();
+    setTileOption(current(tile)!, "show", "both");
+    expect(current(tile)!.options?.show).toBeUndefined();
+    // A place of its own, typed or pasted as one pair, kept to about a metre.
+    setTileOption(current(tile)!, "framing", "place");
+    panel = mount(TileInspector, { props: { tile: current(tile)! } });
+    expect(panel.text()).toContain("Latitude");
+    mapOf(panel).setCentre("lat", "51.4700012, -0.454321");
+    await nextTick();
+    expect(current(tile)!.options?.centre).toEqual([51.47, -0.45432]);
+    panel.unmount();
+    panel = mount(TileInspector, { props: { tile: current(tile)! } });
+    mapOf(panel).setCentre("lat", "");
+    mapOf(panel).setCentre("lon", "");
+    await nextTick();
+    expect(current(tile)!.options?.centre).toBeUndefined();
+    panel.unmount();
+    panel = mount(TileInspector, { props: { tile: current(tile)! } });
+    // One number alone is no place yet.
+    mapOf(panel).setCentre("lat", "52.3");
+    await nextTick();
+    expect(current(tile)!.options?.centre).toBeUndefined();
+    mapOf(panel).setCentre("lon", "4.9");
+    await nextTick();
+    expect(current(tile)!.options?.centre).toEqual([52.3, 4.9]);
+    panel.unmount();
+    // Watched aircraft: in capitals, once each, the next colour for each added.
+    for (const typed of ["g-ezab", "GEZAB", "baw432", "x"]) {
+      panel = mount(TileInspector, { props: { tile: current(tile)! } });
+      mapOf(panel).typed = typed;
+      mapOf(panel).addWatched();
+      await nextTick();
+      panel.unmount();
+    }
+    expect(current(tile)!.options?.plane_watch).toEqual([{ id: "G-EZAB", colour: "red" }, { id: "BAW432", colour: "orange" }]);
+    panel = mount(TileInspector, { props: { tile: current(tile)! } });
+    expect(panel.text()).toContain("BAW432");
+    mapOf(panel).recolour(1, "blue");
+    await nextTick();
+    panel.unmount();
+    expect(() => validatePages(doc.document!, doc.documentGrid!)).not.toThrow();
+    const saved = doc.document!.pages.flatMap((page) => page.tiles)[0];
+    expect(saved.appearance).toMatchObject({ mapFraming: "place", mapCentre: [52.3, 4.9], airWatch: [{ id: "G-EZAB", colour: "red" }, { id: "BAW432", colour: "blue" }] });
+    for (let n = 0; n < 2; n++) {
+      panel = mount(TileInspector, { props: { tile: current(tile)! } });
+      mapOf(panel).unwatch(0);
+      await nextTick();
+      panel.unmount();
+    }
+    expect(current(tile)!.options?.plane_watch).toBeUndefined();
+  });
+
+  it("refuses what the add-on refuses", async () => {
+    const { airProblem } = await import("../src/model/aircraft");
+    expect(airProblem({ plane_watch: [{ id: "BAW432", colour: "red" }] }, true)).toBe("");
+    expect(airProblem({ plane_watch: [{ id: "baw432", colour: "red" }] }, true)).toBe("normalization");
+    expect(airProblem({ plane_watch: [{ id: "BAW432", colour: "pink" }] }, true)).toBe("invalid");
+    expect(airProblem({ plane_watch: [{ id: "X", colour: "red" }] }, true)).toBe("invalid");
+    expect(airProblem({ plane_watch: [] }, true)).toBe("normalization");
+    expect(canonicalOptions("person.p", { display: "map", show: "aircraft", framing: "place", centre: [1.234567, 2] }))
+      .toEqual({ display: "map", framing: "place", centre: [1.23457, 2] });
+  });
+});
+
 describe("what the panel offers, as functions of the tile, Home Assistant and the firmware (tile-options.ts)", () => {
   const at = (version: string): TilePanel["supports"] => (major, minor, patch) => supportsFirmware(version, major, minor, patch);
   const panel = (more: Partial<TilePanel> = {}): TilePanel => ({ supports: at("0.53.0"), pictures: true, columns: 2, attributes: {}, rangeless: false, ...more });

@@ -1968,10 +1968,24 @@
       },
       "map": {
         "framing": {
-          "label": "Toon",
+          "label": "Centreren op",
           "everyone": "Iedereen",
           "home": "Rond huis",
-          "person": "Rond deze persoon"
+          "person": "Rond deze persoon",
+          "place": "Een plek"
+        },
+        "show": {
+          "label": "Toon",
+          "both": "Personen en vliegtuigen",
+          "people": "Personen",
+          "aircraft": "Vliegtuigen"
+        },
+        "centre": {
+          "label": "Plek",
+          "lat": "Breedtegraad",
+          "lon": "Lengtegraad",
+          "hint": "Het midden van de kaart in decimale graden, zoals 51.4700 en -0.4543. Je kunt ze allebei tegelijk plakken. Zonder plek staat de kaart rond huis.",
+          "wrong": "Vul een breedtegraad van -85 tot 85 en een lengtegraad van -180 tot 180 in."
         },
         "distance": {
           "label": "Afstand",
@@ -2024,7 +2038,7 @@
           "hint": "Wie deze kaart volgt, elk in een eigen kleur. Een tracker is een telefoon, auto of tag waarvan Home Assistant de plek kent."
         },
         "aircraft": {
-          "label": "Vliegtuigen",
+          "label": "Bron",
           "hint": "Een sensor die vluchten opsomt, zoals de sensor ‘Nu in gebied’ van de Flightradar24-integratie. Het scherm verplaatst elk vliegtuig zodra de sensor het meldt.",
           "none": "Nog geen sensor somt vluchten op. Voeg een integratie toe die dat doet, zoals Flightradar24, en de sensor ‘Nu in gebied’ verschijnt hier.",
           "choose": "Geen",
@@ -2080,7 +2094,28 @@
           "plane_most": {
             "label": "Hooguit",
             "hint": "De vliegtuigen het dichtst bij het midden van de kaart, hooguit {high}."
+          },
+          "watch": {
+            "label": "Gevolgd",
+            "hint": "Registraties of roepnamen, zoals N12345 of BAW432, hoogstens {most}. Een gevolgd vliegtuig is er altijd, op elke hoogte en hoeveel andere er ook zijn: groter, met een ring en zijn label, in zijn eigen kleur.",
+            "wrong": "2 tot 10 letters, cijfers of streepjes, zoals G-EZAB.",
+            "placeholder": "Registratie of roepnaam",
+            "add": "Toevoegen",
+            "remove": "{name} verwijderen",
+            "colour": "Kleur van {name}",
+            "colours": {
+              "red": "Rood",
+              "orange": "Oranje",
+              "amber": "Amber",
+              "green": "Groen",
+              "blue": "Blauw",
+              "purple": "Paars"
+            }
           }
+        },
+        "group": {
+          "people": "Personen",
+          "aircraft": "Vliegtuigen"
         }
       },
       "controls": {

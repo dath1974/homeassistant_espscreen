@@ -2343,10 +2343,24 @@
       },
       "map": {
         "framing": {
-          "label": "Mutat",
+          "label": "Középpont",
           "everyone": "Mindenki",
           "home": "Az otthon körül",
-          "person": "E személy körül"
+          "person": "E személy körül",
+          "place": "Egy hely"
+        },
+        "show": {
+          "label": "Megjelenítés",
+          "both": "Személyek és repülőgépek",
+          "people": "Személyek",
+          "aircraft": "Repülőgépek"
+        },
+        "centre": {
+          "label": "Hely",
+          "lat": "Szélesség",
+          "lon": "Hosszúság",
+          "hint": "A térkép közepe tizedes fokban, például 51.4700 és -0.4543. Egyszerre is beillesztheted a kettőt. Hely nélkül a térkép az otthonra van középre igazítva.",
+          "wrong": "Adj meg -85 és 85 közötti szélességet és -180 és 180 közötti hosszúságot."
         },
         "distance": {
           "label": "Távolság",
@@ -2399,7 +2413,7 @@
           "hint": "Kiket követ ez a térkép, mindegyiket a saját színében. Nyomkövető egy telefon, autó vagy címke, amelynek helyét a Home Assistant ismeri."
         },
         "aircraft": {
-          "label": "Repülőgépek",
+          "label": "Forrás",
           "hint": "Egy érzékelő, amely járatokat listáz, például a Flightradar24 integráció „Jelenleg a területen” érzékelője. A képernyő minden gépet elmozdít, amikor az érzékelő jelenti.",
           "none": "Még egyetlen érzékelő sem listáz járatokat. Adj hozzá egy integrációt, amely ezt teszi, például a Flightradar24-et, és a „Jelenleg a területen” érzékelője itt megjelenik.",
           "choose": "Nincs",
@@ -2455,7 +2469,28 @@
           "plane_most": {
             "label": "Legfeljebb",
             "hint": "A térkép közepéhez legközelebbi gépek, legfeljebb {high}."
+          },
+          "watch": {
+            "label": "Figyelt",
+            "hint": "Lajstromjelek vagy hívójelek, például N12345 vagy BAW432, legfeljebb {most}. A figyelt gép mindig látszik, bármilyen magasságban és akárhány más gép is van: nagyobban, gyűrűvel és felirattal, a saját színében.",
+            "wrong": "2–10 betű, számjegy vagy kötőjel, például G-EZAB.",
+            "placeholder": "Lajstromjel vagy hívójel",
+            "add": "Hozzáadás",
+            "remove": "{name} eltávolítása",
+            "colour": "{name} színe",
+            "colours": {
+              "red": "Piros",
+              "orange": "Narancs",
+              "amber": "Borostyán",
+              "green": "Zöld",
+              "blue": "Kék",
+              "purple": "Lila"
+            }
           }
+        },
+        "group": {
+          "people": "Személyek",
+          "aircraft": "Repülőgépek"
         }
       },
       "controls": {

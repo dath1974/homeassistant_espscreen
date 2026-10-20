@@ -8,7 +8,11 @@ flies and how fast in pixels, its label and its track.
 
 A source is any sensor whose `flights` attribute lists the aircraft with their `latitude` and `longitude`, as the
 Flightradar24 integration's "Current in area" sensor does (github.com/AlexandrErohin/home-assistant-flightradar24). Its
-other fields (`altitude` in feet, `heading`, `ground_speed` in knots, `callsign`, ...) are read when they are there.
+other fields (`altitude` in feet, `heading`, `ground_speed` in knots, `callsign`, `aircraft_registration`, ...) are read
+when they are there.
+
+Watched aircraft (`plane_watch`) are registrations or callsigns with a colour each: a plane that matches one is shown
+whatever its altitude, on the ground or not and however many others there are, always with its label, in its colour.
 
 The track is the add-on's own: every report adds each plane's place with its moment, so a track of 60 seconds is the
 last minute of that plane, whatever the source keeps of its own.
@@ -34,7 +38,12 @@ AIRCRAFT = catalogue.of_type('person')['map']['aircraft']
 NUMBERS = {key: tuple(value) for key, value in AIRCRAFT.items() if all(isinstance(v, int) for v in value)}
 CHOICES = {key: tuple(value) for key, value in AIRCRAFT.items() if key not in NUMBERS}
 ALTITUDE_CEILING = NUMBERS['plane_max'][2]
-OWN = ('aircraft', *CHOICES, *NUMBERS)
+# Watched aircraft (catalogue/person.yaml `map.watch`): [{"id": registration or callsign, "colour": one of COLOURS}].
+# On the wire a plane's colour is its place in COLOURS plus one, 0 for a plane nobody watches.
+WATCH = catalogue.of_type('person')['map']['watch']
+WATCH_COLOURS, WATCH_MOST = tuple(WATCH['colours']), WATCH['max']
+WATCH_ID = re.compile(r'[A-Z0-9-]{2,10}')
+OWN = ('aircraft', *CHOICES, *NUMBERS, 'plane_watch')
 
 # Altitude bands the screen colours a marker by (tar1090's rainbow, in the screen's own colours, theme.h AIRCRAFT_*):
 # on the ground, below 5,000 ft, below 15,000, below 30,000, and above.
@@ -52,14 +61,14 @@ FORGET_SECONDS = 120
 
 class Flight:
     __slots__ = ('id', 'lat', 'lon', 'altitude', 'heading', 'speed', 'callsign', 'model', 'origin', 'destination',
-                 'on_ground', 'airline')
+                 'on_ground', 'airline', 'registration', 'flight')
 
     def __init__(self, id, lat, lon, altitude=None, heading=None, speed=None, callsign='', model='', origin='',
-                 destination='', on_ground=False, airline=''):
+                 destination='', on_ground=False, airline='', registration='', flight=''):
         self.id, self.lat, self.lon = id, lat, lon
         self.altitude, self.heading, self.speed = altitude, heading, speed
         self.callsign, self.model, self.origin, self.destination = callsign, model, origin, destination
-        self.on_ground, self.airline = on_ground, airline
+        self.on_ground, self.airline, self.registration, self.flight = on_ground, airline, registration, flight
 
 
 def _number(value):
@@ -98,7 +107,9 @@ def flights_of(state):
                           _number(item.get('ground_speed')), callsign,
                           _text(item.get('aircraft_code'), 8) or _text(item.get('aircraft_model'), 16),
                           _text(item.get('airport_origin_code_iata'), 4), _text(item.get('airport_destination_code_iata'), 4),
-                          item.get('on_ground') in (True, 1, '1'), _text(item.get('airline_short'), 20)))
+                          item.get('on_ground') in (True, 1, '1'), _text(item.get('airline_short'), 20),
+                          _text(item.get('aircraft_registration'), 12) or _text(item.get('registration'), 12),
+                          _text(item.get('flight_number'), 12)))
     return out
 
 
@@ -123,12 +134,39 @@ def options_of(tile):
     for key, (default, low, high) in NUMBERS.items():
         value = options.get(key)
         out[key] = value if isinstance(value, int) and not isinstance(value, bool) and low <= value <= high else default
+    out['plane_watch'] = watched_of(options.get('plane_watch'))
     return out
 
 
+def watch_key(text):
+    """A registration or callsign as it is compared: capitals and digits only, so G-EZAB is GEZAB."""
+    return re.sub(r'[^A-Z0-9]', '', str(text).upper())
+
+
+def watched_of(value):
+    """{watch_key: colour on the wire} of a tile's watched aircraft, the first entry of a key winning."""
+    out = {}
+    for item in value if isinstance(value, list) else ():
+        if isinstance(item, dict) and isinstance(item.get('id'), str) and item.get('colour') in WATCH_COLOURS:
+            key = watch_key(item['id'])
+            if key and key not in out:
+                out[key] = WATCH_COLOURS.index(item['colour']) + 1
+    return out
+
+
+def watch_colour(flight, watched):
+    """The colour on the wire of a plane someone watches, by its registration, callsign or flight number; 0 for none."""
+    for text in (flight.registration, flight.callsign, flight.flight):
+        if text and watched.get(watch_key(text)):
+            return watched[watch_key(text)]
+    return 0
+
+
 def source_of(tile):
-    """The sensor a map tile's aircraft come from, '' for a tile without aircraft."""
-    return options_of(tile)['aircraft'] if tile.get('entity') == MAP_TILE else ''
+    """The sensor a map tile's aircraft come from, '' for a tile without aircraft or one that shows its people only."""
+    if tile.get('entity') != MAP_TILE or map_card.options_of(tile)['show'] == 'people':
+        return ''
+    return options_of(tile)['aircraft']
 
 
 def validate(options):
@@ -155,6 +193,25 @@ def validate(options):
                 out.pop(key)
     if out.get('plane_min', 0) > out.get('plane_max', ALTITUDE_CEILING):
         raise ValueError('plane_min')
+    if 'plane_watch' in out:
+        listed = out['plane_watch']
+        if not isinstance(listed, list) or len(listed) > WATCH_MOST:
+            raise ValueError('plane_watch')
+        kept, seen = [], set()
+        for item in listed:
+            if not isinstance(item, dict) or set(item) != {'id', 'colour'} or not isinstance(item['id'], str) \
+                    or item['colour'] not in WATCH_COLOURS:
+                raise ValueError('plane_watch')
+            name = item['id'].strip().upper()
+            if not WATCH_ID.fullmatch(name) or not watch_key(name):
+                raise ValueError('plane_watch')
+            if watch_key(name) not in seen:
+                seen.add(watch_key(name))
+                kept.append({'id': name, 'colour': item['colour']})
+        if kept:
+            out['plane_watch'] = kept
+        else:
+            out.pop('plane_watch')
     return out
 
 
@@ -200,10 +257,16 @@ def band(flight):
 
 def shown(flights, options, view):
     """The planes a card shows: within its altitudes, on the ground only when asked, inside the frame, the closest to
-    its middle first, at most `plane_most`."""
+    its middle first, at most `plane_most`; and after them every watched plane inside the frame, whatever the rest says."""
     low, high = options['plane_min'], options['plane_max']
-    out = []
+    watched = options.get('plane_watch') or {}
+    out, picked = [], []
     for flight in flights:
+        if watched and watch_colour(flight, watched):
+            x, y = view.point(flight.lat, flight.lon)
+            if -MARGIN <= x <= view.width + MARGIN and -MARGIN <= y <= view.height + MARGIN:
+                picked.append(flight)
+            continue
         if flight.on_ground and options['plane_ground'] == 'hide':
             continue
         if not flight.on_ground and flight.altitude is not None and not low <= flight.altitude <= high:
@@ -215,7 +278,7 @@ def shown(flights, options, view):
         if -MARGIN <= x <= view.width + MARGIN and -MARGIN <= y <= view.height + MARGIN:
             out.append((math.hypot(x - view.width / 2, y - view.height / 2), flight))
     out.sort(key=lambda item: item[0])
-    return [flight for _, flight in out[:options['plane_most']]]
+    return [flight for _, flight in out[:options['plane_most']]] + picked
 
 
 def label_kind(options, size, scale, full):
@@ -249,7 +312,7 @@ def label_of(flight, kind, metric, number=str, suffix=lambda unit: ' ' + unit):
     """A plane's label, its lines joined by a newline: the callsign, then its altitude, then its speed, type and route."""
     if kind == 'none':
         return ''
-    name = flight.callsign or flight.model or flight.id
+    name = flight.callsign or flight.registration or flight.model or flight.id
     if kind == 'callsign':
         return name[:12]
     altitude = altitude_text(flight, metric, number, suffix)
@@ -280,12 +343,15 @@ def thin(points, most):
 
 def overlay(view, flights, options, tracks=None, source='', size=None, scale=1.0, full=False, metric=False, now=None,
             number=str, suffix=lambda unit: ' ' + unit):
-    """The planes of one card on its frame: [x, y, heading, band, vx, vy, label, track], with -1 for a heading or band it
-    has none of, and the track as x, y, x, y ... oldest first, ending where the plane is."""
+    """The planes of one card on its frame: [x, y, heading, band, vx, vy, label, track, watched], with -1 for a heading
+    or band it has none of, the track as x, y, x, y ... oldest first, ending where the plane is, and `watched` the colour
+    of a watched plane (watch_colour), which comes last so the screen draws it on top, always with a label."""
     size = size or (view.width, view.height)
     kind = label_kind(options, size, scale, full)
+    watched = options.get('plane_watch') or {}
     out = []
     for flight in shown(flights, options, view):
+        colour = watch_colour(flight, watched) if watched else 0
         x, y = view.point(flight.lat, flight.lon)
         vx, vy = velocity(flight, view) if options['plane_motion'] == 'glide' else (0, 0)
         track = []
@@ -296,7 +362,8 @@ def overlay(view, flights, options, tracks=None, source='', size=None, scale=1.0
                 track += [round(px), round(py)]
         level = band(flight)
         out.append([round(x), round(y), round(flight.heading) if flight.heading is not None else -1,
-                    -1 if level is None else level, vx, vy, label_of(flight, kind, metric, number, suffix), track])
+                    -1 if level is None else level, vx, vy,
+                    label_of(flight, 'callsign' if colour and kind == 'none' else kind, metric, number, suffix), track, colour])
     return out
 
 
@@ -346,6 +413,8 @@ def message(target, index, size, planes, style, move='', focus=''):
             points = len(p[7]) // 2
             if points > 2:
                 p[7] = [v for pair in thin([(p[7][2 * n], p[7][2 * n + 1]) for n in range(points)], max(2, points // 2)) for v in pair]
+    # The farthest plane nobody watches goes first; a watched one only when nothing else is left.
     while length() > MESSAGE_BYTES and planes:
-        planes.pop()
+        unwatched = [n for n, p in enumerate(planes) if len(p) < 9 or not p[8]]
+        planes.pop(unwatched[-1] if unwatched else -1)
     return body

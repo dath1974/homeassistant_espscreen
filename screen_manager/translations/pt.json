@@ -2343,10 +2343,24 @@
       },
       "map": {
         "framing": {
-          "label": "Mostrar",
+          "label": "Centrar em",
           "everyone": "Todos",
           "home": "À volta de casa",
-          "person": "À volta desta pessoa"
+          "person": "À volta desta pessoa",
+          "place": "Um local"
+        },
+        "show": {
+          "label": "Mostrar",
+          "both": "Pessoas e aviões",
+          "people": "Pessoas",
+          "aircraft": "Aviões"
+        },
+        "centre": {
+          "label": "Local",
+          "lat": "Latitude",
+          "lon": "Longitude",
+          "hint": "O centro do mapa em graus decimais, como 51.4700 e -0.4543. Pode colar os dois de uma vez. Sem local, o mapa fica centrado em casa.",
+          "wrong": "Introduza uma latitude de -85 a 85 e uma longitude de -180 a 180."
         },
         "distance": {
           "label": "Distância",
@@ -2399,7 +2413,7 @@
           "hint": "Quem este mapa segue, cada um com a sua cor. Um localizador é um telemóvel, um carro ou uma etiqueta cuja localização o Home Assistant conhece."
         },
         "aircraft": {
-          "label": "Aviões",
+          "label": "Origem",
           "hint": "Um sensor que lista voos, como o sensor «Atualmente na área» da integração Flightradar24. O ecrã move cada avião quando o sensor o comunica.",
           "none": "Ainda nenhum sensor lista voos. Adicione uma integração que o faça, como a Flightradar24, e o seu sensor «Atualmente na área» aparece aqui.",
           "choose": "Nenhum",
@@ -2455,7 +2469,28 @@
           "plane_most": {
             "label": "No máximo",
             "hint": "Os aviões mais próximos do centro do mapa, no máximo {high}."
+          },
+          "watch": {
+            "label": "Seguidos",
+            "hint": "Matrículas ou indicativos, como N12345 ou BAW432, no máximo {most}. Um avião seguido aparece sempre, a qualquer altitude e por muitos outros que haja: maior, com um anel e a sua etiqueta, na sua própria cor.",
+            "wrong": "De 2 a 10 letras, algarismos ou hífenes, como G-EZAB.",
+            "placeholder": "Matrícula ou indicativo",
+            "add": "Adicionar",
+            "remove": "Remover {name}",
+            "colour": "Cor de {name}",
+            "colours": {
+              "red": "Vermelho",
+              "orange": "Laranja",
+              "amber": "Âmbar",
+              "green": "Verde",
+              "blue": "Azul",
+              "purple": "Roxo"
+            }
           }
+        },
+        "group": {
+          "people": "Pessoas",
+          "aircraft": "Aviões"
         }
       },
       "controls": {

@@ -9,6 +9,8 @@ How the card frames its people (`framing`):
 - `home`: the home zone in the middle at a fixed distance. Who is outside the view is a small chip on its edge,
   pointing the way.
 - `person`: the tile's own person in the middle at a fixed distance, the others as on `home`.
+- `place`: a point of the tile's own (`centre`, [latitude, longitude]) in the middle at a fixed distance, the others as
+  on `home`; home's place while it has none.
 
 `distance` is how far a fixed view reaches: street, neighbourhood, town or region.
 
@@ -27,7 +29,7 @@ MIN_ZOOM, MAX_ZOOM = 3.0, 17.5
 MAX_LATITUDE = 85.05112878
 EARTH_METRES = 6371000.0
 
-FRAMINGS = ('everyone', 'home', 'person')
+FRAMINGS = ('everyone', 'home', 'person', 'place')
 DISTANCES = {'street': 16.5, 'neighbourhood': 15.0, 'town': 13.0, 'region': 10.5}
 DEFAULT_DISTANCE = 'neighbourhood'
 # Room kept around everyone on `everyone`, as a share of the frame on each side.
@@ -282,12 +284,14 @@ def fit(points, size, reserve=(0, 0), margin=0):
     return lat, lon, zoom
 
 
-def frame_view(framing, distance, people, zones, size, own=None, reserve=(0, 0), margin=0):
+def frame_view(framing, distance, people, zones, size, own=None, reserve=(0, 0), margin=0, centre=None):
     """The view a card shows, and the people that fall outside it."""
     zoom = DISTANCES.get(distance, DISTANCES[DEFAULT_DISTANCE])
     placed = [p for p in people if p.placed]
     home = home_of(zones)
-    if framing == 'home' and home:
+    if framing == 'place' and centre:
+        view = View(centre[0], centre[1], zoom, size)
+    elif framing in ('home', 'place') and home:
         view = View(home.lat, home.lon, zoom, size)
     elif framing == 'person' and own is not None and own.placed:
         view = View(own.lat, own.lon, zoom, size)
@@ -754,7 +758,7 @@ def marker_size(size, dpi_scale):
 
 def render(size, people, zones, tiles, framing='everyone', distance=DEFAULT_DISTANCE, dark=False, dpi_scale=1.0,
            own=None, names=None, name=None, label_px=None, inset=None, photos=None, show_zones=True, full=False, focus=None,
-           move=None):
+           move=None, centre=None):
     """The card's picture: the streets, the zones, the people and the tile's name, in the look asked for.
 
     `tiles` are the decoded vector tiles of `view_for` ({} draws a plain ground without streets); `name` goes on a pill at
@@ -770,7 +774,7 @@ def render(size, people, zones, tiles, framing='everyone', distance=DEFAULT_DIST
     marker = marker_size(size, dpi_scale)
     shown_zones = zones if show_zones else []
     keep = (BAR * dpi_scale, 16 * dpi_scale) if full else reserve(dpi_scale, pill_h, inset, bool(name))
-    view = focus_view(focus, people, size, dpi_scale) or frame_view(framing, distance, people, zones, size, own, keep, marker * 0.6)
+    view = focus_view(focus, people, size, dpi_scale) or frame_view(framing, distance, people, zones, size, own, keep, marker * 0.6, centre)
     view = moved(view, move)
     canvas = Canvas(size, _rgb(look['land']))
     if tiles:
@@ -874,9 +878,11 @@ MARK_DEGREES = MARK_METRES / 111320.0
 # Every choice of a map and its default, the first of the catalogue's (catalogue/person.yaml `map`).
 CHOICES = {'framing': FRAMINGS, 'distance': tuple(DISTANCES), 'overlay': ('name', 'none'), 'follow': ('everyone', 'chosen'),
            'markers': ('photo', 'initials'), 'names': ('auto', 'always', 'never'), 'zones': ('show', 'hide'),
-           'streets': ('show', 'hide'), 'look': ('auto', 'light', 'dark')}
+           'streets': ('show', 'hide'), 'look': ('auto', 'light', 'dark'), 'show': ('both', 'people', 'aircraft')}
 DEFAULTS = {'framing': 'everyone', 'distance': DEFAULT_DISTANCE, 'overlay': 'name', 'follow': 'everyone',
-            'markers': 'photo', 'names': 'auto', 'zones': 'show', 'streets': 'show', 'look': 'auto'}
+            'markers': 'photo', 'names': 'auto', 'zones': 'show', 'streets': 'show', 'look': 'auto', 'show': 'both'}
+# The middle of a map framed on a place of its own: [latitude, longitude], kept to this many decimals (about a metre).
+CENTRE_DECIMALS = 5
 
 
 def options_of(tile):
@@ -885,10 +891,35 @@ def options_of(tile):
     return {key: options.get(key) if options.get(key) in CHOICES[key] else DEFAULTS[key] for key in CHOICES}
 
 
+def centre_of(tile):
+    """(latitude, longitude) a map is centred on when framed on its own place, or None."""
+    centre = (tile.get('options') or {}).get('centre')
+    if not isinstance(centre, list) or len(centre) != 2 or not all(isinstance(v, (int, float)) and not isinstance(v, bool) for v in centre):
+        return None
+    lat, lon = float(centre[0]), float(centre[1])
+    return (lat, lon) if math.isfinite(lat) and math.isfinite(lon) and -MAX_LATITUDE <= lat <= MAX_LATITUDE and -180 <= lon <= 180 else None
+
+
+def validate_centre(value):
+    """A tile's `centre` checked and kept to CENTRE_DECIMALS, as the layout stores it; raises ValueError."""
+    centre = centre_of({'options': {'centre': value}})
+    if centre is None:
+        raise ValueError('centre')
+    return [round(centre[0], CENTRE_DECIMALS), round(centre[1], CENTRE_DECIMALS)]
+
+
+def people_shown(tile):
+    """Whether a map draws its people and zones: a person's map always, the map tile unless it shows aircraft only."""
+    return tile.get('entity') != MAP_TILE or options_of(tile)['show'] != 'aircraft'
+
+
 def shown(tile, states=None, registry=None):
     """Everyone on the card, in its order. A person's map: the person first, then who rides along. The map tile: everyone
-    Home Assistant knows the place of (as its own map card's show_all), or the people and trackers chosen."""
+    Home Assistant knows the place of (as its own map card's show_all), or the people and trackers chosen; nobody when
+    it shows aircraft only."""
     chosen = [e for e in (tile.get('options') or {}).get('map') or () if isinstance(e, str)]
+    if not people_shown(tile):
+        return []
     if tile['entity'] == MAP_TILE:
         if options_of(tile)['follow'] == 'everyone':
             return everyone(states or {}, registry)
@@ -933,7 +964,7 @@ def fingerprint(tile, states, registry=None):
         cell = (round(found[0] / MARK_DEGREES), round(found[1] / MARK_DEGREES), round((found[2] or 0) / 50)) if found else None
         people.append((entity, state.get('state'), a.get('friendly_name'), a.get('entity_picture'), cell, colour_of(entity, order)))
     zones = [(z.entity, z.name, round(z.lat, 5), round(z.lon, 5), round(z.radius)) for z in zones_of(states)]
-    what = [sorted(options.items()), (tile.get('options') or {}).get('map') or [],
+    what = [sorted(options.items()), (tile.get('options') or {}).get('map') or [], centre_of(tile),
             name_of(tile, states) if options['overlay'] == 'name' else '', people, zones]
     return hashlib.sha1(json.dumps(what, sort_keys=True, default=str).encode()).hexdigest()[:12]
 
@@ -969,7 +1000,8 @@ def _framed(tile, states, size, board, registry, full, focus):
     own = people[0] if people else None
     keep = (BAR * board.scale, 16 * board.scale) if full else \
         reserve(board.scale, pill_h, board.inset, options['overlay'] == 'name' and bool(name_of(tile, states)))
-    return frame_view(options['framing'], options['distance'], people, zones, size, own, keep, marker_size(size, board.scale) * 0.6)
+    return frame_view(options['framing'], options['distance'], people, zones, size, own, keep, marker_size(size, board.scale) * 0.6,
+                      centre_of(tile))
 
 
 def wants_streets(tile):
@@ -996,6 +1028,6 @@ def render_tile(tile, states, size, board, dark=False, tiles=None, registry=None
     name = name_of(tile, states) if options['overlay'] == 'name' and not full else None
     image, _ = render(size, people, zones, (tiles or {}) if options['streets'] == 'show' else {}, options['framing'],
                       options['distance'], dark_for(tile, dark), board.scale, people[0] if people else None, names,
-                      name or None, board.label, board.inset, photos, options['zones'] == 'show', full, focus if full else None,
-                      move if full else None)
+                      name or None, board.label, board.inset, photos, options['zones'] == 'show' and people_shown(tile), full,
+                      focus if full else None, move if full else None, centre_of(tile))
     return image

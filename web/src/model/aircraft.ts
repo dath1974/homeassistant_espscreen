@@ -6,7 +6,7 @@ import { ofType } from "./catalogue";
 /** The page document's names (appearance) of the tile options, as page_layout.APPEARANCE has them. */
 export const AIR_APPEARANCE = { airSource: "aircraft", airMarker: "plane_marker", airLabel: "plane_label", airColour: "plane_colour",
   airGround: "plane_ground", airMotion: "plane_motion", airTrack: "plane_track", airTrackSeconds: "plane_track_s",
-  airMost: "plane_most", airMin: "plane_min", airMax: "plane_max" } as const;
+  airMost: "plane_most", airMin: "plane_min", airMax: "plane_max", airWatch: "plane_watch" } as const;
 export type AirField = keyof typeof AIR_APPEARANCE;
 export type AirOption = (typeof AIR_APPEARANCE)[AirField];
 export const AIR_FIELDS = Object.keys(AIR_APPEARANCE) as AirField[];
@@ -24,6 +24,19 @@ export const AIR_DEFAULTS: Record<string, unknown> = {
   ...Object.fromEntries(Object.entries(AIR_NUMBERS).map(([key, [first]]) => [key, first])),
 };
 const SOURCE = /^sensor\.[a-z0-9_]+$/;
+/** Watched aircraft (catalogue/person.yaml `map.watch`): a registration or callsign and one of these colours each. */
+export type Watched = { id: string; colour: string };
+const WATCH = ofType("person")?.map?.watch;
+export const WATCH_COLOURS: string[] = WATCH?.colours ?? [];
+export const WATCH_MOST = WATCH?.max ?? 8;
+const WATCH_ID = /^[A-Z0-9-]{2,10}$/;
+/** A registration or callsign as the add-on compares it (aircraft.watch_key): G-EZAB is GEZAB. */
+export const watchKey = (text: string) => text.toUpperCase().replace(/[^A-Z0-9]/g, "");
+/** A registration or callsign as typed, as the add-on stores it, or "" when it can be none. */
+export function watchId(text: string) {
+  const id = text.trim().toUpperCase();
+  return WATCH_ID.test(id) && watchKey(id) ? id : "";
+}
 
 /** The reason a tile's aircraft options would be refused or changed by the add-on (aircraft.validate), or "". */
 export function airProblem(options: Record<string, unknown>, mapTile: boolean): "" | "normalization" | "invalid" {
@@ -42,6 +55,18 @@ export function airProblem(options: Record<string, unknown>, mapTile: boolean): 
     if (value === undefined) continue;
     if (typeof value !== "number" || !Number.isInteger(value) || value < low || value > high) return "invalid";
     if (value === first) return "normalization";
+  }
+  const watch = options.plane_watch;
+  if (watch !== undefined) {
+    if (!Array.isArray(watch) || !watch.length) return "normalization";
+    if (watch.length > WATCH_MOST) return "invalid";
+    const keys = new Set<string>();
+    for (const item of watch as Watched[]) {
+      if (!item || typeof item !== "object" || Object.keys(item).sort().join() !== "colour,id" || typeof item.id !== "string" ||
+          !WATCH_COLOURS.includes(item.colour) || !watchId(item.id)) return "invalid";
+      if (item.id !== watchId(item.id) || keys.has(watchKey(item.id))) return "normalization";
+      keys.add(watchKey(item.id));
+    }
   }
   const low = (options.plane_min as number | undefined) ?? AIR_NUMBERS.plane_min?.[0] ?? 0;
   const high = (options.plane_max as number | undefined) ?? AIR_NUMBERS.plane_max?.[0] ?? 0;

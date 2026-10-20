@@ -2343,10 +2343,24 @@
       },
       "map": {
         "framing": {
-          "label": "Afficher",
+          "label": "Centrer sur",
           "everyone": "Tout le monde",
           "home": "Autour de la maison",
-          "person": "Autour de cette personne"
+          "person": "Autour de cette personne",
+          "place": "Un lieu"
+        },
+        "show": {
+          "label": "Afficher",
+          "both": "Personnes et avions",
+          "people": "Personnes",
+          "aircraft": "Avions"
+        },
+        "centre": {
+          "label": "Lieu",
+          "lat": "Latitude",
+          "lon": "Longitude",
+          "hint": "Le centre de la carte en degrés décimaux, par exemple 51.4700 et -0.4543. Vous pouvez coller les deux d'un coup. Sans lieu, la carte est centrée sur la maison.",
+          "wrong": "Saisissez une latitude de -85 à 85 et une longitude de -180 à 180."
         },
         "distance": {
           "label": "Distance",
@@ -2399,7 +2413,7 @@
           "hint": "Qui cette carte suit, chacun dans sa couleur. Un traceur est un téléphone, une voiture ou une balise dont Home Assistant connaît la position."
         },
         "aircraft": {
-          "label": "Avions",
+          "label": "Source",
           "hint": "Un capteur qui liste des vols, comme le capteur « Actuellement dans la zone » de l’intégration Flightradar24. L’écran déplace chaque avion à chaque rapport du capteur.",
           "none": "Aucun capteur ne liste encore de vols. Ajoutez une intégration qui le fait, comme Flightradar24, et son capteur « Actuellement dans la zone » apparaîtra ici.",
           "choose": "Aucun",
@@ -2455,7 +2469,28 @@
           "plane_most": {
             "label": "Au plus",
             "hint": "Les avions les plus proches du centre de la carte, {high} au plus."
+          },
+          "watch": {
+            "label": "Surveillés",
+            "hint": "Immatriculations ou indicatifs, par exemple N12345 ou BAW432, {most} au plus. Un avion surveillé s'affiche toujours, à toute altitude et quel que soit le nombre des autres : plus grand, avec un anneau et son étiquette, dans sa propre couleur.",
+            "wrong": "De 2 à 10 lettres, chiffres ou tirets, par exemple G-EZAB.",
+            "placeholder": "Immatriculation ou indicatif",
+            "add": "Ajouter",
+            "remove": "Retirer {name}",
+            "colour": "Couleur de {name}",
+            "colours": {
+              "red": "Rouge",
+              "orange": "Orange",
+              "amber": "Ambre",
+              "green": "Vert",
+              "blue": "Bleu",
+              "purple": "Violet"
+            }
           }
+        },
+        "group": {
+          "people": "Personnes",
+          "aircraft": "Avions"
         }
       },
       "controls": {

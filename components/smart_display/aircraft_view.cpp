@@ -20,12 +20,16 @@ struct View {
   bool hidden = false;
 };
 
-// A plane's colour: its band of altitude in the flight map's rainbow, or the screen's accent.
-static lv_color_t colour_of(const ap::Overlay &o, int band) {
+// A plane's colour: a watched plane's own (Home Assistant's colours, in the order of aircraft.WATCH_COLOURS), else its
+// band of altitude in the flight map's rainbow, or the screen's accent.
+static lv_color_t colour_of(const ap::Overlay &o, const ap::Plane &p) {
   static constexpr theme::Role BANDS[ap::BANDS] = {theme::AIRCRAFT_GROUND, theme::AIRCRAFT_LOW, theme::AIRCRAFT_MID,
                                                    theme::AIRCRAFT_HIGH, theme::AIRCRAFT_TOP};
+  static constexpr uint32_t WATCH[ap::WATCH_COLOURS] = {theme::ha::RED, theme::ha::ORANGE, theme::ha::AMBER,
+                                                        theme::ha::GREEN, theme::ha::BLUE, theme::ha::PURPLE};
+  if (p.watch > 0 && p.watch <= ap::WATCH_COLOURS) return lv_color_hex(WATCH[p.watch - 1]);
   if (!o.by_altitude) return theme::color(theme::ACCENT);
-  return theme::color(band >= 0 && band < ap::BANDS ? BANDS[band] : theme::AIRCRAFT_GROUND);
+  return theme::color(p.band >= 0 && p.band < ap::BANDS ? BANDS[p.band] : theme::AIRCRAFT_GROUND);
 }
 
 // The sizes of the reference look, larger on a full view, which is seen from further away.
@@ -47,6 +51,16 @@ static void line(lv_layer_t *layer, ap::Point a, ap::Point b, lv_color_t colour,
   dsc.color = colour; dsc.width = width; dsc.opa = opa; dsc.round_start = round_start; dsc.round_end = round_end;
   dsc.p1 = precise(a); dsc.p2 = precise(b);
   lv_draw_line(layer, &dsc);
+}
+// A circle's outline alone: the ring around a watched plane.
+static void ring(lv_layer_t *layer, ap::Point c, int d, int width, lv_color_t colour) {
+  lv_draw_rect_dsc_t dsc;
+  lv_draw_rect_dsc_init(&dsc);
+  dsc.radius = LV_RADIUS_CIRCLE; dsc.bg_opa = LV_OPA_TRANSP;
+  dsc.border_width = width; dsc.border_color = colour; dsc.border_opa = LV_OPA_COVER;
+  const int x = (int) std::lround(c.x) - d / 2, y = (int) std::lround(c.y) - d / 2;
+  lv_area_t box{x, y, x + d - 1, y + d - 1};
+  lv_draw_rect(layer, &dsc, &box);
 }
 static void dot(lv_layer_t *layer, ap::Point c, int d, lv_color_t fill, int border, lv_color_t edge) {
   lv_draw_rect_dsc_t dsc;
@@ -88,7 +102,7 @@ static void draw(lv_event_t *e) {
   for (size_t i = 0; i < o.planes.size(); ++i) {
     const auto &track = o.planes[i].track;
     if (track.size() < 4) continue;
-    const lv_color_t colour = colour_of(o, o.planes[i].band);
+    const lv_color_t colour = colour_of(o, o.planes[i]);
     const size_t points = track.size() / 2;
     for (size_t n = 0; n + 1 < points; ++n) {
       const ap::Point from = on_glass(track[2 * n], track[2 * n + 1]);
@@ -96,30 +110,41 @@ static void draw(lv_event_t *e) {
       line(layer, from, to, colour, s.line, LV_OPA_70, n == 0, n + 2 == points);
     }
   }
+  // The app sends the watched planes last, so they lie over the others.
   for (size_t i = 0; i < o.planes.size(); ++i) {
     const auto &p = o.planes[i];
-    const lv_color_t colour = colour_of(o, p.band);
+    const lv_color_t colour = colour_of(o, p);
     const ap::Point c = places[i];
+    const float grow = p.watch ? ap::WATCH_SCALE : 1.0f;
+    const int d = (int) std::lround(s.dot * grow), size = (int) std::lround(s.plane * grow);
+    if (p.watch) {
+      // A ring in its colour round a halo of the card's, a little beyond the marker.
+      const int across = (o.marker == ap::PLANE && p.heading != ap::NO_HEADING ? size : d) + 4 * s.halo + 2 * s.line;
+      ring(layer, c, across + 2 * s.halo, s.line + 2 * s.halo, halo);
+      ring(layer, c, across, s.line, colour);
+    }
     if (o.marker == ap::PLANE && p.heading != ap::NO_HEADING) {
       // A halo in the card's colour, so the plane reads on streets and on water alike.
-      shape(layer, c, s.plane + 2 * s.halo, p.heading, halo, LV_OPA_80);
-      shape(layer, c, s.plane, p.heading, colour, LV_OPA_COVER);
+      shape(layer, c, size + 2 * s.halo, p.heading, halo, LV_OPA_80);
+      shape(layer, c, size, p.heading, colour, LV_OPA_COVER);
       continue;
     }
     if (o.marker == ap::ARROW && p.heading != ap::NO_HEADING) {
-      const auto tick = ap::heading_tick(c, s.dot / 2.0f, s.tick, p.heading);
+      const auto tick = ap::heading_tick(c, d / 2.0f, s.tick * grow, p.heading);
       line(layer, tick[0], tick[1], halo, s.line + 2 * s.halo, LV_OPA_80);
       line(layer, tick[0], tick[1], colour, s.line, LV_OPA_COVER);
     }
-    dot(layer, c, s.dot, colour, s.halo, halo);
+    dot(layer, c, d, colour, s.halo, halo);
   }
   // The labels last, over everything: a soft pill of the card's colour with the plane's lines in ink.
   const lv_font_t *font = o.full && rt::label_font ? rt::label_font : rt::small_font ? rt::small_font : rt::label_font;
   if (!font) return;
   const int line_h = lv_font_get_line_height(font);
   const int frame_w = lv_area_get_width(&a), frame_h = lv_area_get_height(&a);
-  const int reach = (o.marker == ap::PLANE ? s.plane : s.dot) / 2;
   for (size_t i = 0; i < o.planes.size(); ++i) {
+    const bool watched = o.planes[i].watch != 0;
+    const int reach = (int) std::lround((o.marker == ap::PLANE ? s.plane : s.dot) * (watched ? ap::WATCH_SCALE : 1.0f) / 2) +
+                      (watched ? 2 * s.halo + s.line : 0);
     const auto rows = ap::lines(o.planes[i].label);
     if (rows.empty()) continue;
     int w = 0;
@@ -129,6 +154,8 @@ static void draw(lv_event_t *e) {
     lv_draw_rect_dsc_t bg;
     lv_draw_rect_dsc_init(&bg);
     bg.radius = s.radius; bg.bg_color = halo; bg.bg_opa = LV_OPA_80;
+    // A watched plane's label is edged in its colour.
+    if (watched) { bg.border_width = s.line; bg.border_color = colour_of(o, o.planes[i]); bg.border_opa = LV_OPA_COVER; }
     lv_area_t area{a.x1 + box.x, a.y1 + box.y, a.x1 + box.x + box.w - 1, a.y1 + box.y + box.h - 1};
     lv_draw_rect(layer, &bg, &area);
     for (size_t n = 0; n < rows.size(); ++n) {
