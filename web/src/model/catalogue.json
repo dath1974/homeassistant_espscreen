@@ -1598,7 +1598,13 @@
      "neighbourhood",
      "street",
      "town",
-     "region"
+     "region",
+     "radius"
+    ],
+    "radius": [
+     10000,
+     200,
+     500000
     ],
     "overlay": [
      "name",

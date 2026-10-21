@@ -2367,7 +2367,14 @@
           "neighbourhood": "Barrio",
           "street": "Calle",
           "town": "Ciudad",
-          "region": "Región"
+          "region": "Región",
+          "radius": "Radio"
+        },
+        "radius": {
+          "label": "Radio",
+          "hint": "{unit} alrededor del centro, de {low} a {high}. El mapa muestra algo más que el círculo en su lado corto, aclara el círculo y dibuja su borde. Los aviones de fuera se omiten, pero los vigilados siguen viéndose.",
+          "km": "km",
+          "mi": "mi"
         },
         "with": {
           "label": "También en el mapa",

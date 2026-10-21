@@ -2367,7 +2367,14 @@
           "neighbourhood": "Quartiere",
           "street": "Strada",
           "town": "Città",
-          "region": "Regione"
+          "region": "Regione",
+          "radius": "Raggio"
+        },
+        "radius": {
+          "label": "Raggio",
+          "hint": "{unit} attorno al centro, da {low} a {high}. La mappa mostra poco più del cerchio sul lato corto, schiarisce il cerchio e ne disegna il bordo. Gli aerei fuori vengono omessi, ma quelli osservati restano visibili.",
+          "km": "km",
+          "mi": "mi"
         },
         "with": {
           "label": "Anche sulla mappa",

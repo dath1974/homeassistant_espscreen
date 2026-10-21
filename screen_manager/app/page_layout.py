@@ -27,7 +27,7 @@ APPEARANCE = {
     "mapEntities": "map", "mapFraming": "framing", "mapDistance": "distance",
     # How a map looks and, on the map tile, whom it follows (app 0.4.36).
     "mapFollow": "follow", "mapMarkers": "markers", "mapNames": "names", "mapZones": "zones", "mapStreets": "streets",
-    "mapLook": "look", "mapShow": "show", "mapCentre": "centre",
+    "mapLook": "look", "mapShow": "show", "mapCentre": "centre", "mapRadius": "radius",
     # Aircraft over the map tile (aircraft.py): the sensor they come from and how the screen draws them.
     "airSource": "aircraft", "airMarker": "plane_marker", "airLabel": "plane_label", "airColour": "plane_colour",
     "airGround": "plane_ground", "airMotion": "plane_motion", "airTrack": "plane_track", "airTrackSeconds": "plane_track_s",

@@ -2367,7 +2367,14 @@
           "neighbourhood": "Viertel",
           "street": "Straße",
           "town": "Stadt",
-          "region": "Region"
+          "region": "Region",
+          "radius": "Radius"
+        },
+        "radius": {
+          "label": "Radius",
+          "hint": "{unit} um die Mitte, von {low} bis {high}. Die Karte zeigt über ihre kurze Seite etwas mehr als den Kreis, hellt ihn auf und zeichnet seinen Rand. Flugzeuge außerhalb werden weggelassen, beobachtete Flugzeuge bleiben sichtbar.",
+          "km": "km",
+          "mi": "mi"
         },
         "with": {
           "label": "Auch auf der Karte",

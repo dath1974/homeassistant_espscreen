@@ -2367,7 +2367,14 @@
           "neighbourhood": "Bairro",
           "street": "Rua",
           "town": "Cidade",
-          "region": "Região"
+          "region": "Região",
+          "radius": "Raio"
+        },
+        "radius": {
+          "label": "Raio",
+          "hint": "{unit} à volta do centro, de {low} a {high}. O mapa mostra um pouco mais do que o círculo no lado curto, clareia o círculo e desenha o seu contorno. Os aviões de fora são omitidos, mas os seguidos continuam visíveis.",
+          "km": "km",
+          "mi": "mi"
         },
         "with": {
           "label": "Também no mapa",

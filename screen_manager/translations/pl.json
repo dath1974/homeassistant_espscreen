@@ -2367,7 +2367,14 @@
           "neighbourhood": "Okolica",
           "street": "Ulica",
           "town": "Miasto",
-          "region": "Region"
+          "region": "Region",
+          "radius": "Promień"
+        },
+        "radius": {
+          "label": "Promień",
+          "hint": "{unit} wokół środka, od {low} do {high}. Mapa pokazuje na krótszym boku nieco więcej niż okrąg, rozjaśnia go i rysuje jego krawędź. Samoloty poza nim są pomijane, ale obserwowane nadal widać.",
+          "km": "km",
+          "mi": "mi"
         },
         "with": {
           "label": "Także na mapie",

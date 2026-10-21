@@ -20,7 +20,7 @@ import { AIR_APPEARANCE, AIR_DEFAULTS, AIR_OWN } from "./aircraft";
 
 const APPEARANCE = { display: "display", icon: "icon", background: "background", historyHours: "history_hours", refresh: "refresh", subtitle: "sub", fit: "fit", overlay: "overlay",
   mapEntities: "map", mapFraming: "framing", mapDistance: "distance",
-  mapFollow: "follow", mapMarkers: "markers", mapNames: "names", mapZones: "zones", mapStreets: "streets", mapLook: "look", mapShow: "show", mapCentre: "centre",
+  mapFollow: "follow", mapMarkers: "markers", mapNames: "names", mapZones: "zones", mapStreets: "streets", mapLook: "look", mapShow: "show", mapCentre: "centre", mapRadius: "radius",
   ...AIR_APPEARANCE,
   energyFlow: "flow",
   calendarStyle: "style", calendarEntities: "calendars", calendarPlaces: "places", calendarWords: "words", calendarHideWords: "hide_words",
@@ -32,7 +32,7 @@ const INTERACTION = ["tap", "inline", "controls", "action", "play", "speaker", "
 const PICTURE_OWN = ["refresh", ...Object.keys(rules.picture)];
 // A map card's own choices (app 0.4.33); its name on the picture is the live picture's `overlay`.
 const MAP = ofType("person")?.map;
-const MAP_OWN = ["map", "centre", "framing", "distance", "follow", "markers", "names", "zones", "streets", "look", "show", ...AIR_OWN];
+const MAP_OWN = ["map", "centre", "radius", "framing", "distance", "follow", "markers", "names", "zones", "streets", "look", "show", ...AIR_OWN];
 // The map tile of the screen's own cards (app 0.4.36): a map and nothing else.
 const MAP_TILE = "screen.map";
 
@@ -49,7 +49,7 @@ const SAMPLE_ACTION = { action: "homeassistant.turn_on" };
 // The value an option means when it is not stored, where the add-on drops the stored one (core.validate_layout).
 export const DEFAULTS: Record<string, unknown> = { sub: "auto", fit: rules.picture.fit[0], overlay: rules.picture.overlay[0],
   framing: MAP?.framing[0], distance: MAP?.distance[0], follow: MAP?.follow[0], markers: MAP?.markers[0], names: MAP?.names[0],
-  zones: MAP?.zones[0], streets: MAP?.streets[0], look: MAP?.look[0], show: MAP?.show?.[0], flow: rules.energyFlow[0], ...AIR_DEFAULTS,
+  zones: MAP?.zones[0], streets: MAP?.streets[0], look: MAP?.look[0], show: MAP?.show?.[0], radius: MAP?.radius?.[0], flow: rules.energyFlow[0], ...AIR_DEFAULTS,
   ...Object.fromEntries(Object.entries(CALENDAR_DEFAULTS).filter(([key]) => !["places", "words", "hide_words", "calendars"].includes(key))),
   // A sensor's meter (firmware 0.56.0, meter.validate): the ring and one segment are what nothing means.
   meter: rules.meter.styles[0], segments: rules.meter.segments[0], tilt_open: "100" };

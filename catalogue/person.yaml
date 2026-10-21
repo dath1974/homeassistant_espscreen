@@ -21,7 +21,9 @@ displays:
 # first names beside the markers, the zones, the streets or a plain ground, and the screen's look or one of its own.
 map:
   framing: [everyone, home, person, place]
-  distance: [neighbourhood, street, town, region]
+  distance: [neighbourhood, street, town, region, radius]
+  # The distance `radius`: a circle of this many metres round the middle, [default, lowest, highest].
+  radius: [10000, 200, 500000]
   overlay: [name, none]
   follow: [everyone, chosen]
   show: [both, people, aircraft]

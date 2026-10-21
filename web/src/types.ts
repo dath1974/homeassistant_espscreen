@@ -94,7 +94,7 @@ export type PageTile = {
   placement: { row: number; column: number; columns: number; rows: number };
   appearance: { label: string; presentation?: "single" | "wide" | "tall" | "square" | "full" | `${number}x${number}`; display?: string; icon?: string; background?: string; historyHours?: number; refresh?: number; subtitle?: string; fit?: string; overlay?: string;
     mapEntities?: string[]; mapFraming?: string; mapDistance?: string; mapFollow?: string; mapMarkers?: string; mapNames?: string;
-    mapZones?: string; mapStreets?: string; mapLook?: string; mapShow?: string; mapCentre?: number[]; energyFlow?: string;
+    mapZones?: string; mapStreets?: string; mapLook?: string; mapShow?: string; mapCentre?: number[]; mapRadius?: number; energyFlow?: string;
     // Aircraft over the map tile (model/aircraft.ts): TileOptions' aircraft and plane_*.
     airSource?: string; airMarker?: string; airLabel?: string; airColour?: string; airGround?: string; airMotion?: string;
     airTrack?: string; airTrackSeconds?: number; airMost?: number; airMin?: number; airMax?: number;
@@ -346,6 +346,8 @@ export type Inventory = {
   trackers?: Entity[];
   // Sensors that list flights, for the map tile's aircraft (aircraft.sources).
   aircraft?: Entity[];
+  // Home Assistant's unit of length ("km" or "mi"), for a map's radius.
+  units?: { length?: string };
   // `seen`: Home Assistant found it on the network, waiting to be paired (app 0.4.32). `pairing`: the app adds it itself
   // (app 0.4.73), `failed` when Home Assistant asked something only the person can answer.
   pending?: { friendly: string; file: string; node?: string; installed?: boolean; downloaded?: boolean; api_key?: string; seen?: boolean; pairing?: "adding" | "failed" | null }[];

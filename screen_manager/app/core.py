@@ -259,8 +259,9 @@ MAP_DOMAINS = frozenset(MAP_CARD['with'])
 MAP_MAX_ENTITIES = MAP_CARD['max']
 # Aircraft over the map tile (docs/MAP.md, "Aircraft"): the sensor they come from and how they are drawn, the map tile's
 # alone (aircraft.validate). They stay in the app too: the screen gets the planes as pixels (op "air").
-# `centre` is where a map framed on a place of its own (`framing: place`) has its middle, [latitude, longitude].
-MAP_OWN = ('map', 'centre', *MAP_OPTIONS, *aircraft.OWN)
+# `centre` is where a map framed on a place of its own (`framing: place`) has its middle, [latitude, longitude];
+# `radius` how far the distance `radius` reaches, in metres.
+MAP_OWN = ('map', 'centre', 'radius', *MAP_OPTIONS, *aircraft.OWN)
 # Displays that only work on a double-width card (`wide` in the catalogue).
 WIDE_ONLY = tuple(sorted({item['key'] for entry in catalogue.TYPES.values() for item in entry['displays'] if item.get('wide')}))
 
@@ -2083,6 +2084,13 @@ def validate_layout(data, stored=False, grid=DEFAULT_GRID):
                         options = {**options, 'centre': map_card.validate_centre(options['centre'])}
                     except ValueError:
                         raise ValueError(t('addon.errors.layout.invalid_setting', setting='centre')) from None
+                if 'radius' in options:
+                    try:
+                        map_card.validate_radius(options['radius'])
+                    except ValueError:
+                        raise ValueError(t('addon.errors.layout.invalid_setting', setting='radius')) from None
+                    if options['radius'] == map_card.RADIUS[0]:
+                        options = {k: v for k, v in options.items() if k != 'radius'}
                 allowed = {**MAP_OPTIONS, 'overlay': PICTURE_OPTIONS['overlay']}
                 # Following is the map tile's own: a person's map follows that person and who rides along. So is what it
                 # shows: a person's map always shows its people.
