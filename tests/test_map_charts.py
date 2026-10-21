@@ -125,16 +125,27 @@ class Drawing(unittest.TestCase):
     TILE = {'entity': 'screen.map', 'options': {'display': 'map', 'show': 'aircraft', 'framing': 'place', 'centre': CHICAGO,
                                                 'distance': 'region', 'overlay': 'none', 'streets': 'sectional'}}
 
-    def chart_for(self, size, board):
+    def chart_for(self, size, board, colour=RED):
         view = map_card.view_for(self.TILE, {}, size, board)
-        return {key: sheet() for key in map_charts.keys_for(view, 'sectional', board.scale)}
+        return {key: sheet(colour) for key in map_charts.keys_for(view, 'sectional', board.scale)}
 
     def test_the_chart_is_drawn_in_place_of_the_streets(self):
         board, size = map_card.Board({'dpi': 170}), (400, 300)
         image = map_card.render_tile(self.TILE, {}, size, board, False, None, chart=self.chart_for(size, board))
         self.assertTrue(all(abs(a - b) < 20 for a, b in zip(image.getpixel((200, 150)), RED)), image.getpixel((200, 150)))
-        dark = map_card.render_tile(self.TILE, {}, size, board, True, None, chart=self.chart_for(size, board))
-        self.assertLess(sum(dark.getpixel((200, 150))), sum(image.getpixel((200, 150))) - 60, 'dimmed in the dark look')
+
+    def test_in_the_dark_look_its_light_is_turned_round_and_its_hue_kept(self):
+        board, size = map_card.Board({'dpi': 170}), (400, 300)
+
+        def dark(colour):
+            return map_card.render_tile(self.TILE, {}, size, board, True, None, chart=self.chart_for(size, board, colour)).getpixel((200, 150))
+        ground, ink = map_card._rgb(map_card.DARK['land']), map_card._rgb(map_card.DARK['ink'])
+        self.assertTrue(all(abs(a - b) < 6 for a, b in zip(dark((255, 255, 255)), ground)), 'white paper: the dark ground')
+        self.assertTrue(all(abs(a - b) < 6 for a, b in zip(dark((0, 0, 0)), ink)), 'black ink: the dark look\'s ink')
+        r, g, b = dark((250, 230, 40))
+        self.assertTrue(r > b + 25 and g > b + 25, ('yellow stays yellowish, a dark olive', (r, g, b)))
+        r, g, b = dark((20, 90, 160))
+        self.assertGreater(b, r + 40, ('blue stays bluish', (r, g, b)))
 
     def test_without_a_chart_tile_the_ground_is_plain(self):
         board, size = map_card.Board({'dpi': 170}), (400, 300)

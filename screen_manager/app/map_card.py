@@ -765,14 +765,16 @@ def draw_people(canvas, view, people, look, dpi_scale, marker, names=False, phot
 
 PEOPLE_RGB = [_rgb(c) for c in PEOPLE]
 ATTRIBUTION = '© OpenStreetMap'
-# How much of the dark look's ground a chart is mixed with: a chart is printed on white, and would glare on a dark screen.
-CHART_DIM = 0.55
+# A chart in the dark look: printed on white, it would glare there, so its light is turned round and its hue turned back
+# half a circle (as a browser's invert(1) hue-rotate(180deg)): white paper goes dark, black ink light, and yellow stays
+# yellowish, blue bluish. The CSS filter's matrix for 180 degrees, as Pillow's convert takes it.
+HUE_HALF = (-0.574, 1.430, 0.144, 0, 0.426, 0.430, 0.144, 0, 0.426, 1.430, -0.856, 0)
 
 
 def draw_chart(canvas, view, tiles, look, dark):
     """A chart's picture tiles (map_charts.py) under the frame: {(zoom, x, y): bytes}, b'' where it has none."""
     import io
-    from PIL import Image
+    from PIL import Image, ImageOps
     s = SUPERSAMPLE
     for (tz, tx, ty), raw in tiles.items():
         if not raw:
@@ -786,7 +788,10 @@ def draw_chart(canvas, view, tiles, look, dark):
         x1, y1 = round((ox + TILE_PX * scale) * s), round((oy + TILE_PX * scale) * s)
         canvas.image.paste(picture.resize((x1 - x0, y1 - y0), Image.Resampling.BICUBIC), (x0, y0))
     if dark:
-        canvas.image = Image.blend(canvas.image, Image.new('RGB', canvas.image.size, _rgb(look['land'])), CHART_DIM)
+        # Then fitted between the dark look's ground and its ink, so the card sits with the rest of the screen.
+        low, high = _rgb(look['land'])[0], _rgb(look['ink'])[0]
+        turned = ImageOps.invert(canvas.image).convert('RGB', HUE_HALF)
+        canvas.image = Image.eval(turned, lambda v: round(low + v * (high - low) / 255))
 
 
 # The full view's top bar (runtime_tiles.h camera_open: a 40 px key 8 px down on a 170 dpi board, 60 and 16 on a large one).
