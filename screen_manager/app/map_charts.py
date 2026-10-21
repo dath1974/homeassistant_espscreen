@@ -23,17 +23,19 @@ LOG = logging.getLogger(__name__)
 FAA = 'https://tiles.arcgis.com/tiles/ssFJjBXIUyZDrSYZ/arcgis/rest/services'
 # key -> the tile address ({z}/{y}/{x}, as ArcGIS orders them), the tile zooms worth asking for, the closest view it is
 # drawn at, what the card credits, and how it goes dark in the dark look (`night`, map_card.draw_chart): 'invert' turns
-# its light round and keeps its hues, which suits line work on white paper; a number darkens it to that share of its
-# light instead, for the sectional, whose colour areas (yellow towns, terrain tints) turn muddy inverted.
+# its light round and keeps its hues, which suits line work on white paper; 'colours' turns round only its paper and
+# ink and keeps every colour as printed, brightened, for the IFR charts, whose colours mean something (as ForeFlight's
+# inverted charts); a number darkens it to that share of its light instead, for the sectional, whose colour areas
+# (yellow towns, terrain tints) turn muddy inverted.
 # The sectional is scanned at about zoom 10 and the IFR charts at 8 (high) and 10 (low); one level closer is still sharp
 # enough. The region distance (10.5) shows every chart.
 CHARTS = {
     'sectional': {'url': FAA + '/VFR_Sectional/MapServer/tile/{z}/{y}/{x}', 'zoom': (8, 11), 'most': 12.0, 'credit': 'FAA',
                   'night': 0.6},
     'ifr_low': {'url': FAA + '/IFR_AreaLow/MapServer/tile/{z}/{y}/{x}', 'zoom': (7, 11), 'most': 12.0, 'credit': 'FAA',
-                'night': 'invert'},
+                'night': 'colours'},
     'ifr_high': {'url': FAA + '/IFR_High/MapServer/tile/{z}/{y}/{x}', 'zoom': (5, 9), 'most': 10.5, 'credit': 'FAA',
-                 'night': 'invert'},
+                 'night': 'colours'},
     'topo': {'url': 'https://basemap.nationalmap.gov/arcgis/rest/services/USGSTopo/MapServer/tile/{z}/{y}/{x}',
              'zoom': (0, 16), 'most': 17.5, 'credit': 'USGS', 'night': 'invert'},
 }

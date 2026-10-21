@@ -769,13 +769,24 @@ ATTRIBUTION = '© OpenStreetMap'
 # half a circle (as a browser's invert(1) hue-rotate(180deg)): white paper goes dark, black ink light, and yellow stays
 # yellowish, blue bluish. The CSS filter's matrix for 180 degrees, as Pillow's convert takes it.
 HUE_HALF = (-0.574, 1.430, 0.144, 0, 0.426, 0.430, 0.144, 0, 0.426, 1.430, -0.856, 0)
+# A chart whose colours mean something (an IFR chart's blue and green airports, its brown) turns round only its paper and
+# ink, as ForeFlight's inverted charts do: a pixel this grey (HSV saturation) or this dark is turned, a coloured one
+# keeps its own colour, lifted to at least this brightness (HSV value) so it stands out on the dark paper.
+GREY_SATURATION = (50, 110)
+INK_VALUE = (70, 120)
+COLOUR_VALUE = 190
+
+
+def _ramp(full, none):
+    """A mask's point table: 255 up to `full`, 0 from `none`, a straight line between."""
+    return lambda v: 255 if v <= full else 0 if v >= none else round(255 * (none - v) / (none - full))
 
 
 def draw_chart(canvas, view, tiles, look, dark, night='invert'):
     """A chart's picture tiles (map_charts.py) under the frame: {(zoom, x, y): bytes}, b'' where it has none. `night`:
     how it goes dark in the dark look (map_charts.CHARTS)."""
     import io
-    from PIL import Image, ImageOps
+    from PIL import Image, ImageChops, ImageOps
     s = SUPERSAMPLE
     for (tz, tx, ty), raw in tiles.items():
         if not raw:
@@ -788,13 +799,20 @@ def draw_chart(canvas, view, tiles, look, dark, night='invert'):
         x0, y0 = round(ox * s), round(oy * s)
         x1, y1 = round((ox + TILE_PX * scale) * s), round((oy + TILE_PX * scale) * s)
         canvas.image.paste(picture.resize((x1 - x0, y1 - y0), Image.Resampling.BICUBIC), (x0, y0))
-    if dark and night != 'invert':
+    if not dark:
+        return
+    if night not in ('invert', 'colours'):
         canvas.image = canvas.image.point(lambda v: round(v * night))
-    elif dark:
-        # Then fitted between the dark look's ground and its ink, so the card sits with the rest of the screen.
-        low, high = _rgb(look['land'])[0], _rgb(look['ink'])[0]
-        turned = ImageOps.invert(canvas.image).convert('RGB', HUE_HALF)
-        canvas.image = Image.eval(turned, lambda v: round(low + v * (high - low) / 255))
+        return
+    # Turned round, then fitted between the dark look's ground and its ink, so the card sits with the rest of the screen.
+    low, high = _rgb(look['land'])[0], _rgb(look['ink'])[0]
+    turned = Image.eval(ImageOps.invert(canvas.image).convert('RGB', HUE_HALF), lambda v: round(low + v * (high - low) / 255))
+    if night == 'colours':
+        hue, saturation, value = canvas.image.convert('HSV').split()
+        grey = ImageChops.lighter(saturation.point(_ramp(*GREY_SATURATION)), value.point(_ramp(*INK_VALUE)))
+        lifted = Image.merge('HSV', (hue, saturation, value.point(lambda v: max(v, COLOUR_VALUE)))).convert('RGB')
+        turned = Image.composite(turned, lifted, grey)
+    canvas.image = turned
 
 
 # The full view's top bar (runtime_tiles.h camera_open: a 40 px key 8 px down on a 170 dpi board, 60 and 16 on a large one).
