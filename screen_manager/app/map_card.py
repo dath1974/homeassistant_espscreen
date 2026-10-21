@@ -26,6 +26,7 @@ from pathlib import Path
 
 import airports
 import catalogue
+import map_charts
 
 TILE_PX = 256
 # Home Assistant's proxy serves no vector tile past zoom 14; a closer view draws the zoom-14 tile larger, as MapLibre
@@ -765,19 +766,41 @@ def draw_people(canvas, view, people, look, dpi_scale, marker, names=False, phot
 
 PEOPLE_RGB = [_rgb(c) for c in PEOPLE]
 ATTRIBUTION = '© OpenStreetMap'
+# How much of the dark look's ground a chart is mixed with: a chart is printed on white, and would glare on a dark screen.
+CHART_DIM = 0.55
+
+
+def draw_chart(canvas, view, tiles, look, dark):
+    """A chart's picture tiles (map_charts.py) under the frame: {(zoom, x, y): bytes}, b'' where it has none."""
+    import io
+    from PIL import Image
+    s = SUPERSAMPLE
+    for (tz, tx, ty), raw in tiles.items():
+        if not raw:
+            continue
+        try:
+            picture = Image.open(io.BytesIO(raw)).convert('RGB')
+        except Exception:
+            continue
+        ox, oy, scale = view.tile_origin(tz, tx, ty)
+        x0, y0 = round(ox * s), round(oy * s)
+        x1, y1 = round((ox + TILE_PX * scale) * s), round((oy + TILE_PX * scale) * s)
+        canvas.image.paste(picture.resize((x1 - x0, y1 - y0), Image.Resampling.BICUBIC), (x0, y0))
+    if dark:
+        canvas.image = Image.blend(canvas.image, Image.new('RGB', canvas.image.size, _rgb(look['land'])), CHART_DIM)
 
 
 # The full view's top bar (runtime_tiles.h camera_open: a 40 px key 8 px down on a 170 dpi board, 60 and 16 on a large one).
 BAR = 60
 
 
-def draw_attribution(canvas, look, dpi_scale, bottom=False):
+def draw_attribution(canvas, look, dpi_scale, bottom=False, text=ATTRIBUTION):
     from PIL import ImageDraw
     s = SUPERSAMPLE
     draw = ImageDraw.Draw(canvas.image)
     face = font(9.5 * dpi_scale * s, 400)
     x, y = canvas.width * s - 7 * dpi_scale * s, (canvas.height - 6 * dpi_scale) * s if bottom else 6 * dpi_scale * s
-    draw.text((x, y), ATTRIBUTION, font=face, anchor='rd' if bottom else 'ra', fill=_rgb(look['muted']),
+    draw.text((x, y), text, font=face, anchor='rd' if bottom else 'ra', fill=_rgb(look['muted']),
               stroke_width=round(1.6 * s * dpi_scale), stroke_fill=_rgb(look['halo']))
 
 
@@ -789,10 +812,11 @@ def marker_size(size, dpi_scale):
 
 def render(size, people, zones, tiles, framing='everyone', distance=DEFAULT_DISTANCE, dark=False, dpi_scale=1.0,
            own=None, names=None, name=None, label_px=None, inset=None, photos=None, show_zones=True, full=False, focus=None,
-           move=None, centre=None, radius=None):
+           move=None, centre=None, radius=None, chart=None, credit=None):
     """The card's picture: the streets, the zones, the people and the tile's name, in the look asked for.
 
-    `tiles` are the decoded vector tiles of `view_for` ({} draws a plain ground without streets); `name` goes on a pill at
+    `tiles` are the decoded vector tiles of `view_for` ({} draws a plain ground without streets), `chart` a chart's picture
+    tiles (map_charts.keys_for) drawn in their place, with `credit` for its attribution; `name` goes on a pill at
     the bottom left in the card's own colours, `label_px` high as the screen writes a tile's name (its FONT_LABEL_SIZE).
     `names`: None puts first names beside the markers where the card has room for them, True and False always and never.
     `photos` has a picture per entity that shows one in its marker. `full`: the view over the whole glass a tap opens,
@@ -810,7 +834,10 @@ def render(size, people, zones, tiles, framing='everyone', distance=DEFAULT_DIST
     circle = (view.lat, view.lon, radius or RADIUS[0]) if distance == 'radius' and framing != 'everyone' and not focus else None
     view = moved(view, move)
     canvas = Canvas(size, _rgb(look['land']))
-    if tiles:
+    if chart:
+        tiles = {}
+        draw_chart(canvas, view, chart, look, dark)
+    elif tiles:
         draw_basemap(canvas, view, tiles, look, dpi_scale)
     if circle:
         draw_radius(canvas, view, circle, look, dpi_scale)
@@ -822,8 +849,8 @@ def render(size, people, zones, tiles, framing='everyone', distance=DEFAULT_DIST
     people_boxes = draw_people(canvas, view, people, look, dpi_scale, marker, names, photos, focus, hits)
     if tiles and min(size) >= 150 * dpi_scale:
         draw_places(canvas, view, tiles, look, dpi_scale, people_boxes + zone_boxes)
-    if tiles:
-        draw_attribution(canvas, look, dpi_scale, bottom=full)
+    if chart or tiles:
+        draw_attribution(canvas, look, dpi_scale, bottom=full, text=credit if chart else ATTRIBUTION)
     if name:
         draw_name(canvas, name, look, label_px, pill_h, inset)
     image = canvas.finish()
@@ -913,7 +940,7 @@ MARK_DEGREES = MARK_METRES / 111320.0
 # Every choice of a map and its default, the first of the catalogue's (catalogue/person.yaml `map`).
 CHOICES = {'framing': FRAMINGS, 'distance': (*DISTANCES, 'radius'), 'overlay': ('name', 'none'), 'follow': ('everyone', 'chosen'),
            'markers': ('photo', 'initials'), 'names': ('auto', 'always', 'never'), 'zones': ('show', 'hide'),
-           'streets': ('show', 'hide'), 'look': ('auto', 'light', 'dark'), 'show': ('both', 'people', 'aircraft')}
+           'streets': ('show', 'hide', 'sectional', 'ifr_low', 'ifr_high', 'topo'), 'look': ('auto', 'light', 'dark'), 'show': ('both', 'people', 'aircraft')}
 DEFAULTS = {'framing': 'everyone', 'distance': DEFAULT_DISTANCE, 'overlay': 'name', 'follow': 'everyone',
             'markers': 'photo', 'names': 'auto', 'zones': 'show', 'streets': 'show', 'look': 'auto', 'show': 'both'}
 # The middle of a map framed on a place of its own: [latitude, longitude], kept to this many decimals (about a metre).
@@ -1071,7 +1098,14 @@ def _framed(tile, states, size, board, registry, full, focus):
 
 
 def wants_streets(tile):
-    return options_of(tile)['streets'] == 'show'
+    """Whether a card may need the streets: a card with a chart draws them where the chart has nothing."""
+    return options_of(tile)['streets'] != 'hide'
+
+
+def chart_of(tile):
+    """The chart a card draws in place of its streets (map_charts.CHARTS), or None."""
+    streets = options_of(tile)['streets']
+    return None if streets in ('show', 'hide') else streets
 
 
 def pictures_wanted(tile, states, registry=None):
@@ -1086,14 +1120,18 @@ def pictures_wanted(tile, states, registry=None):
     return out
 
 
-def render_tile(tile, states, size, board, dark=False, tiles=None, registry=None, photos=None, full=False, focus=None, move=None):
+def render_tile(tile, states, size, board, dark=False, tiles=None, registry=None, photos=None, full=False, focus=None, move=None,
+                chart=None):
     """The picture of one map tile of a layout at exactly `size`, in the look `dark_for` gives it; `full` the view over
-    the whole glass a tap on it opens, where the screen writes the name in its top bar."""
+    the whole glass a tap on it opens, where the screen writes the name in its top bar. `chart`: the picture tiles of the
+    tile's chart (map_charts.py), drawn instead of its streets when any came."""
     options, people, zones = _card(tile, states, registry)
     names = {'auto': True if full else None, 'always': True, 'never': False}[options['names']]
     name = name_of(tile, states) if options['overlay'] == 'name' and not full else None
-    image, _ = render(size, people, zones, (tiles or {}) if options['streets'] == 'show' else {}, options['framing'],
+    chart = chart if chart and chart_of(tile) and map_charts.drawable(chart) else None
+    credit = map_charts.CHARTS[chart_of(tile)]['credit'] if chart else None
+    image, _ = render(size, people, zones, (tiles or {}) if options['streets'] != 'hide' else {}, options['framing'],
                       options['distance'], dark_for(tile, dark), board.scale, people[0] if people else None, names,
                       name or None, board.label, board.inset, photos, options['zones'] == 'show' and people_shown(tile), full,
-                      focus if full else None, move if full else None, centre_of(tile), radius_of(tile))
+                      focus if full else None, move if full else None, centre_of(tile), radius_of(tile), chart, credit)
     return image

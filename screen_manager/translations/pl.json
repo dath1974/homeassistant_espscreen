@@ -2404,9 +2404,14 @@
           "hide": "Ukryj"
         },
         "streets": {
-          "label": "Ulice",
-          "show": "Pokaż",
-          "hide": "Gładkie"
+          "label": "Mapa bazowa",
+          "show": "Ulice",
+          "hide": "Gładkie",
+          "sectional": "Mapa VFR sectional (USA)",
+          "ifr_low": "IFR niska (USA)",
+          "ifr_high": "IFR wysoka (USA)",
+          "topo": "USGS Topo (USA)",
+          "chart_hint": "Mapa FAA lub USGS, tylko Stany Zjednoczone, nie do nawigacji. Pokazuje się przy odległościach, dla których jest rysowana; bliżej lub poza Stanami Zjednoczonymi mapa pokazuje ulice."
         },
         "look": {
           "label": "Wygląd",

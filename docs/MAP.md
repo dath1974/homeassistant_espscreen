@@ -44,7 +44,7 @@ middle, so each stays to be seen; the one a finger picked never moves.
 | **Markers** | **Photo**: a person's picture in their marker, as Home Assistant shows it, and their initials when they have none. **Initials**: always the letters. |
 | **Names** | First names beside the markers: where the card has room (from about 200 pixels high, and always over the whole screen), always, or never. |
 | **Zones** | Your zones as soft circles, or none. |
-| **Streets** | The streets from Home Assistant's map, or a plain ground with only the zones and people: nothing is fetched. |
+| **Base map** | The streets from Home Assistant's map, a plain ground with only the zones and people (nothing is fetched), or a chart of the United States: the FAA's VFR sectional, IFR low or IFR high enroute chart, or the USGS topographic map. See "Charts". |
 | **Look** | As the screen (light or dark with it), or always light, or always dark. |
 | **Tap** (map tile) | **Full screen with keys**: the full view above, with its back key, name and keys. **Full screen, map only**: the map over the whole screen with nothing over it, and a tap anywhere closes it. **Nothing**: a tap does nothing. |
 | **On the picture** | The tile's name on a small label at the bottom left, or nothing. |
@@ -79,6 +79,21 @@ dark. The only strong colours on the card are the people and their zones. The ca
 When Home Assistant has no tiles to give (an older Home Assistant, or no internet), the card is drawn from the zones and
 the people alone, and Tessera asks again after ten minutes. A person's picture comes through Home Assistant too, or
 from a public address on the internet; never from another address in the house.
+
+## Charts
+
+A map can show a chart in place of its streets: the FAA's VFR sectional, IFR enroute low or IFR enroute high chart, or
+the USGS topographic map. They cover the United States, they are drawn as their makers print them (not in the screen's
+colours, and a little dimmed in the dark look), and they are not for navigation. The card carries "FAA" or "USGS".
+
+Home Assistant has no proxy for these, so Tessera asks the chart's own public server, which needs no key. As for the
+streets, a request names a zoom and two whole numbers and nothing else, and it carries the app's name. Tiles are kept for
+a day, one store for every screen.
+
+A chart is printed for a scale, so each shows at the distances it is readable at: the aviation charts at Region or a
+radius of a few kilometers or more, and the topographic map at every distance. A dense screen draws the chart's tiles
+larger rather than its text smaller. Closer in than a chart is drawn for, outside the United States, or while its server
+gives nothing, the map shows its streets instead, and Tessera asks the server again after ten minutes.
 
 ## When it is drawn again
 
@@ -150,6 +165,7 @@ full view closed) gets nothing more. A screen with older firmware shows the map 
 | --- | --- |
 | Reading Home Assistant's vector tiles | `screen_manager/app/vector_tiles.py` |
 | The tiles through Home Assistant, cached | `screen_manager/app/map_tiles.py`, `HomeAssistant.map_tile` in `server.py` |
+| Charts: their servers, zooms and tiles, cached | `screen_manager/app/map_charts.py`, `HomeAssistant.chart_tile` in `server.py`, `draw_chart` in `map_card.py` |
 | Who is on it, framing, the movement mark, the drawing | `screen_manager/app/map_card.py` |
 | Airports by their code, for a place of its own | `screen_manager/app/airports.py`, `airports.tsv.gz` written by `tools/build_airports.py`, `/api/airport` in `server.py` |
 | A screen's request, the full view, focus and its card, pictures, kept maps | `Manager.answer_live`, `answer_map_full`, `map_sheet`, `map_render`, `map_photos` in `server.py` |

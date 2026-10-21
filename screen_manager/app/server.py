@@ -43,6 +43,7 @@ import map_card
 import aircraft
 import energy_flow
 import plugin_pictures
+import map_charts
 import map_tiles
 import valetudo_map
 import tile_icons
@@ -712,6 +713,24 @@ class HomeAssistant:
                     raise ValueError('tile too large')
             return bytes(raw)
 
+    async def chart_tile(self, url):
+        """One tile of a chart under a map card (map_charts.py), from the chart's own public server: Home Assistant has
+        no proxy for it. The address names a zoom and two whole numbers, the request the app; b'' for a square the chart
+        has nothing in."""
+        if not any(url.startswith(chart['url'].split('{', 1)[0]) for chart in map_charts.CHARTS.values()):
+            raise ValueError('not a chart')
+        async with self.session.get(url, headers={'User-Agent': f'ESP Screen Manager/{core.APP_VERSION or "dev"} (Home Assistant app)'},
+                                    timeout=ClientTimeout(total=map_charts.FETCH_SECONDS), allow_redirects=False) as response:
+            if response.status == 404:
+                return b''
+            response.raise_for_status()
+            raw = bytearray()
+            async for chunk in response.content.iter_chunked(65536):
+                raw += chunk
+                if len(raw) > map_charts.MAX_TILE_BYTES:
+                    raise ValueError('tile too large')
+            return bytes(raw)
+
     async def entity_picture(self, picture):
         """An entity's picture (`entity_picture`) for a marker on a map (app 0.4.36), from where Home Assistant's own map
         takes it: its own address through Home Assistant (a person's uploaded picture), or a public address on the
@@ -1078,6 +1097,8 @@ class Manager:
         # last maps drawn, by their mark, frame and look: a screen in dark mode and one in light mode each have their
         # own, and a page that loads again for its camera does not draw its map again.
         self.map_source = map_tiles.TileSource(lambda z, x, y: self.ha.map_tile(z, x, y))
+        # The charts a map card can show instead (map_charts.py): from their own servers, one source for every screen.
+        self.map_charts = map_charts.ChartSource(lambda url: self.ha.chart_tile(url))
         self.map_renders = OrderedDict()
         # A media player's library (app 0.4.42, firmware 0.24.0, media_library.py): the widest features each player
         # reported (GitHub #88), the numbers each screen's items go by, the folders read a moment ago, the players
@@ -4028,6 +4049,8 @@ class Manager:
         def mark():
             # Without streets to be had it is another picture, so the one with streets replaces it when they come back.
             streets = '' if self.map_source.available() or not map_card.wants_streets(tile) else '-'
+            chart = map_card.chart_of(tile)
+            streets += '' if not chart or self.map_charts.available(chart) else '~'
             moved = '@%d,%s,%s' % move if move else ''
             return f'{map_card.fingerprint(tile, self.ha.states, self.registry_index())}{look}{streets}{"f" if full else ""}{focus or ""}{moved}'
 
@@ -4039,16 +4062,24 @@ class Manager:
                 return self.map_renders[key]
             registry = self.registry_index()
             view = map_card.view_for(tile, self.ha.states, (width, height), board, registry, full, focus, move)
-            wanted = view.tiles() if map_card.wants_streets(tile) else []
+            # A chart first, where the card has one: the streets only where it has nothing (outside the United States,
+            # a view far closer than the chart is printed for).
+            chart = map_card.chart_of(tile)
+            charted = map_charts.keys_for(view, chart, board.scale) if chart else []
+            sheets = await self.map_charts.tiles(chart, charted) if charted else {}
+            drawn = map_charts.drawable(sheets)
+            wanted = view.tiles() if map_card.wants_streets(tile) and not drawn else []
             streets = await self.map_source.tiles(wanted)
             photos = await self.map_photos(map_card.pictures_wanted(tile, self.ha.states, registry))
             image = await asyncio.get_running_loop().run_in_executor(
-                None, lambda: map_card.render_tile(tile, self.ha.states, (width, height), board, dark, streets, registry, photos, full, focus, move))
+                None, lambda: map_card.render_tile(tile, self.ha.states, (width, height), board, dark, streets, registry, photos, full, focus, move,
+                                               sheets))
             # Where its markers are, for a full view's finger (answer_map_full): kept as long as the picture is.
             self.map_hits[key[:3]] = image.info.get('hits', [])
             while len(self.map_hits) > self.MAP_RENDERS_KEPT:
                 self.map_hits.pop(next(iter(self.map_hits)))
-            if self.map_source.available() and len(streets) < len(wanted):
+            if self.map_source.available() and len(streets) < len(wanted) or \
+                    chart and self.map_charts.available(chart) and len(sheets) < len(charted):
                 image.info['provisional'] = True
             else:
                 self.map_renders[key] = image

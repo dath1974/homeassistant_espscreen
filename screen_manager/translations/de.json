@@ -2404,9 +2404,14 @@
           "hide": "Ausblenden"
         },
         "streets": {
-          "label": "Straßen",
-          "show": "Zeigen",
-          "hide": "Schlicht"
+          "label": "Grundkarte",
+          "show": "Straßen",
+          "hide": "Schlicht",
+          "sectional": "VFR-Sektionalkarte (USA)",
+          "ifr_low": "IFR Low (USA)",
+          "ifr_high": "IFR High (USA)",
+          "topo": "USGS Topo (USA)",
+          "chart_hint": "Eine Karte der FAA oder des USGS, nur für die USA und nicht zur Navigation. Sie erscheint bei den Entfernungen, für die sie gezeichnet ist; näher heran oder außerhalb der USA zeigt die Karte ihre Straßen."
         },
         "look": {
           "label": "Aussehen",
