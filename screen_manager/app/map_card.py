@@ -13,8 +13,9 @@ How the card frames its people (`framing`):
   on `home`; home's place while it has none.
 
 `distance` is how far a fixed view reaches: street, neighbourhood, town or region, or `radius`: a circle of `radius`
-metres round the middle, the view a little larger (RADIUS_ROOM) across the frame's short side, the circle lightened with
-its edge drawn, and the planes outside it left out (aircraft.py).
+metres round the middle, the view a little larger (RADIUS_ROOM) across the frame's short side, the circle shaded (a
+shade darker in the light look, lighter in the dark one, so the map's white streets keep their contrast) with its edge
+drawn, and the planes outside it left out (aircraft.py).
 
 The look is calm on purpose: the streets are a quiet ground in the screen's greys, water and green a soft tint of the
 screen's own palette, and the only strong colours on the card are the people and their zones.
@@ -329,7 +330,7 @@ def frame_view(framing, distance, people, zones, size, own=None, reserve=(0, 0),
 
 
 def draw_radius(canvas, view, circle, look, dpi_scale):
-    """The distance `radius`: the circle (lat, lon, metres) lightened, with its edge in a contrasting grey."""
+    """The distance `radius`: the circle (lat, lon, metres) shaded by the look, with its edge in a contrasting grey."""
     from PIL import Image, ImageDraw
     s = SUPERSAMPLE
     lat, lon, metres = circle
@@ -362,7 +363,7 @@ LIGHT = {
     'road': 0xFFFFFF, 'road_case': 0xDBDBDB, 'major': 0xFFFFFF, 'major_case': 0xCECECE, 'path': 0xE1E1E1,
     'rail': 0xCCCCCC, 'place': 0x898989, 'halo': 0xFFFFFF, 'ink': 0x1B1B1B, 'muted': 0x616161, 'card': 0xFFFFFF,
     'accent': 0x009FE3, 'zone_fill': 0x009FE3, 'zone_alpha': 30, 'zone_edge': 0x009FE3, 'shadow': 0x000000,
-    'shadow_alpha': 60, 'radius_fill': 0xFFFFFF, 'radius_alpha': 170, 'radius_edge': 0x616161,
+    'shadow_alpha': 60, 'radius_fill': 0x000000, 'radius_alpha': 26, 'radius_edge': 0x616161,
 }
 DARK = {
     'land': 0x1A1A1A, 'green': 0x1B251D, 'water': 0x0F2533, 'water_line': 0x0F2533, 'building': 0x1F1F1F,

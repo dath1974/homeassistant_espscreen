@@ -245,14 +245,18 @@ class RadiusTest(unittest.TestCase):
         everyone = {**placed, 'options': {**placed['options'], 'framing': 'everyone'}}
         self.assertIsNone(map_card.circle_of(everyone, {}, (400, 300), board))
 
-    def test_drawn_lighter_inside_with_an_edge(self):
+    def test_shaded_inside_with_an_edge(self):
         board = map_card.Board({'dpi': 170})
         placed = {'entity': 'screen.map', 'options': {'display': 'map', 'framing': 'place', 'centre': [52.0, 5.0],
                                                       'distance': 'radius', 'radius': 5000, 'overlay': 'none', 'show': 'aircraft'}}
         for dark in (False, True):
             image = map_card.render_tile(placed, {}, (400, 300), board, dark)
             inside, outside = image.getpixel((200, 150)), image.getpixel((5, 5))
-            self.assertGreater(sum(inside), sum(outside), dark)
+            # A shade darker in the light look, so white streets keep their contrast, and lighter in the dark one.
+            if dark:
+                self.assertGreater(sum(inside), sum(outside))
+            else:
+                self.assertLess(sum(inside), sum(outside))
             # The edge, 1/1.1 of half the short side from the middle, stands apart from both.
             edge = image.getpixel((200, round(150 - 150 / map_card.RADIUS_ROOM)))
             self.assertNotEqual(edge, inside)
