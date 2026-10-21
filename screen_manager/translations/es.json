@@ -2415,6 +2415,15 @@
           "light": "Claro",
           "dark": "Oscuro"
         },
+        "tap": {
+          "label": "Toque",
+          "auto": "Pantalla completa con botones",
+          "clean": "Pantalla completa, solo mapa",
+          "none": "Nada",
+          "auto_hint": "El mapa se abre en toda la pantalla con su botón de volver, su nombre y botones para mover y ampliar.",
+          "clean_hint": "El mapa se abre en toda la pantalla sin nada encima. Tócalo de nuevo para cerrarlo.",
+          "none_hint": "Tocar el mapa no hace nada."
+        },
         "chosen": {
           "label": "En el mapa",
           "hint": "A quién sigue este mapa, cada uno con su color. Un rastreador es un teléfono, un coche o una etiqueta cuya ubicación conoce Home Assistant."

@@ -2415,6 +2415,15 @@
           "light": "Claro",
           "dark": "Escuro"
         },
+        "tap": {
+          "label": "Toque",
+          "auto": "Ecrã inteiro com botões",
+          "clean": "Ecrã inteiro, só o mapa",
+          "none": "Nada",
+          "auto_hint": "O mapa abre em todo o ecrã com o botão de voltar, o nome e botões para mover e ampliar.",
+          "clean_hint": "O mapa abre em todo o ecrã sem nada por cima. Toque nele de novo para o fechar.",
+          "none_hint": "Tocar no mapa não faz nada."
+        },
         "chosen": {
           "label": "No mapa",
           "hint": "Quem este mapa segue, cada um com a sua cor. Um localizador é um telemóvel, um carro ou uma etiqueta cuja localização o Home Assistant conhece."

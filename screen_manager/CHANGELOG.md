@@ -11,7 +11,8 @@
   a watched plane always shows, larger and ringed, with its label. The map tile can show people and aircraft, only
   people, or only aircraft, and it can be centred on a place of your own, a latitude and longitude, instead of home.
   Its Distance can also be a radius you choose, in kilometres or miles: the map fits that circle with a little room,
-  lightens it, draws its edge, and leaves out planes outside it.
+  lightens it, draws its edge, and leaves out planes outside it. A tap on the map tile can open the full view with its
+  keys, open the map alone over the whole screen (tap again to close it), or do nothing.
   The map's settings are now in three groups: the map, its people and its aircraft. A screen needs this update's
   firmware to draw them.
 - **Speaker and microphone on the Guition and Waveshare ESP32-P4 screens, experimental.** The Guition JC8012P4A1

@@ -2415,6 +2415,15 @@
           "light": "Chiaro",
           "dark": "Scuro"
         },
+        "tap": {
+          "label": "Tocco",
+          "auto": "Schermo intero con tasti",
+          "clean": "Schermo intero, solo mappa",
+          "none": "Niente",
+          "auto_hint": "La mappa si apre a tutto schermo con il tasto indietro, il nome e i tasti per spostarla e ingrandirla.",
+          "clean_hint": "La mappa si apre a tutto schermo senza nulla sopra. Toccala di nuovo per chiuderla.",
+          "none_hint": "Toccare la mappa non fa nulla."
+        },
         "chosen": {
           "label": "Sulla mappa",
           "hint": "Chi segue questa mappa, ognuno con il proprio colore. Un tracker è un telefono, un'auto o un tag di cui Home Assistant conosce la posizione."

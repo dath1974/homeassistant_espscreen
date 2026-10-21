@@ -64,7 +64,8 @@ AROUND = {'framing': 'home', 'distance': 'region', 'aircraft': SOURCE, 'follow':
 PAGES = [
     ('square', [('screen.map', 'Overhead', 'square', {**AROUND, 'plane_marker': 'plane', 'plane_track': 'show', 'plane_track_s': 120,
                                                       'plane_watch': [{'id': 'PH-BXA', 'colour': 'red'}, {'id': 'RYR8812', 'colour': 'blue'}]})]),
-    ('singles', [('screen.map', 'Dots', 'single', {**AROUND, 'plane_track': 'show'}),
+    # Dots opens bare (tap `clean`): its full view is the map alone, no back key, name or keys.
+    ('singles', [('screen.map', 'Dots', 'single', {**AROUND, 'plane_track': 'show', 'tap': 'clean'}),
                  ('screen.map', 'Arrows', 'single', {**AROUND, 'plane_marker': 'arrow', 'plane_label': 'callsign', 'plane_colour': 'accent'})]),
     # Aircraft only, 15 km round the airport rather than home: no people, no zones, the circle lightened with its edge;
     # the parked plane is watched, so it shows.

@@ -2415,6 +2415,15 @@
           "light": "Clair",
           "dark": "Sombre"
         },
+        "tap": {
+          "label": "Appui",
+          "auto": "Plein écran avec boutons",
+          "clean": "Plein écran, carte seule",
+          "none": "Rien",
+          "auto_hint": "La carte s'ouvre sur tout l'écran avec son bouton retour, son nom et des boutons pour la déplacer et zoomer.",
+          "clean_hint": "La carte s'ouvre sur tout l'écran sans rien par-dessus. Touchez-la à nouveau pour la fermer.",
+          "none_hint": "Toucher la carte ne fait rien."
+        },
         "chosen": {
           "label": "Sur la carte",
           "hint": "Qui cette carte suit, chacun dans sa couleur. Un traceur est un téléphone, une voiture ou une balise dont Home Assistant connaît la position."

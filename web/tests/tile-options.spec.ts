@@ -523,6 +523,25 @@ describe("the map tile's people, aircraft, place and watched aircraft", () => {
     useInventoryStore().inventory.units = undefined;
   });
 
+  it("opens on a tap with its keys, bare, or not at all", async () => {
+    const tile: Tile = { entity: "screen.map", name: "", slot: 0, options: { display: "map", size: "wide" } };
+    appendTiles(tile);
+    Object.assign(useInventoryStore().inventory.screens[0], { firmware: "0.21.0", pictures: true });
+    let panel = mount(TileInspector, { props: { tile: current(tile)! } });
+    expect(panel.text()).toContain("Full screen with keys");
+    await panel.findAll(".seg button").find((b) => b.text() === "Full screen, map only")!.trigger("click");
+    panel.unmount();
+    expect(current(tile)!.options?.tap).toBe("clean");
+    expect(() => validatePages(doc.document!, doc.documentGrid!)).not.toThrow();
+    expect(doc.document!.pages.flatMap((page) => page.tiles)[0].interaction).toMatchObject({ tap: "clean" });
+    panel = mount(TileInspector, { props: { tile: current(tile)! } });
+    expect(mapOf(panel).tap).toBe("clean");
+    await panel.findAll(".seg button").find((b) => b.text() === "Full screen with keys")!.trigger("click");
+    panel.unmount();
+    // Automatic, as every tile keeps it and the add-on takes it.
+    expect(current(tile)!.options?.tap ?? "auto").toBe("auto");
+  });
+
   it("refuses what the add-on refuses", async () => {
     const { airProblem } = await import("../src/model/aircraft");
     expect(airProblem({ plane_watch: [{ id: "BAW432", colour: "red" }] }, true)).toBe("");

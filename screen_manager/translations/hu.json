@@ -2415,6 +2415,15 @@
           "light": "Világos",
           "dark": "Sötét"
         },
+        "tap": {
+          "label": "Koppintás",
+          "auto": "Teljes képernyő gombokkal",
+          "clean": "Teljes képernyő, csak térkép",
+          "none": "Semmi",
+          "auto_hint": "A térkép a teljes képernyőn nyílik meg, vissza gombbal, névvel és mozgató, nagyító gombokkal.",
+          "clean_hint": "A térkép a teljes képernyőn nyílik meg, semmi sincs fölötte. Koppints rá újra a bezáráshoz.",
+          "none_hint": "A térképre koppintás nem csinál semmit."
+        },
         "chosen": {
           "label": "A térképen",
           "hint": "Kiket követ ez a térkép, mindegyiket a saját színében. Nyomkövető egy telefon, autó vagy címke, amelynek helyét a Home Assistant ismeri."

@@ -1984,7 +1984,9 @@
    "controls": [],
    "inline": null,
    "toggle": null,
-   "taps": [],
+   "taps": [
+    "clean"
+   ],
    "guards": [],
    "picture": null,
    "map": null,

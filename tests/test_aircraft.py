@@ -267,6 +267,18 @@ class RadiusTest(unittest.TestCase):
                 save(radius=wrong)
 
 
+class TapTest(unittest.TestCase):
+    def test_the_map_tile_opens_bare_or_not_at_all(self):
+        def save(tap):
+            return validate_layout({'title': 'x', 'tiles': [{'entity': 'screen.map', 'options': {'display': 'map', 'tap': tap}}]})['tiles'][0]['options']
+        self.assertEqual(save('clean'), {'display': 'map', 'tap': 'clean'})
+        self.assertEqual(save('none'), {'display': 'map', 'tap': 'none'})
+        # The screen gets the tap, which its firmware reads (runtime_tiles.h: camera_open bare).
+        self.assertEqual(screen_options({'entity': 'screen.map', 'options': {'display': 'map', 'tap': 'clean'}}, {})['tap'], 'clean')
+        firmware = (ROOT / 'components/smart_display/runtime_tiles.h').read_text()
+        self.assertIn('camera_open(card.entity, card.name, (int)w.index, "", card.tap == "clean")', firmware)
+
+
 class LayoutTest(unittest.TestCase):
     def save(self, entity='screen.map', **options):
         return validate_layout({'title': 'x', 'tiles': [{'entity': entity, 'options': {'display': 'map', **options}}]})['tiles'][0]

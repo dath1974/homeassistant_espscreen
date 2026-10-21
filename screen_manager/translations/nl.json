@@ -2040,6 +2040,15 @@
           "light": "Licht",
           "dark": "Donker"
         },
+        "tap": {
+          "label": "Tikken",
+          "auto": "Volledig scherm met knoppen",
+          "clean": "Volledig scherm, alleen kaart",
+          "none": "Niets",
+          "auto_hint": "De kaart opent over het hele scherm met de terugknop, de naam en knoppen om te verschuiven en te zoomen.",
+          "clean_hint": "De kaart opent over het hele scherm zonder iets erover. Tik nogmaals om haar te sluiten.",
+          "none_hint": "Tikken op de kaart doet niets."
+        },
         "chosen": {
           "label": "Op de kaart",
           "hint": "Wie deze kaart volgt, elk in een eigen kleur. Een tracker is een telefoon, auto of tag waarvan Home Assistant de plek kent."
