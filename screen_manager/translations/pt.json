@@ -2357,10 +2357,9 @@
         },
         "centre": {
           "label": "Local",
-          "lat": "Latitude",
-          "lon": "Longitude",
-          "hint": "O centro do mapa em graus decimais, como 51.4700 e -0.4543. Pode colar os dois de uma vez. Sem local, o mapa fica centrado em casa.",
-          "wrong": "Introduza uma latitude de -85 a 85 e uma longitude de -180 a 180."
+          "placeholder": "KJFK ou 40.64, -73.78",
+          "hint": "O código de um aeroporto (KJFK, LAX, EGLL) ou uma latitude e longitude, como 40.64, -73.78, tal como um site de mapas as copia. Sem lugar, o mapa centra-se em casa.",
+          "wrong": "Escreva um código de aeroporto que a app conheça, ou uma latitude de -85 a 85 e uma longitude de -180 a 180."
         },
         "distance": {
           "label": "Distância",

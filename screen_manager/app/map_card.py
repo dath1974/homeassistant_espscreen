@@ -9,8 +9,8 @@ How the card frames its people (`framing`):
 - `home`: the home zone in the middle at a fixed distance. Who is outside the view is a small chip on its edge,
   pointing the way.
 - `person`: the tile's own person in the middle at a fixed distance, the others as on `home`.
-- `place`: a point of the tile's own (`centre`, [latitude, longitude]) in the middle at a fixed distance, the others as
-  on `home`; home's place while it has none.
+- `place`: a point of the tile's own (`centre`: [latitude, longitude], or an airport's code, airports.py) in the middle
+  at a fixed distance, the others as on `home`; home's place while it has none.
 
 `distance` is how far a fixed view reaches: street, neighbourhood, town or region, or `radius`: a circle of `radius`
 metres round the middle, the view a little larger (RADIUS_ROOM) across the frame's short side, the circle shaded (a
@@ -24,6 +24,7 @@ import math
 import re
 from pathlib import Path
 
+import airports
 import catalogue
 import map_charts
 
@@ -979,8 +980,12 @@ def options_of(tile):
 
 
 def centre_of(tile):
-    """(latitude, longitude) a map is centred on when framed on its own place, or None."""
+    """(latitude, longitude) a map is centred on when framed on its own place, or None: its `centre` is either
+    [latitude, longitude] or an airport's code (airports.py), looked up each time so a newer list moves it."""
     centre = (tile.get('options') or {}).get('centre')
+    if isinstance(centre, str):
+        found = airports.find(centre)
+        return (found['lat'], found['lon']) if found else None
     if not isinstance(centre, list) or len(centre) != 2 or not all(isinstance(v, (int, float)) and not isinstance(v, bool) for v in centre):
         return None
     lat, lon = float(centre[0]), float(centre[1])
@@ -988,7 +993,12 @@ def centre_of(tile):
 
 
 def validate_centre(value):
-    """A tile's `centre` checked and kept to CENTRE_DECIMALS, as the layout stores it; raises ValueError."""
+    """A tile's `centre` checked, as the layout stores it: [latitude, longitude] kept to CENTRE_DECIMALS, or an
+    airport's code in capitals that airports.py knows; raises ValueError."""
+    if isinstance(value, str):
+        if airports.find(value) is None:
+            raise ValueError('centre')
+        return airports.code_of(value)
     centre = centre_of({'options': {'centre': value}})
     if centre is None:
         raise ValueError('centre')

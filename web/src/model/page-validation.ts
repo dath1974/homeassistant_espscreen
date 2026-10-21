@@ -179,13 +179,18 @@ export function validateCardOptions(tile: PageTile, entityId: string, size: stri
     if (typeof a.mapRadius !== 'number' || !Number.isInteger(a.mapRadius) || a.mapRadius < low || a.mapRadius > high) fail();
     if (a.mapRadius === first) fail('normalization');
   }
-  // A map's own middle (framing `place`): [latitude, longitude], as map_card.validate_centre checks it.
+  // A map's own middle (framing `place`): [latitude, longitude] or an airport's code in capitals, as
+  // map_card.validate_centre checks it (whether the app knows the code, only the app can say).
   if (a.mapCentre !== undefined) {
     const c = a.mapCentre;
     if (a.display !== 'map') fail('normalization');
-    if (!Array.isArray(c) || c.length !== 2 || !c.every((v) => typeof v === 'number' && Number.isFinite(v)) ||
-        Math.abs(c[0]) > 85.05112878 || Math.abs(c[1]) > 180) fail();
-    if (c.some((v) => Math.round(v * 1e5) / 1e5 !== v)) fail('normalization');
+    if (typeof c === 'string') {
+      if (!/^[A-Z0-9][A-Z0-9-]{1,9}$/.test(c)) fail();
+    } else {
+      if (!Array.isArray(c) || c.length !== 2 || !c.every((v) => typeof v === 'number' && Number.isFinite(v)) ||
+          Math.abs(c[0]) > 85.05112878 || Math.abs(c[1]) > 180) fail();
+      if (c.some((v) => Math.round(v * 1e5) / 1e5 !== v)) fail('normalization');
+    }
   }
   // How the energy card shows power along a line: the energy card's own, the default (dots) never stored.
   if (a.energyFlow !== undefined && (entityId !== 'screen.energy' || !rules.energyFlow.includes(a.energyFlow) || a.energyFlow === rules.energyFlow[0])) fail('normalization');

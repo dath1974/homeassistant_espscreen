@@ -1982,10 +1982,9 @@
         },
         "centre": {
           "label": "Plek",
-          "lat": "Breedtegraad",
-          "lon": "Lengtegraad",
-          "hint": "Het midden van de kaart in decimale graden, zoals 51.4700 en -0.4543. Je kunt ze allebei tegelijk plakken. Zonder plek staat de kaart rond huis.",
-          "wrong": "Vul een breedtegraad van -85 tot 85 en een lengtegraad van -180 tot 180 in."
+          "placeholder": "KJFK of 40.64, -73.78",
+          "hint": "De code van een vliegveld (KJFK, LAX, EGLL) of een breedte- en lengtegraad, zoals 40.64, -73.78, zoals een kaartsite ze kopieert. Zonder plaats centreert de kaart op thuis.",
+          "wrong": "Vul een vliegveldcode in die de app kent, of een breedtegraad van -85 tot 85 en een lengtegraad van -180 tot 180."
         },
         "distance": {
           "label": "Afstand",

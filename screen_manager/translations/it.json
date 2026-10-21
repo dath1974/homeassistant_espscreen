@@ -2357,10 +2357,9 @@
         },
         "centre": {
           "label": "Luogo",
-          "lat": "Latitudine",
-          "lon": "Longitudine",
-          "hint": "Il centro della mappa in gradi decimali, ad esempio 51.4700 e -0.4543. Puoi incollarli entrambi insieme. Senza luogo la mappa è centrata sulla casa.",
-          "wrong": "Inserisci una latitudine da -85 a 85 e una longitudine da -180 a 180."
+          "placeholder": "KJFK o 40.64, -73.78",
+          "hint": "Il codice di un aeroporto (KJFK, LAX, EGLL) o una latitudine e longitudine, come 40.64, -73.78, come le copia un sito di mappe. Senza luogo la mappa si centra su casa.",
+          "wrong": "Inserisci un codice aeroporto che l’app conosce, oppure una latitudine da -85 a 85 e una longitudine da -180 a 180."
         },
         "distance": {
           "label": "Distanza",

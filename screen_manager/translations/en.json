@@ -1982,10 +1982,9 @@
         },
         "centre": {
           "label": "Place",
-          "lat": "Latitude",
-          "lon": "Longitude",
-          "hint": "The middle of the map in decimal degrees, such as 51.4700 and -0.4543. You can paste both at once. Without a place the map centers on home.",
-          "wrong": "Enter a latitude from -85 to 85 and a longitude from -180 to 180."
+          "placeholder": "KJFK or 40.64, -73.78",
+          "hint": "An airport's code (KJFK, LAX, EGLL) or a latitude and longitude, such as 40.64, -73.78, as a map site copies them. Without a place the map centers on home.",
+          "wrong": "Enter an airport's code the app knows, or a latitude from -85 to 85 and a longitude from -180 to 180."
         },
         "distance": {
           "label": "Distance",

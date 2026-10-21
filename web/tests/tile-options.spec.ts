@@ -4,7 +4,7 @@ import { appendTiles, current, loadLayout } from "./helpers/fixtures";
 // ("Invalid or unsupported page configuration fields"). The walk below clicks every choice of every field for tiles of
 // many kinds and sizes, so an option added later that the add-on refuses fails here, not on someone's screen.
 import { readFileSync } from "node:fs";
-import { mount } from "@vue/test-utils";
+import { flushPromises, mount } from "@vue/test-utils";
 import { nextTick } from "vue";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import ActionPicker from "../src/components/ActionPicker.vue";
@@ -440,29 +440,45 @@ describe("the map tile's people, aircraft, place and watched aircraft", () => {
     panel.unmount();
     setTileOption(current(tile)!, "show", "both");
     expect(current(tile)!.options?.show).toBeUndefined();
-    // A place of its own, typed or pasted as one pair, kept to about a metre.
+    // A place of its own in one field: a latitude and longitude kept to about a metre, or an airport's code the app
+    // knows, kept as the code, with the airport's name under the field.
+    const airport = vi.fn((url: string) => url.toUpperCase() === "API/AIRPORT?CODE=KJFK"
+      ? Promise.resolve(new Response(JSON.stringify({ code: "KJFK", name: "John F. Kennedy International Airport", lat: 40.63945, lon: -73.77932 }), { status: 200 }))
+      : Promise.resolve(new Response(JSON.stringify({ error: "404" }), { status: 404 })));
+    vi.stubGlobal("fetch", airport);
     setTileOption(current(tile)!, "framing", "place");
     panel = mount(TileInspector, { props: { tile: current(tile)! } });
-    expect(panel.text()).toContain("Latitude");
-    mapOf(panel).setCentre("lat", "51.4700012, -0.454321");
+    expect(panel.find("#map-place").exists()).toBe(true);
+    await mapOf(panel).setPlace("51.4700012, -0.454321");
     await nextTick();
     expect(current(tile)!.options?.centre).toEqual([51.47, -0.45432]);
     panel.unmount();
     panel = mount(TileInspector, { props: { tile: current(tile)! } });
-    mapOf(panel).setCentre("lat", "");
-    mapOf(panel).setCentre("lon", "");
-    await nextTick();
-    expect(current(tile)!.options?.centre).toBeUndefined();
+    expect((panel.find("#map-place").element as HTMLInputElement).value).toBe("51.47, -0.45432");
+    await mapOf(panel).setPlace("kjfk");
+    await flushPromises();
+    expect(current(tile)!.options?.centre).toBe("KJFK");
     panel.unmount();
     panel = mount(TileInspector, { props: { tile: current(tile)! } });
-    // One number alone is no place yet.
-    mapOf(panel).setCentre("lat", "52.3");
+    await flushPromises();
+    expect((panel.find("#map-place").element as HTMLInputElement).value).toBe("KJFK");
+    expect(panel.text()).toContain("John F. Kennedy International Airport");
+    expect(panel.find(".map-place-at").text()).toBe("40.63945, -73.77932");
+    // A code the app does not know, or numbers off the map: nothing stored, the field says so.
+    await mapOf(panel).setPlace("ZZZZQ");
+    await flushPromises();
+    expect(current(tile)!.options?.centre).toBe("KJFK");
+    expect(panel.text()).toContain(t("editor.tile.map.centre.wrong"));
+    await mapOf(panel).setPlace("95, 4.9");
+    expect(current(tile)!.options?.centre).toBe("KJFK");
+    await mapOf(panel).setPlace("");
     await nextTick();
     expect(current(tile)!.options?.centre).toBeUndefined();
-    mapOf(panel).setCentre("lon", "4.9");
+    await mapOf(panel).setPlace("52.3 4.9");
     await nextTick();
     expect(current(tile)!.options?.centre).toEqual([52.3, 4.9]);
     panel.unmount();
+    vi.stubGlobal("fetch", vi.fn(() => Promise.reject(new Error("offline"))));
     // Watched aircraft: in capitals, once each, the next colour for each added.
     for (const typed of ["g-ezab", "GEZAB", "baw432", "x"]) {
       panel = mount(TileInspector, { props: { tile: current(tile)! } });
@@ -551,6 +567,8 @@ describe("the map tile's people, aircraft, place and watched aircraft", () => {
     expect(airProblem({ plane_watch: [] }, true)).toBe("normalization");
     expect(canonicalOptions("person.p", { display: "map", show: "aircraft", framing: "place", centre: [1.234567, 2] }))
       .toEqual({ display: "map", framing: "place", centre: [1.23457, 2] });
+    expect(canonicalOptions("screen.map", { display: "map", framing: "place", centre: "EGLL" }))
+      .toEqual({ display: "map", framing: "place", centre: "EGLL" });
   });
 });
 
