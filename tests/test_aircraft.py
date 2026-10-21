@@ -242,6 +242,13 @@ class LayoutTest(unittest.TestCase):
         self.assertNotIn('air', extras(self.save(), {}))
 
 
+class HelloTest(unittest.TestCase):
+    def test_the_firmware_says_it_draws_aircraft(self):
+        # The app answers only a screen whose hello names aircraft.FEATURE; a board that draws pictures says so.
+        core_yaml = (ROOT / 'packages/core.yaml').read_text()
+        self.assertIn(f'if (runtime_tiles::camera_supported()) features.add("{aircraft.FEATURE}");', core_yaml)
+
+
 class ScreenTest(unittest.IsolatedAsyncioTestCase):
     """A screen that asks for the planes of its map cards gets them as op "air", and again on every report."""
 
