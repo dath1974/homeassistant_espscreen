@@ -18,10 +18,10 @@
   update's firmware to draw them.
 - **Aviation and topographic charts under the map.** A map's Base map (it was Streets) can now be a chart of the
   United States in place of the streets: the FAA's VFR sectional, IFR low or IFR high enroute chart, or the USGS
-  topographic map. Each shows at the distances it is printed for, and in the dark look the sectional is darkened and
-  the others turned to dark paper with light ink, their colours kept; closer in, or outside the United States, the map
-  shows its streets. The app fetches these from the FAA's and the USGS's own public servers, since Home Assistant has
-  none for them. Not for navigation.
+  topographic map. Each shows at the distances it is printed for, and in the dark look the sectional is darkened, the
+  IFR charts get dark paper and light ink with their colours kept as printed, and the topographic map is turned round;
+  closer in, or outside the United States, the map shows its streets. The app fetches these from the FAA's and the
+  USGS's own public servers, since Home Assistant has none for them. Not for navigation.
 - **Speaker and microphone on the Guition and Waveshare ESP32-P4 screens, experimental.** The Guition JC8012P4A1
   (10.1 inch, also its V2 and V3), JC1060P470 (7 inch, also its V2) and JC4880P443 (4.3 inch) now use their speaker and
   microphone, both at once, and the Waveshare ESP32-P4-WIFI6-Touch-LCD-7B, LCD-7 and LCD-10.1 their speaker and two

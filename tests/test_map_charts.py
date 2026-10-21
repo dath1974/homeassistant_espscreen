@@ -46,7 +46,7 @@ class Choices(unittest.TestCase):
         self.assertEqual(set(streets[2:]), set(map_charts.CHARTS))
         self.assertEqual(tuple(streets), map_card.CHOICES['streets'], MAP_OPTIONS['streets'])
         for chart, about in map_charts.CHARTS.items():
-            self.assertTrue(about['night'] == 'invert' or 0 < about['night'] < 1, chart)
+            self.assertTrue(about['night'] in ('invert', 'colours') or 0 < about['night'] < 1, chart)
 
     def test_a_chart_is_kept_with_the_tile_and_an_unknown_one_is_refused(self):
         tile = validate_layout({'title': 'x', 'tiles': [{'entity': 'screen.map', 'options': {'display': 'map', 'streets': 'sectional'}}]})['tiles'][0]
@@ -141,6 +141,28 @@ class Drawing(unittest.TestCase):
         dark = map_card.render_tile(self.TILE, {}, size, board, True, None, chart=self.chart_for(size, board, (250, 230, 40))).getpixel((200, 150))
         night = map_charts.CHARTS['sectional']['night']
         self.assertTrue(all(abs(a - round(b * night)) < 12 for a, b in zip(dark, (250, 230, 40))), dark)
+
+    def test_in_the_dark_look_an_ifr_chart_turns_its_paper_and_ink_and_keeps_its_colours(self):
+        import colorsys
+        board, size = map_card.Board({'dpi': 170}), (400, 300)
+        tile = {**self.TILE, 'options': {**self.TILE['options'], 'streets': 'ifr_low', 'distance': 'region'}}
+        self.assertEqual(map_charts.CHARTS['ifr_low']['night'], 'colours')
+
+        def dark(colour):
+            view = map_card.view_for(tile, {}, size, board)
+            chart = {key: sheet(colour) for key in map_charts.keys_for(view, 'ifr_low', board.scale)}
+            return map_card.render_tile(tile, {}, size, board, True, None, chart=chart).getpixel((200, 150))
+        ground, ink = map_card._rgb(map_card.DARK['land']), map_card._rgb(map_card.DARK['ink'])
+        self.assertTrue(all(abs(a - b) < 6 for a, b in zip(dark((255, 255, 255)), ground)), 'white paper: the dark ground')
+        self.assertTrue(all(abs(a - b) < 6 for a, b in zip(dark((0, 0, 0)), ink)), 'black ink: the dark look\'s ink')
+        r, g, b = dark((236, 236, 246))
+        self.assertTrue(max(r, g, b) < 60 and b > r, ('a faintly blue paper: dark, and faintly blue still', (r, g, b)))
+        for printed in ((0, 130, 108), (40, 90, 200), (150, 100, 40)):    # an IFR chart's green, blue and brown
+            h, s, v = colorsys.rgb_to_hsv(*(c / 255 for c in printed))
+            h2, s2, v2 = colorsys.rgb_to_hsv(*(c / 255 for c in dark(printed)))
+            self.assertLess(min(abs(h2 - h), 1 - abs(h2 - h)) * 360, 6, ('its own hue', printed))
+            self.assertLess(abs(s2 - s), 0.12, ('its own saturation', printed))
+            self.assertGreaterEqual(v2 * 255, map_card.COLOUR_VALUE - 8, ('bright enough on the dark paper', printed))
 
     def test_in_the_dark_look_an_inverted_chart_turns_its_light_round_and_keeps_its_hue(self):
         board, size = map_card.Board({'dpi': 170}), (400, 300)
