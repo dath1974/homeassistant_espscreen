@@ -45,6 +45,8 @@ class Choices(unittest.TestCase):
         self.assertEqual(streets[:2], ['show', 'hide'], 'the streets stay the default, a plain ground the next')
         self.assertEqual(set(streets[2:]), set(map_charts.CHARTS))
         self.assertEqual(tuple(streets), map_card.CHOICES['streets'], MAP_OPTIONS['streets'])
+        for chart, about in map_charts.CHARTS.items():
+            self.assertTrue(about['night'] == 'invert' or 0 < about['night'] < 1, chart)
 
     def test_a_chart_is_kept_with_the_tile_and_an_unknown_one_is_refused(self):
         tile = validate_layout({'title': 'x', 'tiles': [{'entity': 'screen.map', 'options': {'display': 'map', 'streets': 'sectional'}}]})['tiles'][0]
@@ -134,11 +136,21 @@ class Drawing(unittest.TestCase):
         image = map_card.render_tile(self.TILE, {}, size, board, False, None, chart=self.chart_for(size, board))
         self.assertTrue(all(abs(a - b) < 20 for a, b in zip(image.getpixel((200, 150)), RED)), image.getpixel((200, 150)))
 
-    def test_in_the_dark_look_its_light_is_turned_round_and_its_hue_kept(self):
+    def test_in_the_dark_look_the_sectional_is_darkened(self):
         board, size = map_card.Board({'dpi': 170}), (400, 300)
+        dark = map_card.render_tile(self.TILE, {}, size, board, True, None, chart=self.chart_for(size, board, (250, 230, 40))).getpixel((200, 150))
+        night = map_charts.CHARTS['sectional']['night']
+        self.assertTrue(all(abs(a - round(b * night)) < 12 for a, b in zip(dark, (250, 230, 40))), dark)
+
+    def test_in_the_dark_look_an_inverted_chart_turns_its_light_round_and_keeps_its_hue(self):
+        board, size = map_card.Board({'dpi': 170}), (400, 300)
+        tile = {**self.TILE, 'options': {**self.TILE['options'], 'streets': 'topo'}}
+        self.assertEqual(map_charts.CHARTS['topo']['night'], 'invert')
 
         def dark(colour):
-            return map_card.render_tile(self.TILE, {}, size, board, True, None, chart=self.chart_for(size, board, colour)).getpixel((200, 150))
+            view = map_card.view_for(tile, {}, size, board)
+            chart = {key: sheet(colour) for key in map_charts.keys_for(view, 'topo', board.scale)}
+            return map_card.render_tile(tile, {}, size, board, True, None, chart=chart).getpixel((200, 150))
         ground, ink = map_card._rgb(map_card.DARK['land']), map_card._rgb(map_card.DARK['ink'])
         self.assertTrue(all(abs(a - b) < 6 for a, b in zip(dark((255, 255, 255)), ground)), 'white paper: the dark ground')
         self.assertTrue(all(abs(a - b) < 6 for a, b in zip(dark((0, 0, 0)), ink)), 'black ink: the dark look\'s ink')
