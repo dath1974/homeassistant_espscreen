@@ -734,6 +734,9 @@ api:
                     #ifdef SD_MOD_COVER_GROUPS
                     features.add("group_covers");
                     #endif
+                    // aircraft (docs/MAP.md, "Aircraft"): the map tile draws planes over its picture (aircraft_view.cpp)
+                    // and asks for them, so ESP Screens answers its asks and sends them on every report (op "air").
+                    if (runtime_tiles::camera_supported()) features.add("aircraft");
                     auto sizes = root["tile_sizes"].to<JsonArray>();
                     for (const auto &size : page_protocol::TILE_SIZES)
                       if (size.fits(runtime_tiles::grid.columns, runtime_tiles::grid.rows)) sizes.add(size.name);
