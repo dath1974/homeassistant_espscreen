@@ -178,6 +178,15 @@ class Endpoints(unittest.IsolatedAsyncioTestCase):
         # Without the editor's token nothing changes.
         self.assertEqual((await self.client.put('/api/display-precision', json={'entity': 'sensor.t', 'precision': 0})).status, 403)
 
+    async def test_an_airport_is_looked_up_by_its_code(self):
+        response = await self.client.get('/api/airport?code=egll')
+        self.assertEqual(response.status, 200)
+        found = await response.json()
+        self.assertEqual((found['code'], found['name']), ('EGLL', 'London Heathrow Airport'))
+        self.assertAlmostEqual(found['lat'], 51.47, places=1)
+        for wrong in ('ZZZZQ', '', 'two words'):
+            self.assertEqual((await self.client.get(f'/api/airport?code={wrong}')).status, 404, wrong)
+
     async def test_media_preview_hides_source_urls_and_preserves_image_proportions(self):
         import io
         from PIL import Image

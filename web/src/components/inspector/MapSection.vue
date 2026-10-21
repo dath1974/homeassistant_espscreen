@@ -5,6 +5,7 @@
 // aircraft. The choices are the catalogue's (catalogue/person.yaml), the first of each the default.
 import { computed, ref, watch } from "vue";
 import theme from "virtual:esp-screens-theme";
+import { getJson } from "../../api";
 import { t } from "../../i18n";
 import { ofType } from "../../model/catalogue";
 import rules from "../../model/page-rules.json";
@@ -60,20 +61,41 @@ const tap = computed(() => current("tap", "auto") as string);
 const tapChoices = computed(() => (["auto", "clean", "none"] as const).map((value) => [value, t(`editor.tile.map.tap.${value}`)] as [string, string]));
 const overlay = computed(() => offeredChoices(props.tile, "overlay", rules.picture.overlay.map((value) => [value, t(`editor.tile.picture.overlay.${value}`)] as [string, string]),
   current("overlay", rules.picture.overlay[0]), controlled.value));
-// The middle of a map framed on a place of its own: typed as two numbers, stored once both are numbers (or pasted as one
-// "latitude, longitude", as a map site copies it).
-const centre = computed(() => (props.tile.options?.centre as number[] | undefined) ?? []);
-const lat = ref(""), lon = ref("");
-watch(centre, (value) => { lat.value = value.length === 2 ? String(value[0]) : ""; lon.value = value.length === 2 ? String(value[1]) : ""; }, { immediate: true });
-function setCentre(which: "lat" | "lon", text: string) {
-  const pair = text.split(/[,;\s]+/).filter(Boolean);
-  if (pair.length === 2) { lat.value = pair[0]; lon.value = pair[1]; }
-  else if (which === "lat") lat.value = text.trim();
-  else lon.value = text.trim();
-  if (!lat.value && !lon.value) { setTileOption(props.tile, "centre", undefined); return; }
-  const a = Number(lat.value), b = Number(lon.value);
-  if (lat.value && lon.value && Number.isFinite(a) && Number.isFinite(b) && Math.abs(a) <= 85 && Math.abs(b) <= 180)
-    setTileOption(props.tile, "centre", [Math.round(a * 1e5) / 1e5, Math.round(b * 1e5) / 1e5]);
+// The middle of a map framed on a place of its own, typed in one field: "latitude, longitude" (as a map site copies it),
+// stored as two numbers, or an airport's code (KJFK, LAX, EGLL), which the app looks up (airports.py) and stores as the
+// code; the field then names the airport and gives its latitude and longitude.
+const centre = computed(() => props.tile.options?.centre as number[] | string | undefined);
+type Airport = { code: string; name: string; lat: number; lon: number };
+const place = ref(""), placeFound = ref<Airport | null>(null), placeWrong = ref(false);
+async function airport(code: string): Promise<Airport | null> {
+  try { return await getJson(`airport?code=${encodeURIComponent(code)}`); } catch { return null; }
+}
+watch(centre, async (value) => {
+  placeWrong.value = false;
+  placeFound.value = null;
+  if (Array.isArray(value) && value.length === 2) place.value = `${value[0]}, ${value[1]}`;
+  else if (typeof value === "string") {
+    place.value = value;
+    const found = await airport(value);
+    if (centre.value === value) placeFound.value = found;
+  } else place.value = "";
+}, { immediate: true });
+async function setPlace(text: string) {
+  const typed = text.trim();
+  place.value = typed;
+  placeWrong.value = false;
+  if (!typed) { setTileOption(props.tile, "centre", undefined); return; }
+  const pair = typed.split(/[,;\s]+/).filter(Boolean);
+  if (pair.length === 2 && pair.every((v) => /^[-+]?\d+(\.\d+)?$/.test(v))) {
+    const [a, b] = pair.map(Number);
+    if (Math.abs(a) <= 85 && Math.abs(b) <= 180) setTileOption(props.tile, "centre", [Math.round(a * 1e5) / 1e5, Math.round(b * 1e5) / 1e5]);
+    else placeWrong.value = true;
+    return;
+  }
+  const found = await airport(typed);
+  if (place.value !== typed) return;
+  if (found) setTileOption(props.tile, "centre", found.code);
+  else placeWrong.value = true;
 }
 // How far the distance `radius` reaches: stored in metres, typed in Home Assistant's unit (km or mi), to a tenth.
 const miles = computed(() => inv.inventory.units?.length === "mi");
@@ -85,11 +107,6 @@ function setRadius(text: string) {
   if (!text.trim() || !Number.isFinite(value)) { setTileOption(props.tile, "radius", RADIUS[0]); return; }
   setTileOption(props.tile, "radius", Math.max(RADIUS[1], Math.min(RADIUS[2], Math.round(value * METRES.value))));
 }
-const centreWrong = computed(() => {
-  if (!lat.value && !lon.value) return false;
-  const a = Number(lat.value), b = Number(lon.value);
-  return !(lat.value && lon.value && Number.isFinite(a) && Number.isFinite(b) && Math.abs(a) <= 85 && Math.abs(b) <= 180);
-});
 // Aircraft over the map tile (docs/MAP.md, "Aircraft"): a sensor that lists flights, as Flightradar24's Current in
 // area does, and how the screen draws them.
 const source = computed(() => (props.tile.options?.aircraft as string | undefined) ?? "");
@@ -142,13 +159,13 @@ function remove(id: string) { setTileOption(props.tile, "map", mapWith.value.fil
     <PropRow :label="t('editor.tile.map.framing.label')" icon="crosshairs-gps">
       <ChoiceField :choices="choices('framing')" :value="framing" :tile="tile" preview-key="framing" :aria-label="t('editor.tile.map.framing.label')" @pick="(v) => setTileOption(tile, 'framing', v)" />
     </PropRow>
-    <PropRow v-if="framing === 'place'" :label="t('editor.tile.map.centre.label')" icon="crosshairs"
-      :hint="t(centreWrong ? 'editor.tile.map.centre.wrong' : 'editor.tile.map.centre.hint')">
-      <span class="map-range">
-        <label>{{ t("editor.tile.map.centre.lat") }}<input class="map-number" inputmode="decimal" :value="lat"
-          @change="setCentre('lat', ($event.target as HTMLInputElement).value)" @keydown.enter="($event.target as HTMLInputElement).blur()" /></label>
-        <label>{{ t("editor.tile.map.centre.lon") }}<input class="map-number" inputmode="decimal" :value="lon"
-          @change="setCentre('lon', ($event.target as HTMLInputElement).value)" @keydown.enter="($event.target as HTMLInputElement).blur()" /></label>
+    <PropRow v-if="framing === 'place'" :label="t('editor.tile.map.centre.label')" icon="crosshairs" for="map-place" :hint="t('editor.tile.map.centre.hint')">
+      <span class="map-place">
+        <input id="map-place" class="map-number" :aria-invalid="placeWrong || undefined" :value="place" :placeholder="t('editor.tile.map.centre.placeholder')"
+          autocomplete="off" spellcheck="false" aria-describedby="map-place-found"
+          @change="setPlace(($event.target as HTMLInputElement).value)" @keydown.enter="($event.target as HTMLInputElement).blur()" />
+        <small v-if="placeWrong" id="map-place-found" class="wrong">{{ t("editor.tile.map.centre.wrong") }}</small>
+        <small v-else-if="placeFound" id="map-place-found">{{ placeFound.name }}<br /><span class="map-place-at">{{ placeFound.lat }}, {{ placeFound.lon }}</span></small>
       </span>
     </PropRow>
     <PropRow v-if="framing !== 'everyone'" :label="t('editor.tile.map.distance.label')" icon="magnify-plus-outline">

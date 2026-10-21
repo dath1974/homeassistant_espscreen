@@ -38,6 +38,7 @@ import media_library
 import rest_mosaic
 import vacuum_card
 import speakers
+import airports
 import map_card
 import aircraft
 import energy_flow
@@ -4896,6 +4897,13 @@ def create_app(manager, development=False):
         body = await asyncio.get_running_loop().run_in_executor(None, media_library.preview_jpeg, manager.thumbnails[url])
         return web.Response(body=body, content_type='image/jpeg', headers={'Cache-Control': 'private, max-age=3600'})
 
+    async def airport(request):
+        """The airport a code means, for a map centred on one (airports.py): its code, name and place, or 404."""
+        found = await asyncio.get_running_loop().run_in_executor(None, airports.find, request.query.get('code', ''))
+        if found is None:
+            raise web.HTTPNotFound()
+        return web.json_response(found)
+
     async def camera_preview(request):
         # A camera that fills a taller card on the mockup (app 0.3.8): prepared pixels only, as for a cover.
         entity = request.query.get('entity', '')
@@ -5398,6 +5406,7 @@ def create_app(manager, development=False):
     app.router.add_get('/api/history-preview', preview_history)
     app.router.add_get('/api/media-art', media_art_preview)
     app.router.add_get('/api/camera-preview', camera_preview)
+    app.router.add_get('/api/airport', airport)
     app.router.add_get('/api/media/browse', media_browse)
     app.router.add_get('/api/media/picture', media_picture)
     app.router.add_get('/api/media/link', media_link)

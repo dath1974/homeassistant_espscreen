@@ -2357,10 +2357,9 @@
         },
         "centre": {
           "label": "Ort",
-          "lat": "Breitengrad",
-          "lon": "Längengrad",
-          "hint": "Die Mitte der Karte in Dezimalgrad, etwa 51.4700 und -0.4543. Du kannst beide auf einmal einfügen. Ohne Ort ist die Karte um das Zuhause zentriert.",
-          "wrong": "Gib einen Breitengrad von -85 bis 85 und einen Längengrad von -180 bis 180 ein."
+          "placeholder": "KJFK oder 40.64, -73.78",
+          "hint": "Der Code eines Flughafens (KJFK, LAX, EGLL) oder Breite und Länge, etwa 40.64, -73.78, wie eine Kartenseite sie kopiert. Ohne Ort zeigt die Karte das Zuhause in der Mitte.",
+          "wrong": "Gib einen Flughafencode ein, den die App kennt, oder eine Breite von -85 bis 85 und eine Länge von -180 bis 180."
         },
         "distance": {
           "label": "Entfernung",

@@ -94,7 +94,7 @@ export type PageTile = {
   placement: { row: number; column: number; columns: number; rows: number };
   appearance: { label: string; presentation?: "single" | "wide" | "tall" | "square" | "full" | `${number}x${number}`; display?: string; icon?: string; background?: string; historyHours?: number; refresh?: number; subtitle?: string; fit?: string; overlay?: string;
     mapEntities?: string[]; mapFraming?: string; mapDistance?: string; mapFollow?: string; mapMarkers?: string; mapNames?: string;
-    mapZones?: string; mapStreets?: string; mapLook?: string; mapShow?: string; mapCentre?: number[]; mapRadius?: number; energyFlow?: string;
+    mapZones?: string; mapStreets?: string; mapLook?: string; mapShow?: string; mapCentre?: number[] | string; mapRadius?: number; energyFlow?: string;
     // Aircraft over the map tile (model/aircraft.ts): TileOptions' aircraft and plane_*.
     airSource?: string; airMarker?: string; airLabel?: string; airColour?: string; airGround?: string; airMotion?: string;
     airTrack?: string; airTrackSeconds?: number; airMost?: number; airMin?: number; airMax?: number;

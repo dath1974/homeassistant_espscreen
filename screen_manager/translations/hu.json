@@ -2357,10 +2357,9 @@
         },
         "centre": {
           "label": "Hely",
-          "lat": "Szélesség",
-          "lon": "Hosszúság",
-          "hint": "A térkép közepe tizedes fokban, például 51.4700 és -0.4543. Egyszerre is beillesztheted a kettőt. Hely nélkül a térkép az otthonra van középre igazítva.",
-          "wrong": "Adj meg -85 és 85 közötti szélességet és -180 és 180 közötti hosszúságot."
+          "placeholder": "KJFK vagy 40.64, -73.78",
+          "hint": "Egy repülőtér kódja (KJFK, LAX, EGLL) vagy egy szélesség és hosszúság, például 40.64, -73.78, ahogy egy térképoldal másolja. Hely nélkül a térkép az otthont teszi középre.",
+          "wrong": "Adj meg egy repülőtérkódot, amelyet az app ismer, vagy egy -85 és 85 közötti szélességet és egy -180 és 180 közötti hosszúságot."
         },
         "distance": {
           "label": "Távolság",

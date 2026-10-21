@@ -259,7 +259,8 @@ MAP_DOMAINS = frozenset(MAP_CARD['with'])
 MAP_MAX_ENTITIES = MAP_CARD['max']
 # Aircraft over the map tile (docs/MAP.md, "Aircraft"): the sensor they come from and how they are drawn, the map tile's
 # alone (aircraft.validate). They stay in the app too: the screen gets the planes as pixels (op "air").
-# `centre` is where a map framed on a place of its own (`framing: place`) has its middle, [latitude, longitude];
+# `centre` is where a map framed on a place of its own (`framing: place`) has its middle, [latitude, longitude] or an
+# airport's code (airports.py);
 # `radius` how far the distance `radius` reaches, in metres.
 MAP_OWN = ('map', 'centre', 'radius', *MAP_OPTIONS, *aircraft.OWN)
 # Displays that only work on a double-width card (`wide` in the catalogue).

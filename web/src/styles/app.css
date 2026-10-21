@@ -630,6 +630,11 @@ button.insp-sec-head:hover h3 { color: var(--ink); }
 /* Aircraft over the map tile: whole numbers typed over, and the altitudes a plane is shown between. */
 .map-number { width: 84px; min-width: 0; height: 30px; padding: 4px 8px; font-size: 13px; border-radius: 7px; }
 .map-range { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.map-place { display: flex; flex-direction: column; gap: 3px; width: 100%; max-width: 220px; min-width: 0; }
+.map-place .map-number { width: 100%; }
+.map-place small { font-size: 12px; color: var(--muted); overflow-wrap: anywhere; }
+.map-place small.wrong { color: var(--warn); }
+.map-place-at { font-variant-numeric: tabular-nums; user-select: all; }
 .map-range label { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
 /* Watched aircraft: a row each with its colour, and the field that adds one. */
 .map-watch { display: flex; flex-direction: column; gap: 6px; width: 100%; min-width: 0; }

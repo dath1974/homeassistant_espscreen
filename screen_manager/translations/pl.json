@@ -2357,10 +2357,9 @@
         },
         "centre": {
           "label": "Miejsce",
-          "lat": "Szerokość",
-          "lon": "Długość",
-          "hint": "Środek mapy w stopniach dziesiętnych, np. 51.4700 i -0.4543. Możesz wkleić oba naraz. Bez miejsca mapa jest wyśrodkowana na domu.",
-          "wrong": "Wpisz szerokość od -85 do 85 i długość od -180 do 180."
+          "placeholder": "KJFK lub 40.64, -73.78",
+          "hint": "Kod lotniska (KJFK, LAX, EGLL) albo szerokość i długość geograficzna, np. 40.64, -73.78, tak jak kopiuje je serwis z mapami. Bez miejsca mapa wyśrodkowuje się na domu.",
+          "wrong": "Wpisz kod lotniska, który aplikacja zna, albo szerokość od -85 do 85 i długość od -180 do 180."
         },
         "distance": {
           "label": "Odległość",

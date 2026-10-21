@@ -7,15 +7,15 @@
   the last seconds you choose. It moves the planes on every report of the sensor, without a new picture, and in
   between lets them fly on along their heading for up to 30 seconds. You choose the altitudes a plane is shown
   between, whether planes on the ground show, and how many at most. Tap the map to see the planes over the whole
-  screen. You can also list up to eight aircraft to watch by registration or callsign, each in a colour of its own:
-  a watched plane always shows, larger and ringed, with its label. The map tile can show people and aircraft, only
-  people, or only aircraft, and it can be centred on a place of your own, a latitude and longitude, instead of home.
-  Its Distance can also be a radius you choose, in kilometres or miles: the map fits that circle with a little room,
-  shades it (darker in the light look, lighter in the dark one), draws its edge, and leaves out planes outside it. A
-  tap on the map tile can open the full view with its keys, open the map alone over the whole screen (tap again to
-  close it), or do nothing.
-  The map's settings are now in three groups: the map, its people and its aircraft. A screen needs this update's
-  firmware to draw them.
+  screen. You can also list up to eight aircraft to watch by registration or callsign, each in a colour of its own: a
+  watched plane always shows, larger and ringed, with its label. The map tile can show people and aircraft, only
+  people, or only aircraft, and it can be centred on a place of your own instead of home: a latitude and longitude, or
+  an airport's code such as KJFK, LAX or EGLL, from a list of the world's airports kept in the app. Its Distance can
+  also be a radius you choose, in kilometres or miles: the map fits that circle with a little room, shades it (darker
+  in the light look, lighter in the dark one), draws its edge, and leaves out planes outside it. A tap on the map tile
+  can open the full view with its keys, open the map alone over the whole screen (tap again to close it), or do
+  nothing. The map's settings are now in three groups: the map, its people and its aircraft. A screen needs this
+  update's firmware to draw them.
 - **Speaker and microphone on the Guition and Waveshare ESP32-P4 screens, experimental.** The Guition JC8012P4A1
   (10.1 inch, also its V2 and V3), JC1060P470 (7 inch, also its V2) and JC4880P443 (4.3 inch) now use their speaker and
   microphone, both at once, and the Waveshare ESP32-P4-WIFI6-Touch-LCD-7B, LCD-7 and LCD-10.1 their speaker and two
