@@ -2405,9 +2405,14 @@
           "hide": "Elrejt"
         },
         "streets": {
-          "label": "Utcák",
-          "show": "Mutat",
-          "hide": "Sima"
+          "label": "Alaptérkép",
+          "show": "Utcák",
+          "hide": "Sima",
+          "sectional": "VFR szekciótérkép (USA)",
+          "ifr_low": "IFR alacsony (USA)",
+          "ifr_high": "IFR magas (USA)",
+          "topo": "USGS topo (USA)",
+          "chart_hint": "Az FAA vagy az USGS térképe, csak az Egyesült Államokra, és nem navigációra. Azokon a távolságokon látszik, amelyekre rajzolták; közelebbről vagy az Egyesült Államokon kívül a térkép az utcáit mutatja."
         },
         "look": {
           "label": "Megjelenés",

@@ -19,6 +19,8 @@ displays:
 # people and aircraft, only its people, or only its aircraft.
 # How the map looks (app 0.4.36): a person's photo in their marker as Home Assistant shows it or their initials, the
 # first names beside the markers, the zones, the streets or a plain ground, and the screen's look or one of its own.
+# In place of the streets a map can show a chart (map_charts.py): the FAA's VFR sectional, IFR low or IFR high
+# enroute chart, or the USGS topographic map, United States only, with the streets wherever the chart has nothing.
 map:
   framing: [everyone, home, person, place]
   distance: [neighbourhood, street, town, region, radius]
@@ -30,7 +32,7 @@ map:
   markers: [photo, initials]
   names: [auto, always, never]
   zones: [show, hide]
-  streets: [show, hide]
+  streets: [show, hide, sectional, ifr_low, ifr_high, topo]
   look: [auto, light, dark]
   with: [person, device_tracker]
   max: 8

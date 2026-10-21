@@ -2405,9 +2405,14 @@
           "hide": "Ocultar"
         },
         "streets": {
-          "label": "Calles",
-          "show": "Mostrar",
-          "hide": "Liso"
+          "label": "Mapa base",
+          "show": "Calles",
+          "hide": "Liso",
+          "sectional": "Carta seccional VFR (EE. UU.)",
+          "ifr_low": "IFR baja (EE. UU.)",
+          "ifr_high": "IFR alta (EE. UU.)",
+          "topo": "USGS Topo (EE. UU.)",
+          "chart_hint": "Una carta de la FAA o del USGS, solo de Estados Unidos y no apta para la navegación. Se muestra a las distancias para las que está dibujada; más cerca, o fuera de Estados Unidos, el mapa muestra sus calles."
         },
         "look": {
           "label": "Aspecto",

@@ -2030,9 +2030,14 @@
           "hide": "Verbergen"
         },
         "streets": {
-          "label": "Straten",
-          "show": "Tonen",
-          "hide": "Effen"
+          "label": "Basiskaart",
+          "show": "Straten",
+          "hide": "Effen",
+          "sectional": "VFR-sectiekaart (VS)",
+          "ifr_low": "IFR laag (VS)",
+          "ifr_high": "IFR hoog (VS)",
+          "topo": "USGS Topo (VS)",
+          "chart_hint": "Een kaart van de FAA of de USGS, alleen de Verenigde Staten, en niet voor navigatie. Hij verschijnt op de afstanden waarvoor hij getekend is; dichterbij, of buiten de Verenigde Staten, toont de kaart zijn straten."
         },
         "look": {
           "label": "Uiterlijk",

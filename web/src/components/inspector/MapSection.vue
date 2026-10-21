@@ -54,6 +54,8 @@ const choices = (key: MapChoice) => offeredChoices(props.tile, key, (MAP?.[key] 
   .filter((value) => !(key === "framing" && value === "person" && mapTile.value))
   .filter((value) => !(key === "framing" && value === "everyone" && !people.value))
   .map((value) => [value, t(`editor.tile.map.${key}.${value}`)] as [string, string]), current(key, MAP?.[key]?.[0]), controlled.value);
+// A chart in place of the streets (map_charts.py): the FAA's or the USGS's, United States only.
+const charted = computed(() => !["show", "hide"].includes(current("streets", MAP?.streets[0]) as string));
 // What a tap on the map tile does: the full view with its keys, the map alone over the whole glass (`clean`, closed by
 // another tap), or nothing. The catalogue's screen taps; the tile's other taps mean nothing on a map.
 const tap = computed(() => current("tap", "auto") as string);
@@ -163,7 +165,7 @@ function remove(id: string) { setTileOption(props.tile, "map", mapWith.value.fil
         <label>{{ t(`editor.tile.map.radius.${miles ? "mi" : "km"}`) }}</label>
       </span>
     </PropRow>
-    <PropRow :label="t('editor.tile.map.streets.label')" icon="road-variant">
+    <PropRow :label="t('editor.tile.map.streets.label')" icon="map-outline" :hint="charted ? t('editor.tile.map.streets.chart_hint') : undefined">
       <ChoiceField :choices="choices('streets')" :value="current('streets', MAP?.streets[0])" :tile="tile" preview-key="streets" :aria-label="t('editor.tile.map.streets.label')" @pick="(v) => setTileOption(tile, 'streets', v)" />
     </PropRow>
     <PropRow v-if="people" :label="t('editor.tile.map.zones.label')" icon="map-marker-radius-outline">
