@@ -67,7 +67,7 @@ PAGES = [
     # Dots opens bare (tap `clean`): its full view is the map alone, no back key, name or keys.
     ('singles', [('screen.map', 'Dots', 'single', {**AROUND, 'plane_track': 'show', 'tap': 'clean'}),
                  ('screen.map', 'Arrows', 'single', {**AROUND, 'plane_marker': 'arrow', 'plane_label': 'callsign', 'plane_colour': 'accent'})]),
-    # Aircraft only, 15 km round the airport rather than home: no people, no zones, the circle lightened with its edge;
+    # Aircraft only, 15 km round the airport rather than home: no people, no zones, the circle shaded with its edge;
     # the parked plane is watched, so it shows.
     ('place', [('screen.map', 'Schiphol', 'square', {'show': 'aircraft', 'framing': 'place', 'centre': [52.3105, 4.7683],
                                                     'distance': 'radius', 'radius': 15000, 'aircraft': SOURCE, 'plane_motion': 'hold',
