@@ -37,6 +37,15 @@ PLANES = [
     ('a4', 'DLH9KM', 'A20N', 52.420, 4.950, 36000, 110, 460, 'DUB', 'MUC', False),
     ('a5', 'TRA6312', 'B738', 52.310, 4.765, 0, 180, 12, 'AMS', 'AGP', True),
     ('a6', 'RYR8812', 'B38M', 52.250, 4.860, 31000, 10, 440, 'BCN', 'OSL', False),
+    # A crowd stacked on the approach east of the airport, a kilometre or so apart: their labels have to make way.
+    ('c1', 'KLM1601', 'E190', 52.318, 4.842, 2500, 270, 160, 'BLL', 'AMS', False),
+    ('c2', 'TRA5512', 'B738', 52.322, 4.856, 3000, 270, 170, 'NCE', 'AMS', False),
+    ('c3', 'EZY7341', 'A320', 52.314, 4.858, 3200, 265, 175, 'LGW', 'AMS', False),
+    ('c4', 'DLH2302', 'A319', 52.326, 4.868, 4000, 270, 190, 'MUC', 'AMS', False),
+    ('c5', 'SAS551', 'A20N', 52.317, 4.872, 4300, 275, 195, 'CPH', 'AMS', False),
+    ('c6', 'AFR1640', 'A318', 52.321, 4.884, 5000, 268, 205, 'CDG', 'AMS', False),
+    ('c7', 'BAW428', 'A320', 52.313, 4.889, 5600, 272, 210, 'LHR', 'AMS', False),
+    ('c8', 'IBE3404', 'A321', 52.327, 4.896, 6000, 270, 220, 'MAD', 'AMS', False),
 ]
 # Registrations, which a watched plane can be matched on as well as its callsign.
 REGISTRATIONS = {'a1': 'PH-BXA', 'a3': 'G-EUXC', 'a6': 'EI-IFB'}
@@ -73,6 +82,10 @@ PAGES = [
                                                     'distance': 'radius', 'radius': 15000, 'aircraft': SOURCE, 'plane_motion': 'hold',
                                                     'plane_marker': 'plane', 'plane_most': 3,
                                                     'plane_watch': [{'id': 'TRA6312', 'colour': 'amber'}]})]),
+    # The crowd on the approach, around the airport by its code: labels kept apart, the moved ones with a leader.
+    ('crowd', [('screen.map', 'Approach', 'square', {'show': 'aircraft', 'framing': 'place', 'centre': 'EHAM', 'distance': 'radius',
+                                                    'radius': 9000, 'aircraft': SOURCE, 'plane_motion': 'hold', 'plane_marker': 'plane',
+                                                    'plane_label': 'altitude'})]),
 ]
 
 

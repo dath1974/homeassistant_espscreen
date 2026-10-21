@@ -18,6 +18,7 @@ struct View {
   ap::Overlay overlay;
   float sx = 1, sy = 1;  // the picture on the glass against the one the planes were placed on
   bool hidden = false;
+  std::vector<int> spots;  // where each label stood the last time, kept while it stays clear (aircraft_plan.h)
 };
 
 // A plane's colour: a watched plane's own (Home Assistant's colours, in the order of aircraft.WATCH_COLOURS), else its
@@ -136,32 +137,68 @@ static void draw(lv_event_t *e) {
     }
     dot(layer, c, d, colour, s.halo, halo);
   }
-  // The labels last, over everything: a soft pill of the card's colour with the plane's lines in ink.
+  // The labels last, over everything: a soft pill of the card's colour with the plane's lines in ink, kept apart from each
+  // other and from the markers, with a leader line to a label moved off its plane (aircraft_plan.h place_labels).
   const lv_font_t *font = o.full && rt::label_font ? rt::label_font : rt::small_font ? rt::small_font : rt::label_font;
   if (!font) return;
   const int line_h = lv_font_get_line_height(font);
   const int frame_w = lv_area_get_width(&a), frame_h = lv_area_get_height(&a);
+  std::vector<std::vector<std::string>> rows(o.planes.size());
+  std::vector<ap::Label> labels(o.planes.size());
   for (size_t i = 0; i < o.planes.size(); ++i) {
     const bool watched = o.planes[i].watch != 0;
-    const int reach = (int) std::lround((o.marker == ap::PLANE ? s.plane : s.dot) * (watched ? ap::WATCH_SCALE : 1.0f) / 2) +
-                      (watched ? 2 * s.halo + s.line : 0);
-    const auto rows = ap::lines(o.planes[i].label);
-    if (rows.empty()) continue;
+    ap::Label &l = labels[i];
+    l.c = {places[i].x - a.x1, places[i].y - a.y1};
+    l.reach = (int) std::lround((o.marker == ap::PLANE ? s.plane : s.dot) * (watched ? ap::WATCH_SCALE : 1.0f) / 2) +
+              (watched ? 2 * s.halo + s.line : 0);
+    l.watched = watched;
+    rows[i] = ap::lines(o.planes[i].label);
+    if (rows[i].empty()) continue;
     int w = 0;
-    for (const auto &row : rows) w = std::max(w, rt::text_width(row, font));
-    const int box_w = w + 2 * s.pad, box_h = (int) rows.size() * line_h + s.pad;
-    const ap::Box box = ap::label_box({places[i].x - a.x1, places[i].y - a.y1}, reach, box_w, box_h, frame_w, frame_h, s.gap);
+    for (const auto &row : rows[i]) w = std::max(w, rt::text_width(row, font));
+    l.w = w + 2 * s.pad;
+    l.h = (int) rows[i].size() * line_h + s.pad;
+  }
+  // What lies over the planes (a full view's keys, its back key and name): the shown siblings above this layer, save one
+  // as large as half the picture, which would block every spot alike.
+  std::vector<ap::Box> blocked;
+  lv_obj_t *self = lv_event_get_target_obj(e), *parent = lv_obj_get_parent(self);
+  const int32_t own = lv_obj_get_index(self), count = parent ? (int32_t) lv_obj_get_child_count(parent) : 0;
+  for (int32_t n = own + 1; n < count; ++n) {
+    lv_obj_t *above = lv_obj_get_child(parent, n);
+    if (!above || lv_obj_has_flag(above, LV_OBJ_FLAG_HIDDEN)) continue;
+    lv_area_t k;
+    lv_obj_get_coords(above, &k);
+    const ap::Box box{k.x1 - a.x1, k.y1 - a.y1, lv_area_get_width(&k), lv_area_get_height(&k)};
+    if ((long) box.w * box.h * 2 >= (long) frame_w * frame_h) continue;
+    if (box.x + box.w <= 0 || box.y + box.h <= 0 || box.x >= frame_w || box.y >= frame_h) continue;
+    blocked.push_back(box);
+  }
+  const std::vector<ap::Placed> placed = ap::place_labels(labels, frame_w, frame_h, s.gap, line_h, view->spots, blocked);
+  view->spots.assign(placed.size(), ap::NO_SPOT);
+  for (size_t i = 0; i < placed.size(); ++i) view->spots[i] = placed[i].spot;
+  // The leaders under every label: a halo of the card's colour, then the plane's own.
+  for (size_t i = 0; i < placed.size(); ++i) {
+    if (!placed[i].shown || !placed[i].leader) continue;
+    const auto ends = ap::leader(labels[i], placed[i].box);
+    const ap::Point from{a.x1 + ends[0].x, a.y1 + ends[0].y}, to{a.x1 + ends[1].x, a.y1 + ends[1].y};
+    line(layer, from, to, halo, s.line + 2 * s.halo, LV_OPA_80);
+    line(layer, from, to, colour_of(o, o.planes[i]), std::max(1, s.line / 2), LV_OPA_COVER);
+  }
+  for (size_t i = 0; i < placed.size(); ++i) {
+    if (!placed[i].shown) continue;
+    const ap::Box &box = placed[i].box;
     lv_draw_rect_dsc_t bg;
     lv_draw_rect_dsc_init(&bg);
     bg.radius = s.radius; bg.bg_color = halo; bg.bg_opa = LV_OPA_80;
     // A watched plane's label is edged in its colour.
-    if (watched) { bg.border_width = s.line; bg.border_color = colour_of(o, o.planes[i]); bg.border_opa = LV_OPA_COVER; }
+    if (labels[i].watched) { bg.border_width = s.line; bg.border_color = colour_of(o, o.planes[i]); bg.border_opa = LV_OPA_COVER; }
     lv_area_t area{a.x1 + box.x, a.y1 + box.y, a.x1 + box.x + box.w - 1, a.y1 + box.y + box.h - 1};
     lv_draw_rect(layer, &bg, &area);
-    for (size_t n = 0; n < rows.size(); ++n) {
+    for (size_t n = 0; n < rows[i].size(); ++n) {
       lv_draw_label_dsc_t dsc;
       lv_draw_label_dsc_init(&dsc);
-      dsc.font = font; dsc.color = theme::color(n ? theme::MUTED : theme::INK); dsc.text = rows[n].c_str();
+      dsc.font = font; dsc.color = theme::color(n ? theme::MUTED : theme::INK); dsc.text = rows[i][n].c_str();
       dsc.text_local = 1;
       const int y = area.y1 + s.pad / 2 + (int) n * line_h;
       lv_area_t text{area.x1 + s.pad, y, area.x2 - s.pad, y + line_h - 1};

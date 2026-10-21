@@ -1,7 +1,7 @@
 // clang++ -std=c++17 -Wall -Wextra -Werror -I. tests/test_aircraft_plan.cpp -o /tmp/test_aircraft_plan && /tmp/test_aircraft_plan
 // Aircraft over a map (components/smart_display/aircraft_plan.h, docs/MAP.md "Aircraft"): where a plane is between two
-// reports, the plane's outline turned to its heading, the arrow's tick, a label kept inside its card, and whether a full
-// view's planes belong to the picture on the glass.
+// reports, the plane's outline turned to its heading, the arrow's tick, a label kept inside its card, labels kept apart
+// with leader lines, and whether a full view's planes belong to the picture on the glass.
 #include "../components/smart_display/aircraft_plan.h"
 #include <cassert>
 #include <cmath>
@@ -61,6 +61,75 @@ int main() {
   assert(b.x == 0 && b.y == 0);
   b = label_box({10, 99}, 5, 40, 20, 200, 100, 3);
   assert(b.y == 80);
+
+  // Labels kept apart, as a radar display de-conflicts its data blocks.
+  {
+    auto label = [](float x, float y, bool watched = false) { Label l; l.c = {x, y}; l.reach = 4; l.w = 40; l.h = 16; l.watched = watched; return l; };
+    auto apart = [](const std::vector<Placed> &placed) {
+      for (size_t i = 0; i < placed.size(); ++i)
+        for (size_t j = i + 1; j < placed.size(); ++j)
+          if (placed[i].shown && placed[j].shown && overlaps(placed[i].box, placed[j].box)) return false;
+      return true;
+    };
+    auto inside = [](const Box &b, int w, int h) { return b.x >= 0 && b.y >= 0 && b.x + b.w <= w && b.y + b.h <= h; };
+    // Alone, a label stands where it always did: right of its plane, beside it, no leader.
+    auto one = place_labels({label(50, 50)}, 300, 200, 3, 16);
+    assert(one[0].spot == 0 && !one[0].leader && one[0].box.x == 57 && one[0].box.y == 42);
+    // Two planes side by side: the second label goes elsewhere, clear of the first and of both markers.
+    auto two = place_labels({label(100, 100), label(110, 102)}, 300, 200, 3, 16);
+    assert(apart(two));
+    for (const auto &p : two) {
+      assert(!overlaps(p.box, {96, 96, 9, 9}) && !overlaps(p.box, {106, 98, 9, 9}));
+    }
+    // A crowd of twelve planes round one airport: every label clear of the others and inside the frame, the ones moved
+    // off their plane with a leader.
+    std::vector<Label> crowd;
+    for (int n = 0; n < 12; ++n) crowd.push_back(label(150 + 6 * (n % 4), 100 + 6 * (n / 4)));
+    auto placed = place_labels(crowd, 300, 200, 3, 16);
+    assert(apart(placed));
+    int leaders = 0;
+    for (const auto &p : placed) { assert(p.shown && inside(p.box, 300, 200)); assert(p.spot != NO_SPOT); leaders += p.leader; }
+    assert(leaders > 0);
+    // A leader runs from the marker's edge to the label's box.
+    for (size_t i = 0; i < placed.size(); ++i) {
+      if (!placed[i].leader) continue;
+      const auto ends = leader(crowd[i], placed[i].box);
+      const float dx = ends[0].x - crowd[i].c.x, dy = ends[0].y - crowd[i].c.y;
+      assert(near(std::sqrt(dx * dx + dy * dy), 4, 0.01f));
+      const Box &b = placed[i].box;
+      assert(ends[1].x >= b.x && ends[1].x <= b.x + b.w && ends[1].y >= b.y && ends[1].y <= b.y + b.h);
+    }
+    // A watched plane is placed first: listed last, it still takes the spot beside it.
+    auto watched = place_labels({label(100, 100), label(104, 100, true)}, 300, 200, 3, 16);
+    assert(watched[1].spot == 0 && watched[0].spot != 0);
+    // Gliding a little, each label keeps the spot it had while that spot stays clear.
+    std::vector<int> kept;
+    for (const auto &p : placed) kept.push_back(p.spot);
+    std::vector<Label> later = crowd;
+    for (auto &l : later) { l.c.x += 1; l.c.y -= 1; }
+    auto again = place_labels(later, 300, 200, 3, 16, kept);
+    int same = 0;
+    for (size_t i = 0; i < again.size(); ++i) same += again[i].spot == placed[i].spot;
+    assert(apart(again) && same >= 10);
+    // A key over the map (a full view's): the label beside its plane makes way for it.
+    auto keyed = place_labels({label(50, 50)}, 300, 200, 3, 16, {}, {{60, 30, 40, 40}});
+    assert(keyed[0].spot != 0 && !overlaps(keyed[0].box, {60, 30, 40, 40}));
+    // On the frame's right edge a lone label goes left; with no room at all it falls back inside the frame.
+    auto edge = place_labels({label(290, 100)}, 300, 200, 3, 16);
+    assert(edge[0].spot == 1 && inside(edge[0].box, 300, 200));
+    Label huge = label(10, 10); huge.w = 400;
+    assert(!place_labels({huge}, 300, 200, 3, 16)[0].shown);
+    huge.watched = true;
+    auto fallback = place_labels({huge}, 300, 200, 3, 16);
+    assert(fallback[0].shown && fallback[0].spot == NO_SPOT && fallback[0].box.x == 0 && !fallback[0].leader);
+    // A card too small for every label: the ones with no clear spot are left out, a watched one never.
+    std::vector<Label> tight;
+    for (int n = 0; n < 15; ++n) tight.push_back(label(60 + 3 * n, 40 + (n % 3), n == 14));
+    auto few = place_labels(tight, 140, 80, 3, 16);
+    int shown = 0;
+    for (const auto &p : few) shown += p.shown;
+    assert(apart(few) && shown < 15 && shown > 0 && few[14].shown);
+  }
 
   // A label's lines, empty ones left out.
   const auto rows = lines("KLM123\n\n35000 ft");
