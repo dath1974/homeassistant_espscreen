@@ -97,6 +97,115 @@ inline Box label_box(Point c, int reach, int w, int h, int frame_w, int frame_h,
   return {x, y, w, h};
 }
 
+// Labels kept apart, as a radar display de-conflicts its data blocks: each label takes the first spot round its plane
+// that is inside the frame and clear of every label placed before it and of every plane's marker, and one moved off its
+// plane is drawn with a leader line back to it. The spots, in order: beside the plane (right, left), its corners, above
+// and below, then the same eight directions on rings `step` further out (LABEL_RINGS of them). Watched planes are
+// placed first, then the rest in the app's order. A label with no clear spot is left out (`shown` false), as a pile of
+// text helps nobody on a small card and the full view has room for it; a watched plane's takes the spot it overlaps
+// least instead, so its label always shows. A label keeps the spot it had (`kept`) while that spot stays clear, so labels hold still while their
+// planes glide. `blocked`: what lies over the planes on the glass (a full view's keys), kept clear the same way.
+constexpr int LABEL_DIRECTIONS = 8, LABEL_RINGS = 6, LABEL_SPOTS = LABEL_DIRECTIONS * (LABEL_RINGS + 1), NO_SPOT = -1;
+
+struct Label {
+  Point c;          // the plane, on the frame
+  int reach = 0;    // from its middle to its marker's edge
+  int w = 0, h = 0;
+  bool watched = false;
+};
+struct Placed {
+  Box box{0, 0, 0, 0};
+  int spot = NO_SPOT;
+  bool leader = false;
+  bool shown = false;
+};
+
+inline bool overlaps(const Box &a, const Box &b) {
+  return a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+}
+inline long overlap_area(const Box &a, const Box &b) {
+  const int w = std::min(a.x + a.w, b.x + b.w) - std::max(a.x, b.x), h = std::min(a.y + a.h, b.y + b.h) - std::max(a.y, b.y);
+  return w > 0 && h > 0 ? (long) w * h : 0;
+}
+// Spot `spot` of a label: direction spot % 8 (right, left, up-right, down-right, up-left, down-left, up, down), its near
+// edge or corner `reach + gap + ring * step` from the plane.
+inline Box spot_box(const Label &l, int spot, int gap, int step) {
+  const int ring = spot / LABEL_DIRECTIONS, dir = spot % LABEL_DIRECTIONS;
+  const int cx = (int) std::lround(l.c.x), cy = (int) std::lround(l.c.y);
+  const int d = l.reach + gap + ring * step, k = (int) std::lround(d * 0.7071f);
+  switch (dir) {
+    case 0: return {cx + d, cy - l.h / 2, l.w, l.h};
+    case 1: return {cx - d - l.w, cy - l.h / 2, l.w, l.h};
+    case 2: return {cx + k, cy - k - l.h, l.w, l.h};
+    case 3: return {cx + k, cy + k, l.w, l.h};
+    case 4: return {cx - k - l.w, cy - k - l.h, l.w, l.h};
+    case 5: return {cx - k - l.w, cy + k, l.w, l.h};
+    case 6: return {cx - l.w / 2, cy - d - l.h, l.w, l.h};
+    default: return {cx - l.w / 2, cy + d, l.w, l.h};
+  }
+}
+
+inline std::vector<Placed> place_labels(const std::vector<Label> &labels, int frame_w, int frame_h, int gap, int step,
+                                        const std::vector<int> &kept = {}, const std::vector<Box> &blocked = {}) {
+  std::vector<Placed> out(labels.size());
+  std::vector<Box> markers;
+  markers.reserve(labels.size());
+  for (const auto &l : labels) {
+    const int cx = (int) std::lround(l.c.x), cy = (int) std::lround(l.c.y);
+    markers.push_back({cx - l.reach, cy - l.reach, 2 * l.reach + 1, 2 * l.reach + 1});
+  }
+  std::vector<size_t> order;
+  order.reserve(labels.size());
+  for (size_t i = 0; i < labels.size(); ++i) if (labels[i].watched) order.push_back(i);
+  for (size_t i = 0; i < labels.size(); ++i) if (!labels[i].watched) order.push_back(i);
+  std::vector<Box> placed;
+  placed.reserve(labels.size());
+  for (const size_t i : order) {
+    const Label &l = labels[i];
+    if (l.w <= 0 || l.h <= 0) continue;
+    auto inside = [&](const Box &b) { return b.x >= 0 && b.y >= 0 && b.x + b.w <= frame_w && b.y + b.h <= frame_h; };
+    auto cost = [&](const Box &b) {
+      long sum = 0;
+      for (const auto &p : placed) sum += overlap_area(b, p);
+      for (const auto &k : blocked) sum += overlap_area(b, k);
+      for (size_t m = 0; m < markers.size(); ++m) if (m != i) sum += overlap_area(b, markers[m]);
+      return sum;
+    };
+    int best = NO_SPOT;
+    long best_cost = -1;
+    auto consider = [&](int spot) {
+      const Box b = spot_box(l, spot, gap, step);
+      if (!inside(b)) return false;
+      const long c = cost(b);
+      if (best == NO_SPOT || c < best_cost) { best = spot; best_cost = c; }
+      return c == 0;
+    };
+    bool clear = i < kept.size() && kept[i] >= 0 && kept[i] < LABEL_SPOTS && consider(kept[i]);
+    for (int spot = 0; !clear && spot < LABEL_SPOTS; ++spot) clear = consider(spot);
+    Placed &p = out[i];
+    if (!clear && !l.watched) continue;
+    p.shown = true;
+    if (best == NO_SPOT) {
+      // Larger than every spot the frame has room for: beside its plane, kept inside the frame as before.
+      p.box = label_box(l.c, l.reach, l.w, l.h, frame_w, frame_h, gap);
+    } else {
+      p.box = spot_box(l, best, gap, step);
+      p.spot = best;
+      p.leader = best >= LABEL_DIRECTIONS;
+    }
+    placed.push_back(p.box);
+  }
+  return out;
+}
+// A leader line from a plane's marker to its label moved away: from the marker's edge toward the nearest point of the
+// box, ending on the box.
+inline std::array<Point, 2> leader(const Label &l, const Box &b) {
+  const Point near{std::max<float>(b.x, std::min<float>(l.c.x, b.x + b.w - 1)), std::max<float>(b.y, std::min<float>(l.c.y, b.y + b.h - 1))};
+  const float dx = near.x - l.c.x, dy = near.y - l.c.y, d = std::sqrt(dx * dx + dy * dy);
+  if (d <= l.reach) return {{near, near}};
+  return {{{l.c.x + dx / d * l.reach, l.c.y + dy / d * l.reach}, near}};
+}
+
 // The lines of a label.
 inline std::vector<std::string> lines(const std::string &label) {
   std::vector<std::string> out;
