@@ -489,6 +489,40 @@ describe("the map tile's people, aircraft, place and watched aircraft", () => {
     expect(current(tile)!.options?.plane_watch).toBeUndefined();
   });
 
+  it("reaches a radius typed in Home Assistant's unit and stored in metres", async () => {
+    const tile: Tile = { entity: "screen.map", name: "", slot: 0, options: { display: "map", size: "wide", framing: "home" } };
+    appendTiles(tile);
+    Object.assign(useInventoryStore().inventory.screens[0], { firmware: "0.21.0", pictures: true });
+    const { setTileOption } = await import("../src/editor/tiles");
+    let panel = mount(TileInspector, { props: { tile: current(tile)! } });
+    expect(panel.text()).not.toContain("km");
+    panel.unmount();
+    setTileOption(current(tile)!, "distance", "radius");
+    panel = mount(TileInspector, { props: { tile: current(tile)! } });
+    expect(mapOf(panel).radius).toBe("10");
+    mapOf(panel).setRadius("25,5");
+    await nextTick();
+    expect(current(tile)!.options?.radius).toBe(25500);
+    panel.unmount();
+    // In miles where Home Assistant counts in miles; kept within its range.
+    useInventoryStore().inventory.units = { length: "mi" };
+    panel = mount(TileInspector, { props: { tile: current(tile)! } });
+    expect(mapOf(panel).radius).toBe("15.8");
+    mapOf(panel).setRadius("1000");
+    await nextTick();
+    expect(current(tile)!.options?.radius).toBe(500000);
+    panel.unmount();
+    expect(() => validatePages(doc.document!, doc.documentGrid!)).not.toThrow();
+    expect(doc.document!.pages.flatMap((page) => page.tiles)[0].appearance).toMatchObject({ mapDistance: "radius", mapRadius: 500000 });
+    // Back to the default: not stored.
+    panel = mount(TileInspector, { props: { tile: current(tile)! } });
+    mapOf(panel).setRadius("");
+    await nextTick();
+    expect(current(tile)!.options?.radius).toBeUndefined();
+    panel.unmount();
+    useInventoryStore().inventory.units = undefined;
+  });
+
   it("refuses what the add-on refuses", async () => {
     const { airProblem } = await import("../src/model/aircraft");
     expect(airProblem({ plane_watch: [{ id: "BAW432", colour: "red" }] }, true)).toBe("");

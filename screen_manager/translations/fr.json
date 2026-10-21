@@ -2367,7 +2367,14 @@
           "neighbourhood": "Quartier",
           "street": "Rue",
           "town": "Ville",
-          "region": "Région"
+          "region": "Région",
+          "radius": "Rayon"
+        },
+        "radius": {
+          "label": "Rayon",
+          "hint": "{unit} autour du centre, de {low} à {high}. La carte montre un peu plus que le cercle sur son petit côté, éclaircit le cercle et trace son bord. Les avions en dehors sont omis, mais les avions surveillés restent affichés.",
+          "km": "km",
+          "mi": "mi"
         },
         "with": {
           "label": "Aussi sur la carte",

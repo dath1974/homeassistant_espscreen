@@ -255,9 +255,10 @@ def band(flight):
     return 1 + sum(flight.altitude >= limit for limit in BANDS)
 
 
-def shown(flights, options, view):
-    """The planes a card shows: within its altitudes, on the ground only when asked, inside the frame, the closest to
-    its middle first, at most `plane_most`; and after them every watched plane inside the frame, whatever the rest says."""
+def shown(flights, options, view, circle=None):
+    """The planes a card shows: within its altitudes, on the ground only when asked, inside the frame and the map's
+    `circle` (lat, lon, metres of its distance `radius`) where it has one, the closest to its middle first, at most
+    `plane_most`; and after them every watched plane inside the frame, whatever the rest says."""
     low, high = options['plane_min'], options['plane_max']
     watched = options.get('plane_watch') or {}
     out, picked = [], []
@@ -273,6 +274,8 @@ def shown(flights, options, view):
             continue
         # A plane without an altitude is shown only when the card takes every altitude.
         if flight.altitude is None and not flight.on_ground and (low > 0 or high < ALTITUDE_CEILING):
+            continue
+        if circle and map_card.metres_between(circle[0], circle[1], flight.lat, flight.lon) > circle[2]:
             continue
         x, y = view.point(flight.lat, flight.lon)
         if -MARGIN <= x <= view.width + MARGIN and -MARGIN <= y <= view.height + MARGIN:
@@ -342,7 +345,7 @@ def thin(points, most):
 
 
 def overlay(view, flights, options, tracks=None, source='', size=None, scale=1.0, full=False, metric=False, now=None,
-            number=str, suffix=lambda unit: ' ' + unit):
+            number=str, suffix=lambda unit: ' ' + unit, circle=None):
     """The planes of one card on its frame: [x, y, heading, band, vx, vy, label, track, watched], with -1 for a heading
     or band it has none of, the track as x, y, x, y ... oldest first, ending where the plane is, and `watched` the colour
     of a watched plane (watch_colour), which comes last so the screen draws it on top, always with a label."""
@@ -350,7 +353,7 @@ def overlay(view, flights, options, tracks=None, source='', size=None, scale=1.0
     kind = label_kind(options, size, scale, full)
     watched = options.get('plane_watch') or {}
     out = []
-    for flight in shown(flights, options, view):
+    for flight in shown(flights, options, view, circle):
         colour = watch_colour(flight, watched) if watched else 0
         x, y = view.point(flight.lat, flight.lon)
         vx, vy = velocity(flight, view) if options['plane_motion'] == 'glide' else (0, 0)

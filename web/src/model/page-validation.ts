@@ -98,7 +98,7 @@ export function validatePageShape(layout: PageLayout, plugins = false) {
       fields(tile, ['id', 'content', 'placement', 'appearance', 'interaction', 'children'], ['id', 'content', 'placement', 'appearance', 'interaction']);
       fields(tile.placement, ['row', 'column', 'columns', 'rows']);
       fields(tile.appearance, ['label', 'presentation', 'display', 'icon', 'background', 'historyHours', 'refresh', 'subtitle', 'fit', 'overlay',
-        'mapEntities', 'mapFraming', 'mapDistance', 'mapFollow', 'mapMarkers', 'mapNames', 'mapZones', 'mapStreets', 'mapLook', 'mapShow', 'mapCentre', 'energyFlow',
+        'mapEntities', 'mapFraming', 'mapDistance', 'mapFollow', 'mapMarkers', 'mapNames', 'mapZones', 'mapStreets', 'mapLook', 'mapShow', 'mapCentre', 'mapRadius', 'energyFlow',
         ...AIR_FIELDS,
         ...CALENDAR_FIELDS, ...CALENDAR_MORE, ...METER_FIELDS], ['label']);
       fields(tile.interaction, ['tap', 'inline', 'controls', 'action', 'guard', 'play', 'speaker', 'shuffle', 'repeat', 'tilt_open'], []);
@@ -172,6 +172,13 @@ export function validateCardOptions(tile: PageTile, entityId: string, size: stri
     [a.mapMarkers, map?.markers ?? []], [a.mapNames, map?.names ?? []], [a.mapZones, map?.zones ?? []], [a.mapStreets, map?.streets ?? []],
     [a.mapLook, map?.look ?? []], [a.mapShow, map?.show ?? []]] as [string | undefined, string[]][])
     if (value !== undefined && (a.display !== 'map' || !choices.includes(value) || value === choices[0])) fail('normalization');
+  // How far the distance `radius` reaches, in whole metres, as map_card.validate_radius checks it; the default never stored.
+  if (a.mapRadius !== undefined) {
+    const [first, low, high] = map?.radius ?? [0, 0, 0];
+    if (a.display !== 'map') fail('normalization');
+    if (typeof a.mapRadius !== 'number' || !Number.isInteger(a.mapRadius) || a.mapRadius < low || a.mapRadius > high) fail();
+    if (a.mapRadius === first) fail('normalization');
+  }
   // A map's own middle (framing `place`): [latitude, longitude], as map_card.validate_centre checks it.
   if (a.mapCentre !== undefined) {
     const c = a.mapCentre;

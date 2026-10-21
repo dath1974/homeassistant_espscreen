@@ -12,7 +12,9 @@ How the card frames its people (`framing`):
 - `place`: a point of the tile's own (`centre`, [latitude, longitude]) in the middle at a fixed distance, the others as
   on `home`; home's place while it has none.
 
-`distance` is how far a fixed view reaches: street, neighbourhood, town or region.
+`distance` is how far a fixed view reaches: street, neighbourhood, town or region, or `radius`: a circle of `radius`
+metres round the middle, the view a little larger (RADIUS_ROOM) across the frame's short side, the circle lightened with
+its edge drawn, and the planes outside it left out (aircraft.py).
 
 The look is calm on purpose: the streets are a quiet ground in the screen's greys, water and green a soft tint of the
 screen's own palette, and the only strong colours on the card are the people and their zones.
@@ -20,6 +22,8 @@ screen's own palette, and the only strong colours on the card are the people and
 import math
 import re
 from pathlib import Path
+
+import catalogue
 
 TILE_PX = 256
 # Home Assistant's proxy serves no vector tile past zoom 14; a closer view draws the zoom-14 tile larger, as MapLibre
@@ -32,6 +36,10 @@ EARTH_METRES = 6371000.0
 FRAMINGS = ('everyone', 'home', 'person', 'place')
 DISTANCES = {'street': 16.5, 'neighbourhood': 15.0, 'town': 13.0, 'region': 10.5}
 DEFAULT_DISTANCE = 'neighbourhood'
+# The distance `radius` (catalogue/person.yaml `map.radius`): [default, lowest, highest] metres, and how much more than
+# the circle the frame's short side shows.
+RADIUS = tuple(catalogue.of_type('person')['map']['radius'])
+RADIUS_ROOM = 1.1
 # Room kept around everyone on `everyone`, as a share of the frame on each side.
 FIT_PADDING = 0.14
 # One person alone, or everyone on one spot, is shown at this distance: a fit around one point has no size.
@@ -284,17 +292,24 @@ def fit(points, size, reserve=(0, 0), margin=0):
     return lat, lon, zoom
 
 
-def frame_view(framing, distance, people, zones, size, own=None, reserve=(0, 0), margin=0, centre=None):
+def radius_zoom(lat, metres, size):
+    """The zoom at which a circle of `metres` round a middle at `lat` spans the frame's short side, with RADIUS_ROOM."""
+    per_pixel = 2 * metres * RADIUS_ROOM / max(1, min(size))
+    return math.log2(2 * math.pi * EARTH_METRES * math.cos(math.radians(lat)) / (TILE_PX * per_pixel))
+
+
+def frame_view(framing, distance, people, zones, size, own=None, reserve=(0, 0), margin=0, centre=None, radius=None):
     """The view a card shows, and the people that fall outside it."""
     zoom = DISTANCES.get(distance, DISTANCES[DEFAULT_DISTANCE])
     placed = [p for p in people if p.placed]
     home = home_of(zones)
+    fixed = lambda lat, lon: View(lat, lon, radius_zoom(lat, radius or RADIUS[0], size) if distance == 'radius' else zoom, size)
     if framing == 'place' and centre:
-        view = View(centre[0], centre[1], zoom, size)
+        view = fixed(centre[0], centre[1])
     elif framing in ('home', 'place') and home:
-        view = View(home.lat, home.lon, zoom, size)
+        view = fixed(home.lat, home.lon)
     elif framing == 'person' and own is not None and own.placed:
-        view = View(own.lat, own.lon, zoom, size)
+        view = fixed(own.lat, own.lon)
     elif placed:
         points = [(p.lat, p.lon) for p in placed]
         # The zone someone stands in stays whole on the card, so its ring does not run off the edge.
@@ -307,10 +322,24 @@ def frame_view(framing, distance, people, zones, size, own=None, reserve=(0, 0),
         lat, lon, fitted = fit(points, size, reserve, margin)
         view = View(lat, lon, fitted, size)
     elif home:
-        view = View(home.lat, home.lon, zoom, size)
+        view = fixed(home.lat, home.lon)
     else:
         view = View(0.0, 0.0, MIN_ZOOM, size)
     return view
+
+
+def draw_radius(canvas, view, circle, look, dpi_scale):
+    """The distance `radius`: the circle (lat, lon, metres) lightened, with its edge in a contrasting grey."""
+    from PIL import Image, ImageDraw
+    s = SUPERSAMPLE
+    lat, lon, metres = circle
+    x, y = view.point(lat, lon)
+    r = metres / metres_per_pixel(lat, view.zoom)
+    X, Y, R = x * s, y * s, r * s
+    overlay = Image.new('RGBA', canvas.image.size, (0, 0, 0, 0))
+    ImageDraw.Draw(overlay).ellipse((X - R, Y - R, X + R, Y + R), fill=_rgb(look['radius_fill']) + (look['radius_alpha'],),
+                                    outline=_rgb(look['radius_edge']) + (230,), width=max(1, round(1.6 * dpi_scale * s)))
+    canvas.image.paste(Image.alpha_composite(canvas.image.convert('RGBA'), overlay).convert('RGB'))
 
 
 # ----- The look -----
@@ -333,14 +362,14 @@ LIGHT = {
     'road': 0xFFFFFF, 'road_case': 0xDBDBDB, 'major': 0xFFFFFF, 'major_case': 0xCECECE, 'path': 0xE1E1E1,
     'rail': 0xCCCCCC, 'place': 0x898989, 'halo': 0xFFFFFF, 'ink': 0x1B1B1B, 'muted': 0x616161, 'card': 0xFFFFFF,
     'accent': 0x009FE3, 'zone_fill': 0x009FE3, 'zone_alpha': 30, 'zone_edge': 0x009FE3, 'shadow': 0x000000,
-    'shadow_alpha': 60,
+    'shadow_alpha': 60, 'radius_fill': 0xFFFFFF, 'radius_alpha': 170, 'radius_edge': 0x616161,
 }
 DARK = {
     'land': 0x1A1A1A, 'green': 0x1B251D, 'water': 0x0F2533, 'water_line': 0x0F2533, 'building': 0x1F1F1F,
     'road': 0x272727, 'road_case': 0x272727, 'major': 0x323232, 'major_case': 0x323232, 'path': 0x212121,
     'rail': 0x2A2A2A, 'place': 0x8A8A8A, 'halo': 0x1A1A1A, 'ink': 0xDADADA, 'muted': 0x999999, 'card': 0x1A1A1A,
     'accent': 0x0A93D2, 'zone_fill': 0x0A93D2, 'zone_alpha': 44, 'zone_edge': 0x2AA9E6, 'shadow': 0x000000,
-    'shadow_alpha': 120,
+    'shadow_alpha': 120, 'radius_fill': 0xFFFFFF, 'radius_alpha': 30, 'radius_edge': 0xA8A8A8,
 }
 # The people's colours, the tile palette's strong half (theme.h, the colour a tile paints its icon with), in the
 # order Home Assistant hands out a map colour: the first person on the card is blue, the next orange, and so on.
@@ -758,7 +787,7 @@ def marker_size(size, dpi_scale):
 
 def render(size, people, zones, tiles, framing='everyone', distance=DEFAULT_DISTANCE, dark=False, dpi_scale=1.0,
            own=None, names=None, name=None, label_px=None, inset=None, photos=None, show_zones=True, full=False, focus=None,
-           move=None, centre=None):
+           move=None, centre=None, radius=None):
     """The card's picture: the streets, the zones, the people and the tile's name, in the look asked for.
 
     `tiles` are the decoded vector tiles of `view_for` ({} draws a plain ground without streets); `name` goes on a pill at
@@ -774,11 +803,15 @@ def render(size, people, zones, tiles, framing='everyone', distance=DEFAULT_DIST
     marker = marker_size(size, dpi_scale)
     shown_zones = zones if show_zones else []
     keep = (BAR * dpi_scale, 16 * dpi_scale) if full else reserve(dpi_scale, pill_h, inset, bool(name))
-    view = focus_view(focus, people, size, dpi_scale) or frame_view(framing, distance, people, zones, size, own, keep, marker * 0.6, centre)
+    view = focus_view(focus, people, size, dpi_scale) or frame_view(framing, distance, people, zones, size, own, keep, marker * 0.6, centre, radius)
+    # The circle of the distance `radius` stands round the middle the card was framed on, wherever the keys moved it.
+    circle = (view.lat, view.lon, radius or RADIUS[0]) if distance == 'radius' and framing != 'everyone' and not focus else None
     view = moved(view, move)
     canvas = Canvas(size, _rgb(look['land']))
     if tiles:
         draw_basemap(canvas, view, tiles, look, dpi_scale)
+    if circle:
+        draw_radius(canvas, view, circle, look, dpi_scale)
     occupied = {z.entity for z in (zone_of(p, zones) for p in people) if z}
     zone_boxes = draw_zones(canvas, view, shown_zones, look, dpi_scale, marker, occupied)
     if names is None:
@@ -876,7 +909,7 @@ MAP_TILE = 'screen.map'
 MARK_METRES = 25
 MARK_DEGREES = MARK_METRES / 111320.0
 # Every choice of a map and its default, the first of the catalogue's (catalogue/person.yaml `map`).
-CHOICES = {'framing': FRAMINGS, 'distance': tuple(DISTANCES), 'overlay': ('name', 'none'), 'follow': ('everyone', 'chosen'),
+CHOICES = {'framing': FRAMINGS, 'distance': (*DISTANCES, 'radius'), 'overlay': ('name', 'none'), 'follow': ('everyone', 'chosen'),
            'markers': ('photo', 'initials'), 'names': ('auto', 'always', 'never'), 'zones': ('show', 'hide'),
            'streets': ('show', 'hide'), 'look': ('auto', 'light', 'dark'), 'show': ('both', 'people', 'aircraft')}
 DEFAULTS = {'framing': 'everyone', 'distance': DEFAULT_DISTANCE, 'overlay': 'name', 'follow': 'everyone',
@@ -906,6 +939,28 @@ def validate_centre(value):
     if centre is None:
         raise ValueError('centre')
     return [round(centre[0], CENTRE_DECIMALS), round(centre[1], CENTRE_DECIMALS)]
+
+
+def radius_of(tile):
+    """The metres of a map's distance `radius`: its own, or the default."""
+    value = (tile.get('options') or {}).get('radius')
+    return value if isinstance(value, int) and not isinstance(value, bool) and RADIUS[1] <= value <= RADIUS[2] else RADIUS[0]
+
+
+def validate_radius(value):
+    """A tile's `radius` checked, as the layout stores it; raises ValueError."""
+    if not isinstance(value, int) or isinstance(value, bool) or not RADIUS[1] <= value <= RADIUS[2]:
+        raise ValueError('radius')
+    return value
+
+
+def circle_of(tile, states, size, board, registry=None):
+    """(lat, lon, metres) of a map tile's distance `radius` round the middle it is framed on, or None without one."""
+    options = options_of(tile)
+    if options['distance'] != 'radius' or options['framing'] == 'everyone':
+        return None
+    view = _framed(tile, states, size, board, registry, False, None)
+    return view.lat, view.lon, radius_of(tile)
 
 
 def people_shown(tile):
@@ -964,7 +1019,7 @@ def fingerprint(tile, states, registry=None):
         cell = (round(found[0] / MARK_DEGREES), round(found[1] / MARK_DEGREES), round((found[2] or 0) / 50)) if found else None
         people.append((entity, state.get('state'), a.get('friendly_name'), a.get('entity_picture'), cell, colour_of(entity, order)))
     zones = [(z.entity, z.name, round(z.lat, 5), round(z.lon, 5), round(z.radius)) for z in zones_of(states)]
-    what = [sorted(options.items()), (tile.get('options') or {}).get('map') or [], centre_of(tile),
+    what = [sorted(options.items()), (tile.get('options') or {}).get('map') or [], centre_of(tile), radius_of(tile),
             name_of(tile, states) if options['overlay'] == 'name' else '', people, zones]
     return hashlib.sha1(json.dumps(what, sort_keys=True, default=str).encode()).hexdigest()[:12]
 
@@ -1001,7 +1056,7 @@ def _framed(tile, states, size, board, registry, full, focus):
     keep = (BAR * board.scale, 16 * board.scale) if full else \
         reserve(board.scale, pill_h, board.inset, options['overlay'] == 'name' and bool(name_of(tile, states)))
     return frame_view(options['framing'], options['distance'], people, zones, size, own, keep, marker_size(size, board.scale) * 0.6,
-                      centre_of(tile))
+                      centre_of(tile), radius_of(tile))
 
 
 def wants_streets(tile):
@@ -1029,5 +1084,5 @@ def render_tile(tile, states, size, board, dark=False, tiles=None, registry=None
     image, _ = render(size, people, zones, (tiles or {}) if options['streets'] == 'show' else {}, options['framing'],
                       options['distance'], dark_for(tile, dark), board.scale, people[0] if people else None, names,
                       name or None, board.label, board.inset, photos, options['zones'] == 'show' and people_shown(tile), full,
-                      focus if full else None, move if full else None, centre_of(tile))
+                      focus if full else None, move if full else None, centre_of(tile), radius_of(tile))
     return image

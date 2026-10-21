@@ -66,9 +66,10 @@ PAGES = [
                                                       'plane_watch': [{'id': 'PH-BXA', 'colour': 'red'}, {'id': 'RYR8812', 'colour': 'blue'}]})]),
     ('singles', [('screen.map', 'Dots', 'single', {**AROUND, 'plane_track': 'show'}),
                  ('screen.map', 'Arrows', 'single', {**AROUND, 'plane_marker': 'arrow', 'plane_label': 'callsign', 'plane_colour': 'accent'})]),
-    # Aircraft only, around the airport rather than home: no people, no zones; the parked plane is watched, so it shows.
+    # Aircraft only, 15 km round the airport rather than home: no people, no zones, the circle lightened with its edge;
+    # the parked plane is watched, so it shows.
     ('place', [('screen.map', 'Schiphol', 'square', {'show': 'aircraft', 'framing': 'place', 'centre': [52.3105, 4.7683],
-                                                    'distance': 'town', 'aircraft': SOURCE, 'plane_motion': 'hold',
+                                                    'distance': 'radius', 'radius': 15000, 'aircraft': SOURCE, 'plane_motion': 'hold',
                                                     'plane_marker': 'plane', 'plane_most': 3,
                                                     'plane_watch': [{'id': 'TRA6312', 'colour': 'amber'}]})]),
 ]
@@ -101,7 +102,8 @@ class Study(map_tiles.Study):
                                      map_card.move_of(move) if full else None)
             options = aircraft.options_of(tile)
             planes = aircraft.overlay(view, aircraft.flights_of(map_tiles.STATES[SOURCE]), options, self.tracks, SOURCE, size,
-                                      self.board.scale, full, False, self.now)
+                                      self.board.scale, full, False, self.now,
+                                      circle=map_card.circle_of(tile, map_tiles.STATES, size, self.board))
             message = aircraft.message(data['air'], index, size, planes, aircraft.style_of(options), move, data.get('focus', ''))
             async with self.turn:
                 await self.send(message)

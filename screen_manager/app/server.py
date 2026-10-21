@@ -3898,7 +3898,8 @@ class Manager:
         try:
             planes = aircraft.overlay(view, aircraft.flights_of(self.ha.states.get(source)), options, self.air_tracks, source,
                                       card['size'], board.scale, card['full'], metric, number=i18n.screen_number,
-                                      suffix=i18n.unit_suffix)
+                                      suffix=i18n.unit_suffix,
+                                      circle=map_card.circle_of(tile, self.ha.states, card['size'], board, self.registry_index()))
         finally:
             i18n.SCREEN.reset(token)
         return aircraft.message(key[1], key[2], card['size'], planes, aircraft.style_of(options), card['move_text'], card['focus'])
@@ -4530,6 +4531,8 @@ def create_app(manager, development=False):
         payload['trackers'] = map_card.trackers(manager.ha.states)
         # The sensors a map tile can take aircraft from (aircraft.py): those that list flights.
         payload['aircraft'] = aircraft.sources(manager.ha.states)
+        # Home Assistant's unit of length, for the map's radius in km or miles (map_card.RADIUS, stored in metres).
+        payload['units'] = {'length': (getattr(manager.ha, 'units', None) or {}).get('length') or 'km'}
         # Labels and help in the editor's language (app 0.2.90); ids and keys stay as they are.
         payload['backgrounds'] = backgrounds()
         payload['controls'] = controls_catalogue()

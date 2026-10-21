@@ -2367,7 +2367,14 @@
           "neighbourhood": "Környék",
           "street": "Utca",
           "town": "Város",
-          "region": "Régió"
+          "region": "Régió",
+          "radius": "Sugár"
+        },
+        "radius": {
+          "label": "Sugár",
+          "hint": "{unit} a középpont körül, {low} és {high} között. A térkép a rövidebb oldalán valamivel többet mutat a körnél, kivilágosítja a kört és megrajzolja a szélét. A körön kívüli gépek nem látszanak, a figyelt gépek viszont igen.",
+          "km": "km",
+          "mi": "mi"
         },
         "with": {
           "label": "Szintén a térképen",

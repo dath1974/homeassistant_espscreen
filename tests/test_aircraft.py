@@ -218,6 +218,55 @@ class ShowTest(unittest.TestCase):
                 save(**wrong)
 
 
+class RadiusTest(unittest.TestCase):
+    """The distance `radius`: a circle of metres round the middle, a little smaller than the frame's short side."""
+
+    def test_the_circle_spans_the_short_side_with_room(self):
+        for size in ((400, 300), (300, 600)):
+            view = map_card.frame_view('place', 'radius', [], [], size, centre=(52.0, 5.0), radius=20000)
+            across = 2 * 20000 / map_card.metres_per_pixel(52.0, view.zoom)
+            self.assertAlmostEqual(across * map_card.RADIUS_ROOM, min(size), delta=0.5)
+
+    def test_planes_outside_it_are_left_out_but_not_watched_ones(self):
+        tile_options = aircraft.options_of(tile(plane_watch=[{'id': 'BAW432', 'colour': 'red'}]))
+        view = map_card.View(52.0, 5.0, 9.0, (400, 300))
+        flights = aircraft.flights_of(state(flight('in', lon=5.05), flight('out', lon=5.4),
+                                            flight('watched', lon=5.4, lat=52.01, callsign='BAW432')))
+        circle = (52.0, 5.0, 10000)
+        self.assertEqual([f.id for f in aircraft.shown(flights, tile_options, view, circle)], ['in', 'watched'])
+        self.assertEqual(sorted(f.id for f in aircraft.shown(flights, tile_options, view)), ['in', 'out', 'watched'])
+
+    def test_the_circle_of_a_tile(self):
+        board = map_card.Board({'dpi': 170})
+        placed = {'entity': 'screen.map', 'options': {'display': 'map', 'framing': 'place', 'centre': [51.47, -0.45],
+                                                      'distance': 'radius', 'radius': 30000}}
+        self.assertEqual(map_card.circle_of(placed, {}, (400, 300), board), (51.47, -0.45, 30000))
+        self.assertIsNone(map_card.circle_of({**placed, 'options': {**placed['options'], 'distance': 'town'}}, {}, (400, 300), board))
+        everyone = {**placed, 'options': {**placed['options'], 'framing': 'everyone'}}
+        self.assertIsNone(map_card.circle_of(everyone, {}, (400, 300), board))
+
+    def test_drawn_lighter_inside_with_an_edge(self):
+        board = map_card.Board({'dpi': 170})
+        placed = {'entity': 'screen.map', 'options': {'display': 'map', 'framing': 'place', 'centre': [52.0, 5.0],
+                                                      'distance': 'radius', 'radius': 5000, 'overlay': 'none', 'show': 'aircraft'}}
+        for dark in (False, True):
+            image = map_card.render_tile(placed, {}, (400, 300), board, dark)
+            inside, outside = image.getpixel((200, 150)), image.getpixel((5, 5))
+            self.assertGreater(sum(inside), sum(outside), dark)
+            # The edge, 1/1.1 of half the short side from the middle, stands apart from both.
+            edge = image.getpixel((200, round(150 - 150 / map_card.RADIUS_ROOM)))
+            self.assertNotEqual(edge, inside)
+
+    def test_saved_in_metres_without_the_default(self):
+        def save(**options):
+            return validate_layout({'title': 'x', 'tiles': [{'entity': 'screen.map', 'options': {'display': 'map', **options}}]})['tiles'][0]['options']
+        self.assertEqual(save(framing='home', distance='radius', radius=25000), {'display': 'map', 'framing': 'home', 'distance': 'radius', 'radius': 25000})
+        self.assertEqual(save(distance='radius', radius=map_card.RADIUS[0]), {'display': 'map', 'distance': 'radius'})
+        for wrong in (100, 600000, 2.5, True, '10'):
+            with self.subTest(wrong=wrong), self.assertRaises(ValueError):
+                save(radius=wrong)
+
+
 class LayoutTest(unittest.TestCase):
     def save(self, entity='screen.map', **options):
         return validate_layout({'title': 'x', 'tiles': [{'entity': entity, 'options': {'display': 'map', **options}}]})['tiles'][0]

@@ -71,6 +71,16 @@ function setCentre(which: "lat" | "lon", text: string) {
   if (lat.value && lon.value && Number.isFinite(a) && Number.isFinite(b) && Math.abs(a) <= 85 && Math.abs(b) <= 180)
     setTileOption(props.tile, "centre", [Math.round(a * 1e5) / 1e5, Math.round(b * 1e5) / 1e5]);
 }
+// How far the distance `radius` reaches: stored in metres, typed in Home Assistant's unit (km or mi), to a tenth.
+const miles = computed(() => inv.inventory.units?.length === "mi");
+const METRES = computed(() => (miles.value ? 1609.344 : 1000));
+const RADIUS = MAP?.radius ?? [10000, 200, 500000];
+const radius = computed(() => String(Math.round(((current("radius", RADIUS[0]) as number) / METRES.value) * 10) / 10));
+function setRadius(text: string) {
+  const value = Number(text.replace(",", "."));
+  if (!text.trim() || !Number.isFinite(value)) { setTileOption(props.tile, "radius", RADIUS[0]); return; }
+  setTileOption(props.tile, "radius", Math.max(RADIUS[1], Math.min(RADIUS[2], Math.round(value * METRES.value))));
+}
 const centreWrong = computed(() => {
   if (!lat.value && !lon.value) return false;
   const a = Number(lat.value), b = Number(lon.value);
@@ -139,6 +149,15 @@ function remove(id: string) { setTileOption(props.tile, "map", mapWith.value.fil
     </PropRow>
     <PropRow v-if="framing !== 'everyone'" :label="t('editor.tile.map.distance.label')" icon="magnify-plus-outline">
       <ChoiceField :choices="choices('distance')" :value="current('distance', MAP?.distance[0])" :tile="tile" preview-key="distance" :aria-label="t('editor.tile.map.distance.label')" @pick="(v) => setTileOption(tile, 'distance', v)" />
+    </PropRow>
+    <PropRow v-if="framing !== 'everyone' && current('distance', MAP?.distance[0]) === 'radius'" :label="t('editor.tile.map.radius.label')"
+      icon="map-marker-radius-outline" for="map-radius"
+      :hint="t('editor.tile.map.radius.hint', { low: Math.round((RADIUS[1] / METRES) * 10) / 10, high: Math.round(RADIUS[2] / METRES), unit: t(`editor.tile.map.radius.${miles ? 'mi' : 'km'}`) })">
+      <span class="map-range">
+        <input id="map-radius" class="map-number" inputmode="decimal" :value="radius"
+          @change="setRadius(($event.target as HTMLInputElement).value)" @keydown.enter="($event.target as HTMLInputElement).blur()" />
+        <label>{{ t(`editor.tile.map.radius.${miles ? "mi" : "km"}`) }}</label>
+      </span>
     </PropRow>
     <PropRow :label="t('editor.tile.map.streets.label')" icon="road-variant">
       <ChoiceField :choices="choices('streets')" :value="current('streets', MAP?.streets[0])" :tile="tile" preview-key="streets" :aria-label="t('editor.tile.map.streets.label')" @pick="(v) => setTileOption(tile, 'streets', v)" />

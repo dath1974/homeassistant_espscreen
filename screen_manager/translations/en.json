@@ -1992,7 +1992,14 @@
           "neighbourhood": "Neighborhood",
           "street": "Street",
           "town": "Town",
-          "region": "Region"
+          "region": "Region",
+          "radius": "Radius"
+        },
+        "radius": {
+          "label": "Radius",
+          "hint": "{unit} round the middle, from {low} to {high}. The map shows a little more than the circle across its short side, lightens the circle and draws its edge. Planes outside it are left out, but watched planes still show.",
+          "km": "km",
+          "mi": "mi"
         },
         "with": {
           "label": "Also on the map",
