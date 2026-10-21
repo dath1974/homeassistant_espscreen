@@ -17,11 +17,13 @@
   between lets them fly on along their heading for up to 30 seconds. You choose the altitudes a plane is shown
   between, whether planes on the ground show, and how many at most. Tap the map to see the planes over the whole
   screen. You can also list up to eight aircraft to watch by registration or callsign, each in a colour of its own: a
-  watched plane always shows, larger and ringed, with its label. The map tile can show people and aircraft, only
-  people, or only aircraft, and it can be centred on a place of your own instead of home: a latitude and longitude, or
-  an airport's code such as KJFK, LAX or EGLL, from a list of the world's airports kept in the app. Its Distance can
-  also be a radius you choose, in kilometres or miles: the map fits that circle with a little room, shades it (darker
-  in the light look, lighter in the dark one), draws its edge, and leaves out planes outside it. A tap on the map tile
+  watched plane always shows, larger and ringed, with its label. Labels keep clear of each other and of the map's
+  keys, as on a radar display: one with no room beside its plane moves into open space with a thin line back to it,
+  and one with no room at all on a small card is left out. The map tile can show people and aircraft, only people, or
+  only aircraft, and it can be centred on a place of your own instead of home: a latitude and longitude, or an
+  airport's code such as KJFK, LAX or EGLL, from a list of the world's airports kept in the app. Its Distance can also
+  be a radius you choose, in kilometres or miles: the map fits that circle with a little room, shades it (darker in
+  the light look, lighter in the dark one), draws its edge, and leaves out planes outside it. A tap on the map tile
   can open the full view with its keys, open the map alone over the whole screen (tap again to close it), or do
   nothing. The map's settings are now in three groups: the map, its people and its aircraft. A screen needs this
   update's firmware to draw them.

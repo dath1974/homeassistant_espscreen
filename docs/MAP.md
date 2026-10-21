@@ -140,7 +140,7 @@ No place reaches the screen, as with the people on the map.
 | Choice | What it does |
 | --- | --- |
 | **Marker** | **Dot**, the smallest. **Dot and heading**: a short line the way it flies. **Plane**: a plane seen from above, turned to its heading. |
-| **Label** | **Where there is room** (the callsign on a small card, with the altitude on a larger one and the full view), none, the callsign, the callsign and altitude, or also the speed, type and route. |
+| **Label** | **Where there is room** (the callsign on a small card, with the altitude on a larger one and the full view), none, the callsign, the callsign and altitude, or also the speed, type and route. Labels keep clear of each other, of the planes and of the full view's keys, as a radar display keeps its data blocks apart: a label with no room beside its plane moves out into open space, with a thin line back to it, and one with no room anywhere on the card is left out (a watched plane's always shows). A label keeps its place while its plane glides. |
 | **Colour** | **By altitude**, from the ground up: grey on the ground, then orange, green, blue and purple (below 5,000, 15,000 and 30,000 ft, and above). Or the screen's accent for every plane. |
 | **Between reports** | **Glide**: each plane flies on along its heading at its speed until the next report, for at most 30 seconds, so the map moves smoothly. **Hold**: each plane stays where the last report put it. |
 | **Track** | The line a plane flew, for the number of seconds you choose (10 to 900). Tessera keeps each plane's places with their time itself, so a track works the same whatever the source keeps. |
@@ -177,7 +177,7 @@ full view closed) gets nothing more. A screen with older firmware shows the map 
 | Tests and renders | `tests/test_map_card.py`, `tools/render/map_tiles.py` |
 | Aircraft: reading a source, choosing, labels, tracks, pixels and the message | `screen_manager/app/aircraft.py`, `catalogue/person.yaml` (`map.aircraft`) |
 | Aircraft: the screen's ask, its cards and every report | `Manager.answer_air`, `air_reports`, `air_message` in `server.py` |
-| Aircraft on the screen | `aircraft_plan.h` (where a plane is, its outline, its label), `aircraft_view.cpp` (one object over the picture), `air_tick`, `air_receive` in `runtime_tiles.h`, op `air` in `page_receiver.cpp`, `theme.h` (`AIRCRAFT_*`, the watched colours from `ha::`) |
+| Aircraft on the screen | `aircraft_plan.h` (where a plane is, its outline, its label, labels kept apart with `place_labels`), `aircraft_view.cpp` (one object over the picture), `air_tick`, `air_receive` in `runtime_tiles.h`, op `air` in `page_receiver.cpp`, `theme.h` (`AIRCRAFT_*`, the watched colours from `ha::`) |
 | What the map tile shows, its own place | `people_shown`, `centre_of`, `frame_view` in `map_card.py`; `aircraft.source_of` |
 | Aircraft in the editor | `MapSection.vue`, `model/aircraft.ts` |
 | Aircraft tests and renders | `tests/test_aircraft.py`, `tests/test_aircraft_plan.cpp`, `tools/render/aircraft.py` |
