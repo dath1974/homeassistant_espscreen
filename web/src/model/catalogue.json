@@ -1634,7 +1634,11 @@
     ],
     "streets": [
      "show",
-     "hide"
+     "hide",
+     "sectional",
+     "ifr_low",
+     "ifr_high",
+     "topo"
     ],
     "look": [
      "auto",

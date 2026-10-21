@@ -2405,9 +2405,14 @@
           "hide": "Nascondi"
         },
         "streets": {
-          "label": "Strade",
-          "show": "Mostra",
-          "hide": "Semplice"
+          "label": "Mappa di base",
+          "show": "Strade",
+          "hide": "Semplice",
+          "sectional": "Carta sezionale VFR (USA)",
+          "ifr_low": "IFR bassa (USA)",
+          "ifr_high": "IFR alta (USA)",
+          "topo": "USGS Topo (USA)",
+          "chart_hint": "Una carta della FAA o dell’USGS, solo Stati Uniti, e non per la navigazione. Appare alle distanze per cui è disegnata; più da vicino, o fuori dagli Stati Uniti, la mappa mostra le sue strade."
         },
         "look": {
           "label": "Aspetto",

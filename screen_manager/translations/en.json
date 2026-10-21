@@ -2030,9 +2030,14 @@
           "hide": "Hide"
         },
         "streets": {
-          "label": "Streets",
-          "show": "Show",
-          "hide": "Plain"
+          "label": "Base map",
+          "show": "Streets",
+          "hide": "Plain",
+          "sectional": "VFR sectional (US)",
+          "ifr_low": "IFR low (US)",
+          "ifr_high": "IFR high (US)",
+          "topo": "USGS topo (US)",
+          "chart_hint": "A chart from the FAA or the USGS, United States only, and not for navigation. It shows at the distances it is drawn for; closer in, or outside the United States, the map shows its streets."
         },
         "look": {
           "label": "Look",
