@@ -772,8 +772,9 @@ ATTRIBUTION = '© OpenStreetMap'
 HUE_HALF = (-0.574, 1.430, 0.144, 0, 0.426, 0.430, 0.144, 0, 0.426, 1.430, -0.856, 0)
 
 
-def draw_chart(canvas, view, tiles, look, dark):
-    """A chart's picture tiles (map_charts.py) under the frame: {(zoom, x, y): bytes}, b'' where it has none."""
+def draw_chart(canvas, view, tiles, look, dark, night='invert'):
+    """A chart's picture tiles (map_charts.py) under the frame: {(zoom, x, y): bytes}, b'' where it has none. `night`:
+    how it goes dark in the dark look (map_charts.CHARTS)."""
     import io
     from PIL import Image, ImageOps
     s = SUPERSAMPLE
@@ -788,7 +789,9 @@ def draw_chart(canvas, view, tiles, look, dark):
         x0, y0 = round(ox * s), round(oy * s)
         x1, y1 = round((ox + TILE_PX * scale) * s), round((oy + TILE_PX * scale) * s)
         canvas.image.paste(picture.resize((x1 - x0, y1 - y0), Image.Resampling.BICUBIC), (x0, y0))
-    if dark:
+    if dark and night != 'invert':
+        canvas.image = canvas.image.point(lambda v: round(v * night))
+    elif dark:
         # Then fitted between the dark look's ground and its ink, so the card sits with the rest of the screen.
         low, high = _rgb(look['land'])[0], _rgb(look['ink'])[0]
         turned = ImageOps.invert(canvas.image).convert('RGB', HUE_HALF)
@@ -817,11 +820,11 @@ def marker_size(size, dpi_scale):
 
 def render(size, people, zones, tiles, framing='everyone', distance=DEFAULT_DISTANCE, dark=False, dpi_scale=1.0,
            own=None, names=None, name=None, label_px=None, inset=None, photos=None, show_zones=True, full=False, focus=None,
-           move=None, centre=None, radius=None, chart=None, credit=None):
+           move=None, centre=None, radius=None, chart=None, kind=None):
     """The card's picture: the streets, the zones, the people and the tile's name, in the look asked for.
 
     `tiles` are the decoded vector tiles of `view_for` ({} draws a plain ground without streets), `chart` a chart's picture
-    tiles (map_charts.keys_for) drawn in their place, with `credit` for its attribution; `name` goes on a pill at
+    tiles (map_charts.keys_for) drawn in their place, `kind` its key in map_charts.CHARTS; `name` goes on a pill at
     the bottom left in the card's own colours, `label_px` high as the screen writes a tile's name (its FONT_LABEL_SIZE).
     `names`: None puts first names beside the markers where the card has room for them, True and False always and never.
     `photos` has a picture per entity that shows one in its marker. `full`: the view over the whole glass a tap opens,
@@ -841,7 +844,7 @@ def render(size, people, zones, tiles, framing='everyone', distance=DEFAULT_DIST
     canvas = Canvas(size, _rgb(look['land']))
     if chart:
         tiles = {}
-        draw_chart(canvas, view, chart, look, dark)
+        draw_chart(canvas, view, chart, look, dark, map_charts.CHARTS[kind]['night'])
     elif tiles:
         draw_basemap(canvas, view, tiles, look, dpi_scale)
     if circle:
@@ -855,7 +858,7 @@ def render(size, people, zones, tiles, framing='everyone', distance=DEFAULT_DIST
     if tiles and min(size) >= 150 * dpi_scale:
         draw_places(canvas, view, tiles, look, dpi_scale, people_boxes + zone_boxes)
     if chart or tiles:
-        draw_attribution(canvas, look, dpi_scale, bottom=full, text=credit if chart else ATTRIBUTION)
+        draw_attribution(canvas, look, dpi_scale, bottom=full, text=map_charts.CHARTS[kind]['credit'] if chart else ATTRIBUTION)
     if name:
         draw_name(canvas, name, look, label_px, pill_h, inset)
     image = canvas.finish()
@@ -1134,9 +1137,8 @@ def render_tile(tile, states, size, board, dark=False, tiles=None, registry=None
     names = {'auto': True if full else None, 'always': True, 'never': False}[options['names']]
     name = name_of(tile, states) if options['overlay'] == 'name' and not full else None
     chart = chart if chart and chart_of(tile) and map_charts.drawable(chart) else None
-    credit = map_charts.CHARTS[chart_of(tile)]['credit'] if chart else None
     image, _ = render(size, people, zones, (tiles or {}) if options['streets'] != 'hide' else {}, options['framing'],
                       options['distance'], dark_for(tile, dark), board.scale, people[0] if people else None, names,
                       name or None, board.label, board.inset, photos, options['zones'] == 'show' and people_shown(tile), full,
-                      focus if full else None, move if full else None, centre_of(tile), radius_of(tile), chart, credit)
+                      focus if full else None, move if full else None, centre_of(tile), radius_of(tile), chart, chart_of(tile))
     return image

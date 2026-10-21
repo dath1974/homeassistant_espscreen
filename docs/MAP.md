@@ -84,8 +84,8 @@ from a public address on the internet; never from another address in the house.
 
 A map can show a chart in place of its streets: the FAA's VFR sectional, IFR enroute low or IFR enroute high chart, or
 the USGS topographic map. They cover the United States, they are drawn as their makers print them (not in the screen's
-colours; in the dark look their light is turned round, dark paper and light ink, with their colours kept), and they are
-not for navigation. The card carries "FAA" or "USGS".
+colours; in the dark look the sectional is darkened, as aviation apps do at night, and the others turned round, dark
+paper and light ink with their colours kept), and they are not for navigation. The card carries "FAA" or "USGS".
 
 Home Assistant has no proxy for these, so Tessera asks the chart's own public server, which needs no key. As for the
 streets, a request names a zoom and two whole numbers and nothing else, and it carries the app's name. Tiles are kept for
