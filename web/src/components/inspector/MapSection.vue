@@ -54,6 +54,10 @@ const choices = (key: MapChoice) => offeredChoices(props.tile, key, (MAP?.[key] 
   .filter((value) => !(key === "framing" && value === "person" && mapTile.value))
   .filter((value) => !(key === "framing" && value === "everyone" && !people.value))
   .map((value) => [value, t(`editor.tile.map.${key}.${value}`)] as [string, string]), current(key, MAP?.[key]?.[0]), controlled.value);
+// What a tap on the map tile does: the full view with its keys, the map alone over the whole glass (`clean`, closed by
+// another tap), or nothing. The catalogue's screen taps; the tile's other taps mean nothing on a map.
+const tap = computed(() => current("tap", "auto") as string);
+const tapChoices = computed(() => (["auto", "clean", "none"] as const).map((value) => [value, t(`editor.tile.map.tap.${value}`)] as [string, string]));
 const overlay = computed(() => offeredChoices(props.tile, "overlay", rules.picture.overlay.map((value) => [value, t(`editor.tile.picture.overlay.${value}`)] as [string, string]),
   current("overlay", rules.picture.overlay[0]), controlled.value));
 // The middle of a map framed on a place of its own: typed as two numbers, stored once both are numbers (or pasted as one
@@ -167,6 +171,9 @@ function remove(id: string) { setTileOption(props.tile, "map", mapWith.value.fil
     </PropRow>
     <PropRow :label="t('editor.tile.map.look.label')" icon="theme-light-dark">
       <ChoiceField :choices="choices('look')" :value="current('look', MAP?.look[0])" :tile="tile" preview-key="look" :aria-label="t('editor.tile.map.look.label')" @pick="(v) => setTileOption(tile, 'look', v)" />
+    </PropRow>
+    <PropRow v-if="mapTile" :label="t('editor.tile.map.tap.label')" icon="gesture-tap" :hint="t(`editor.tile.map.tap.${tap}_hint`)">
+      <ChoiceField :choices="tapChoices" :value="tap" :aria-label="t('editor.tile.map.tap.label')" @pick="(v) => setTileOption(tile, 'tap', v)" />
     </PropRow>
     <PropRow :label="t('editor.tile.picture.overlay.label')" icon="format-title">
       <ChoiceField :choices="overlay" :value="current('overlay', 'name')" :tile="tile" preview-key="overlay" :aria-label="t('editor.tile.picture.overlay.label')" @pick="(v) => setTileOption(tile, 'overlay', v)" />

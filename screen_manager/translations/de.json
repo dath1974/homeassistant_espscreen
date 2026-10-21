@@ -2415,6 +2415,15 @@
           "light": "Hell",
           "dark": "Dunkel"
         },
+        "tap": {
+          "label": "Tippen",
+          "auto": "Vollbild mit Tasten",
+          "clean": "Vollbild, nur Karte",
+          "none": "Nichts",
+          "auto_hint": "Die Karte öffnet sich über den ganzen Bildschirm, mit Zurück-Taste, Namen und Tasten zum Verschieben und Zoomen.",
+          "clean_hint": "Die Karte öffnet sich über den ganzen Bildschirm, ohne etwas darüber. Tippe erneut, um sie zu schließen.",
+          "none_hint": "Ein Tippen auf die Karte bewirkt nichts."
+        },
         "chosen": {
           "label": "Auf der Karte",
           "hint": "Wem diese Karte folgt, jeder in seiner eigenen Farbe. Ein Tracker ist ein Telefon, ein Auto oder ein Tag, dessen Standort Home Assistant kennt."

@@ -2040,6 +2040,15 @@
           "light": "Light",
           "dark": "Dark"
         },
+        "tap": {
+          "label": "Tap",
+          "auto": "Full screen with keys",
+          "clean": "Full screen, map only",
+          "none": "Nothing",
+          "auto_hint": "The map opens over the whole screen with its back key, its name and keys to move and zoom.",
+          "clean_hint": "The map opens over the whole screen with nothing over it. Tap it again to close it.",
+          "none_hint": "A tap on the map does nothing."
+        },
         "chosen": {
           "label": "On the map",
           "hint": "Who this map follows, each in their own colour. A tracker is a phone, a car or a tag Home Assistant knows the place of."

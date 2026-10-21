@@ -398,7 +398,8 @@ inline std::string hhmm(const esphome::ESPTime &time) {
 }
 inline void history_received();
 // Camera images full screen and on an alert (firmware 0.2.57+, the Guition binds them; see the end of this file).
-inline void camera_open(const std::string &entity, const std::string &name, int map_index = -1, const std::string &focus = "");
+inline void camera_open(const std::string &entity, const std::string &name, int map_index = -1, const std::string &focus = "",
+                        bool bare = false);
 inline void camera_answer(const std::string &view, const std::string &entity, const std::string &url, uint32_t number);
 inline bool camera_supported();
 // Every picture goes one way (picture_loader.h; see the end of this file): an owner says what it wants, and draws what
@@ -5968,8 +5969,9 @@ inline void event(lv_event_t *event) {
     }
     // The map tile opens full screen as any map does (firmware 0.21.0+).
     if (card.is_map()) {
+      // Tap `clean`: the map alone over the whole glass, closed by a tap anywhere (the catalogue's screen taps).
       if (code == LV_EVENT_SHORT_CLICKED && card.tap != "none" && camera_supported() && allowed(esphome::millis(), TILE_TOUCH + static_cast<int>(w.index), card.entity))
-        camera_open(card.entity, card.name, (int)w.index);  // its name comes with its state ("Map")
+        camera_open(card.entity, card.name, (int)w.index, "", card.tap == "clean");  // its name comes with its state ("Map")
       return;
     }
     // The energy card: a circle with a sensor behind it opens that sensor's history (firmware 0.47.0+).
@@ -11062,6 +11064,8 @@ inline void picture_retire(const std::string &key) { if (pictures_kept() && !key
 // them kept its own state of what it had, what it asked and what loaded, and they waited for each other by name.
 // The map tile a full view shows (firmware 0.21.0+), -1 for a camera: its index goes with every ask for its picture.
 inline int camera_map_index = -1;
+// The full view open bare (the map tile's tap `clean`): the map alone, no back key, name or keys, closed by any tap.
+inline bool camera_bare = false;
 // A map's full view (firmware 0.21.0+): where its markers are on the picture, the one a finger picked (`focus`, asked
 // for with the picture) and that one's card, as Home Assistant's own map shows a selected person (app 0.4.36).
 struct MapSheet {
@@ -11920,6 +11924,7 @@ inline void camera_close() {
   live_view::close(camera.live_handle);
   lv_obj_delete(camera_root);
   camera_root = camera_picture = camera_note = camera_back = camera_title = camera_spinner = map_card_obj = nullptr;
+  camera_bare = false;
   camera_sound_key = nullptr;  // it went with the view
   map_zoom_keys = map_pad = map_waiting = nullptr;
   saver_first = saver_second = nullptr;  // they went with the view
@@ -12121,10 +12126,11 @@ inline void map_keys_place() {
   place(map_pad, b.x);
 }
 
-inline void camera_open(const std::string &entity, const std::string &name, int map_index, const std::string &focus) {
+inline void camera_open(const std::string &entity, const std::string &name, int map_index, const std::string &focus, bool bare) {
   // The screensaver's photos (app 0.4.89) open the full view as a camera does, under the step's own name.
   if (!camera_supported() || (!valid_entity(entity) && entity != SAVER_PHOTOS)) return;
   camera_close();
+  camera_bare = bare;
   camera_map_index = map_index;
   // Opened on someone (a person tile tapped): focused from the start, and Back closes the map at once.
   map_focus = focus;
@@ -12166,8 +12172,15 @@ inline void camera_open(const std::string &entity, const std::string &name, int 
     // Closed after this event: the key that sends it goes with the view.
     lv_async_call([](void *) { camera_close(); }, nullptr);
   }, LV_EVENT_SHORT_CLICKED, nullptr);
+  // A bare map (the map tile's tap `clean`) has nothing over it: no back key, no name, no keys; a tap anywhere closes it.
+  if (bare) {
+    lv_obj_add_flag(camera_back, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_event_cb(camera_root, [](lv_event_t *) {
+      lv_async_call([](void *) { camera_close(); }, nullptr);
+    }, LV_EVENT_SHORT_CLICKED, nullptr);
+  }
   // A finger on a map's marker focuses that person or tracker, on the map beside it everyone again (firmware 0.21.0+).
-  if (map_index >= 0) lv_obj_add_event_cb(camera_root, [](lv_event_t *) {
+  if (map_index >= 0 && !bare) lv_obj_add_event_cb(camera_root, [](lv_event_t *) {
     lv_point_t point;
     lv_indev_t *input = lv_indev_active();
     // The markers are where the picture on the glass has them only once it shows what the keys asked for.
@@ -12208,8 +12221,9 @@ inline void camera_open(const std::string &entity, const std::string &name, int 
     lv_obj_set_style_max_width(camera_title, detail_bar::middle(camera_root).w, 0);
     lv_obj_set_size(camera_title, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
     lv_obj_align(camera_title, LV_ALIGN_TOP_MID, 0, bar_y);
-    map_keys_create();
+    if (!bare) map_keys_create();
   }
+  if (bare) lv_obj_add_flag(camera_title, LV_OBJ_FLAG_HIDDEN);
   ESP_LOGI("camera", "open %s", entity.c_str());
   // Asked for now rather than on the next tick (firmware 0.2.73+): the answer is most of the wait.
   pictures_round();

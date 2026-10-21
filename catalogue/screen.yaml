@@ -10,6 +10,9 @@ cards:
 # grow with the power and carry an arrow the way it goes. A firmware before this one keeps the dots.
 energy:
   flow: [dots, lines]
+# The map tile's own tap (docs/MAP.md): `clean` opens the map over the whole glass with nothing over it, no back key,
+# name or map keys, and a tap anywhere closes it. A firmware before this one opens the full view with its keys.
+taps: [clean]
 firmware: 0.2.14   # the first firmware that draws these cards
 displays:
   # The clock's faces; the dial and the flip clock came with firmware 0.3.6.
