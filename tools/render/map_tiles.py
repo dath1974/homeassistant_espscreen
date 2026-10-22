@@ -130,6 +130,9 @@ class Study(run.Run):
         photos = {e: PHOTOS[e] for e in map_card.pictures_wanted(tile, STATES) if e in PHOTOS}
         return map_card.render_tile(tile, STATES, size, self.board, dark, streets, None, photos, full, focus)
 
+    async def after_full(self, name, look, side):
+        """A study's own step on a full view that is open (aircraft.py: a finger on a plane)."""
+
     async def full(self, data):
         """A map tapped open: drawn at the board's camera size, as server.Manager.answer_map_full answers."""
         tile = self.compiled[int(data.get('idx', 0))]
@@ -143,7 +146,7 @@ class Study(run.Run):
         self.served += 1
         url = self.pictures.url(f'map-full-{self.served}.bmp', body)
         sheet = {'h': self.hits, 'f': focus}
-        if focus:
+        if focus in STATES:
             # As server.Manager.map_sheet answers: Home Assistant's icon, its word, the value at the right.
             name = STATES[focus]['attributes']['friendly_name']
             sheet['c'] = {'t': name, 'r': [['F0B53', 'Office', 'since 14:02'], ['F0081', 'Battery', '82%'],
@@ -249,6 +252,7 @@ class Study(run.Run):
                             await self.render(f'{name}-focus-{look}', timeout=8)
                             await self.tap(30, 30)
                             await asyncio.sleep(0.8)
+                        await self.after_full(name, look, side)
                     except RuntimeError as error:
                         self.warnings.append(str(error))
                     await self.tap(30, 30)

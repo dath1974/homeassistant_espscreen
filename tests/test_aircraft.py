@@ -80,7 +80,7 @@ class LabelTest(unittest.TestCase):
         self.assertEqual(aircraft.label_of(f, 'none', False), '')
         self.assertEqual(aircraft.label_of(f, 'callsign', False), 'KLM123')
         self.assertEqual(aircraft.label_of(f, 'altitude', False), 'KLM123\n35000 ft')
-        self.assertEqual(aircraft.label_of(f, 'full', False), 'KLM123 · B738\n35000 ft · 450 kn\nAMS → LHR')
+        self.assertEqual(aircraft.label_of(f, 'full', False), 'KLM123 · B738\n35000 ft · 450 kn\nAMS – LHR')
         self.assertEqual(aircraft.label_of(f, 'altitude', True), 'KLM123\n10670 m')
 
     def test_auto_follows_the_room(self):
@@ -123,7 +123,7 @@ class OverlayTest(unittest.TestCase):
         self.assertEqual(tracks.of(SOURCE, 'abc', 900, aircraft.FORGET_SECONDS + 1), [])
 
     def test_message_fits_the_screen(self):
-        planes = [[100 + n, 100, 90, 3, 50, 0, 'CALLSIGN' + str(n) + '\n35000 ft · 450 kn\nAMS → LHR', list(range(40))] for n in range(20)]
+        planes = [[100 + n, 100, 90, 3, 50, 0, 'CALLSIGN' + str(n) + '\n35000 ft · 450 kn\nAMS – LHR', list(range(40))] for n in range(20)]
         body = aircraft.message('tile', 3, (400, 300), planes, {'m': 'dot', 'c': 'altitude', 'g': 1})
         self.assertLessEqual(len(json.dumps(body, ensure_ascii=False, separators=(',', ':')).encode()), aircraft.MESSAGE_BYTES)
         self.assertGreater(len(body['a']), 5)
@@ -314,6 +314,46 @@ class HelloTest(unittest.TestCase):
         self.assertIn(f'if (runtime_tiles::camera_supported()) features.add("{aircraft.FEATURE}");', core_yaml)
 
 
+class PickedTest(unittest.TestCase):
+    """A plane picked on a full view (`air:<id>`): its id on the full view's planes, and its card."""
+    WORDS = {'ground': 'On the ground', 'squawk': 'Squawk'}
+
+    def test_a_full_views_planes_carry_their_id(self):
+        options = aircraft.options_of(tile())
+        [card] = aircraft.overlay(VIEW, aircraft.flights_of(state(flight())), options)
+        [full] = aircraft.overlay(VIEW, aircraft.flights_of(state(flight())), options, full=True)
+        self.assertEqual(len(card), 9, 'a card on the page has no use for it')
+        self.assertEqual(full[9], 'abc')
+        self.assertEqual(aircraft.picked_of('air:abc'), 'abc')
+        for focus in ('', 'person.sam', 'air:', None, 'air:' + 'x' * 33):
+            self.assertIsNone(aircraft.picked_of(focus), focus)
+
+    def test_the_card_of_a_plane(self):
+        item = flight(airline='KLM Royal Dutch Airlines', flight_number='KL1601', aircraft_model='Embraer E190',
+                      aircraft_registration='PH-EZA', airport_origin_city='Billund', airport_destination_city='London',
+                      altitude=2500, speed=160, vertical_speed=-800, squawk='4521')
+        self.assertIs(aircraft.item_of(state(flight('other'), item), 'abc'), item)
+        self.assertIsNone(aircraft.item_of(state(item), 'gone'))
+        card = aircraft.card(item, False, self.WORDS)
+        glyph = aircraft.tile_icons.GLYPHS
+        self.assertEqual(card['t'], 'KLM123')
+        self.assertEqual(card['r'], [
+            [glyph['airplane'], 'KLM Royal Dutch Airlines', 'KL1601'],
+            [glyph['map-marker'], 'Billund – London', 'AMS – LHR'],
+            [glyph['information-outline'], 'Embraer E190', 'PH-EZA'],
+            [glyph['arrow-down'], '2500 ft', '160 kn'],
+            [glyph['information-outline'], 'Squawk', '4521']])
+        # Metric where Home Assistant counts in kilometres; level flight, on the ground; only what the source gives.
+        metric = aircraft.card(flight(vertical_speed=50), True, self.WORDS)
+        self.assertEqual(metric['r'][-1], [glyph['arrow-right'], '10670 m', '833 km/h'])
+        self.assertEqual(aircraft.card(flight(vertical_speed=900), False, self.WORDS)['r'][-1][0], glyph['arrow-up'])
+        ground = aircraft.card(flight(on_ground=1, speed=12), False, self.WORDS)
+        self.assertEqual(ground['r'][-1], [glyph['speedometer'], 'On the ground', '12 kn'])
+        bare = aircraft.card({'id': 'x1', 'latitude': 1, 'longitude': 2, 'aircraft_registration': 'N12345'}, False, self.WORDS)
+        self.assertEqual(bare, {'t': 'N12345', 'r': [[glyph['information-outline'], '', 'N12345']]})
+        self.assertIsNone(aircraft.card({'id': 'x1'}, False, self.WORDS), 'no place, no plane')
+
+
 class ScreenTest(unittest.IsolatedAsyncioTestCase):
     """A screen that asks for the planes of its map cards gets them as op "air", and again on every report."""
 
@@ -365,6 +405,20 @@ class ScreenTest(unittest.IsolatedAsyncioTestCase):
             await m.answer_camera({'inbox': 'text.d1_tiles', 'air': 'full', 'idx': '0', 'size': '400x300', 'move': '1,0.00,0.00', 'focus': ''})
             [message] = sent()
             self.assertEqual((message['t'], message['w'], message['mv'], message['f']), ('full', 400, '1,0.00,0.00', ''))
+            # A plane picked on the full view: its card comes with the planes, and again with every report.
+            ha.states[SOURCE] = state(flight('near', lat=52.3587, lon=4.8700, airline='KLM', flight_number='KL123'))
+            m.ha.states[SOURCE] = ha.states[SOURCE]
+            await m.answer_camera({'inbox': 'text.d1_tiles', 'air': 'full', 'idx': '0', 'size': '400x300', 'move': '', 'focus': 'air:near'})
+            [message] = sent()
+            self.assertEqual(message['f'], '', 'a plane picked is the same view as nobody picked')
+            self.assertEqual(message['a'][0][9], 'near')
+            self.assertEqual((message['m']['f'], message['m']['c']['t']), ('air:near', 'KLM123'))
+            self.assertEqual(message['m']['c']['r'][0][1:], ['KLM', 'KL123'])
+            ha.states[SOURCE] = state(flight('other', lat=52.3587, lon=4.8700))
+            m.ha.states[SOURCE] = ha.states[SOURCE]
+            await m.air_reports({SOURCE})
+            [message] = sent()
+            self.assertEqual(message['m'], {'f': 'air:near'}, 'gone from the source: its card goes')
             # A tile that is no map with aircraft is never answered.
             await m.answer_camera({'inbox': 'text.d1_tiles', 'air': 'full', 'idx': '1', 'size': '400x300'})
             self.assertEqual(sent(), [])

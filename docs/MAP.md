@@ -154,6 +154,12 @@ No place reaches the screen, as with the people on the map.
 Altitudes and speeds on the labels follow Home Assistant's unit system: feet and knots, or meters and kilometers per
 hour.
 
+**A plane's card.** On the full view, tap a plane to pick it: it gets a ring, the top bar takes its callsign, and a card
+shows what the sensor knows of it, as many rows as the screen has room for: the airline and flight, the route, the
+aircraft and its registration, its altitude (with an arrow for climbing or descending) and speed, and its squawk. The view
+stays as it is, and the card follows the plane on every report; it goes to the top when the plane is under it. Tap the
+plane again, the map beside it or the back key to let it go.
+
 **How fresh it is.** A plane is as recent as the sensor's last report. Flightradar24 updates as often as its scan
 interval in the integration's options, and it limits requests that come too often, so every 10 to 15 seconds is a
 sensible pace. Glide fills the time in between.
@@ -178,6 +184,7 @@ full view closed) gets nothing more. A screen with older firmware shows the map 
 | The editor | `TileInspector.vue`, `model/tile-options.ts`, `model/page-validation.ts` |
 | Tests and renders | `tests/test_map_card.py`, `tools/render/map_tiles.py` |
 | Aircraft: reading a source, choosing, labels, tracks, pixels and the message | `screen_manager/app/aircraft.py`, `catalogue/person.yaml` (`map.aircraft`) |
+| Aircraft: a plane picked on the full view (`air:<id>`) and its card | `aircraft.card`, `picked_of`, `Manager.air_card` in `server.py`; `aircraft_plan::pick`, `map_pick_plane`, `air_full_card` in `runtime_tiles.h` |
 | Aircraft: the screen's ask, its cards and every report | `Manager.answer_air`, `air_reports`, `air_message` in `server.py` |
 | Aircraft on the screen | `aircraft_plan.h` (where a plane is, its outline, its label, labels kept apart with `place_labels`), `aircraft_view.cpp` (one object over the picture), `air_tick`, `air_receive` in `runtime_tiles.h`, op `air` in `page_receiver.cpp`, `theme.h` (`AIRCRAFT_*`, the watched colours from `ha::`) |
 | What the map tile shows, its own place | `people_shown`, `centre_of`, `frame_view` in `map_card.py`; `aircraft.source_of` |

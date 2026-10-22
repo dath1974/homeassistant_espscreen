@@ -24,6 +24,7 @@ import time
 
 import catalogue
 import map_card
+import tile_icons
 
 SOURCE_ATTRIBUTE = 'flights'
 # The name a screen that draws aircraft gives in its hello's features.
@@ -85,6 +86,12 @@ def _text(value, most=24):
     return str(value).strip()[:most] if isinstance(value, (str, int)) and not isinstance(value, bool) and str(value).strip() else ''
 
 
+def key_of(item):
+    """The id a source gives one of its aircraft, its own or its transponder's or its callsign, as the screen picks it."""
+    callsign = _text(item.get('callsign'), 12) or _text(item.get('flight_number'), 12)
+    return _text(item.get('id'), 32) or _text(item.get('aircraft_icao_24bit'), 12) or callsign
+
+
 def flights_of(state):
     """The aircraft a source's state lists, each with a place: Flightradar24's fields, read where they are."""
     listed = ((state or {}).get('attributes') or {}).get(SOURCE_ATTRIBUTE)
@@ -98,7 +105,7 @@ def flights_of(state):
         if lat is None or lon is None or not (-90 <= lat <= 90 and -180 <= lon <= 180):
             continue
         callsign = _text(item.get('callsign'), 12) or _text(item.get('flight_number'), 12)
-        key = _text(item.get('id'), 32) or _text(item.get('aircraft_icao_24bit'), 12) or callsign
+        key = key_of(item)
         if not key or key in seen:
             continue
         seen.add(key)
@@ -311,6 +318,10 @@ def speed_text(flight, metric, number=str, suffix=lambda unit: ' ' + unit):
     return number(str(round(flight.speed * 1.852))) + suffix('km/h') if metric else number(str(round(flight.speed))) + suffix('kn')
 
 
+# Between a route's two airports: an en dash, which the screen's fonts have; they have no arrow (packages/core.yaml).
+ROUTE = '–'
+
+
 def label_of(flight, kind, metric, number=str, suffix=lambda unit: ' ' + unit):
     """A plane's label, its lines joined by a newline: the callsign, then its altitude, then its speed, type and route."""
     if kind == 'none':
@@ -323,7 +334,7 @@ def label_of(flight, kind, metric, number=str, suffix=lambda unit: ' ' + unit):
         return '\n'.join(part for part in (name[:12], altitude) if part)
     first = ' · '.join(part for part in (name[:12], flight.model[:8]) if part)
     second = ' · '.join(part for part in (altitude, speed_text(flight, metric, number, suffix)) if part)
-    route = f'{flight.origin} → {flight.destination}' if flight.origin and flight.destination else ''
+    route = f'{flight.origin} {ROUTE} {flight.destination}' if flight.origin and flight.destination else ''
     return '\n'.join(part for part in (first, second, route) if part)
 
 
@@ -348,7 +359,8 @@ def overlay(view, flights, options, tracks=None, source='', size=None, scale=1.0
             number=str, suffix=lambda unit: ' ' + unit, circle=None):
     """The planes of one card on its frame: [x, y, heading, band, vx, vy, label, track, watched], with -1 for a heading
     or band it has none of, the track as x, y, x, y ... oldest first, ending where the plane is, and `watched` the colour
-    of a watched plane (watch_colour), which comes last so the screen draws it on top, always with a label."""
+    of a watched plane (watch_colour), which comes last so the screen draws it on top, always with a label. A full view's
+    planes carry their id last too, which a finger on one sends back to pick it (`air:<id>`, card)."""
     size = size or (view.width, view.height)
     kind = label_kind(options, size, scale, full)
     watched = options.get('plane_watch') or {}
@@ -366,8 +378,67 @@ def overlay(view, flights, options, tracks=None, source='', size=None, scale=1.0
         level = band(flight)
         out.append([round(x), round(y), round(flight.heading) if flight.heading is not None else -1,
                     -1 if level is None else level, vx, vy,
-                    label_of(flight, 'callsign' if colour and kind == 'none' else kind, metric, number, suffix), track, colour])
+                    label_of(flight, 'callsign' if colour and kind == 'none' else kind, metric, number, suffix), track, colour]
+                   + ([flight.id] if full else []))
     return out
+
+
+# A plane picked on a full view (firmware tap): the map's focus `air:<id>`, the id its planes carry.
+PICKED = 'air:'
+# How far a plane climbs or descends a minute, in feet, before its card says it does.
+LEVEL_FPM = 200
+
+
+def picked_of(focus):
+    """The id of the plane a full view's focus picks, or None."""
+    if not isinstance(focus, str) or not focus.startswith(PICKED):
+        return None
+    key = focus[len(PICKED):]
+    return key if 0 < len(key) <= 32 else None
+
+
+def item_of(state, key):
+    """The source's own entry of one aircraft by its id, every field it gives, or None."""
+    listed = ((state or {}).get('attributes') or {}).get(SOURCE_ATTRIBUTE)
+    for item in listed if isinstance(listed, list) else ():
+        if isinstance(item, dict) and key_of(item) == key:
+            return item
+    return None
+
+
+def card(item, metric, words, number=str, suffix=lambda unit: ' ' + unit):
+    """The card of a plane picked on a full view, as a person's (server.map_sheet): its callsign for the title, and rows of
+    an icon, a name and a value at the right, most telling first, as many as the glass has room for: the airline and
+    flight, the route, the aircraft and its registration, its altitude (climbing, level or descending) and speed, and
+    its squawk. `words` has the screen's words for `ground` and `squawk`."""
+    flights = flights_of({'attributes': {SOURCE_ATTRIBUTE: [item]}})
+    if not flights:
+        return None
+    flight = flights[0]
+    glyph = tile_icons.GLYPHS
+    rows = []
+    airline = _text(item.get('airline'), 40) or flight.airline
+    if airline or flight.flight:
+        rows.append([glyph['airplane'], airline or flight.callsign, flight.flight])
+    if flight.origin or flight.destination:
+        place = lambda side: _text(item.get(f'airport_{side}_city'), 20) or _text(item.get(f'airport_{side}_name'), 20) \
+            or _text(item.get(f'airport_{side}_code_iata'), 4)
+        rows.append([glyph['map-marker'], f'{place("origin") or "?"} {ROUTE} {place("destination") or "?"}',
+                     f'{flight.origin or "?"} {ROUTE} {flight.destination or "?"}'])
+    model = _text(item.get('aircraft_model'), 40) or flight.model
+    if model or flight.registration:
+        rows.append([glyph['information-outline'], model, flight.registration])
+    climb = _number(item.get('vertical_speed'))
+    trend = 'arrow-right' if climb is None or abs(climb) < LEVEL_FPM else 'arrow-up' if climb > 0 else 'arrow-down'
+    height = words['ground'] if flight.on_ground else altitude_text(flight, metric, number, suffix)
+    speed = speed_text(flight, metric, number, suffix)
+    if height or speed:
+        rows.append([glyph['speedometer' if flight.on_ground else trend], height, speed])
+    squawk = _text(item.get('squawk'), 4)
+    if squawk:
+        rows.append([glyph['information-outline'], words['squawk'], squawk])
+    title = flight.callsign or flight.flight or flight.registration or flight.model or flight.id
+    return {'t': title[:60], 'r': [[icon, name[:40], value[:24]] for icon, name, value in rows]}
 
 
 def style_of(options):
@@ -400,14 +471,17 @@ def cards_of(request, most):
     return out[:8]
 
 
-def message(target, index, size, planes, style, move='', focus=''):
+def message(target, index, size, planes, style, move='', focus='', sheet=None):
     """The op "air" for one card, made to fit what the screen takes: the farthest planes go first, then the tracks are
     thinned. `target` is "tile" (a card of the page, `index` its tile) or "full" (the full view of tile `index`), `size`
-    the picture's pixels the planes are placed on."""
+    the picture's pixels the planes are placed on. `sheet`: a full view's plane picked, {'f': its focus, 'c': its card or
+    nothing once it is gone}, as a full view's picture carries a person's."""
     planes = [list(p) for p in planes]
     body = {'v': 1, 'op': 'air', 't': target, 'i': index, 'w': size[0], 'h': size[1], 's': style, 'a': planes}
     if target == 'full':
         body['mv'], body['f'] = move, focus
+        if sheet:
+            body['m'] = sheet
 
     def length():
         return len(json.dumps(body, ensure_ascii=False, separators=(',', ':')).encode())
