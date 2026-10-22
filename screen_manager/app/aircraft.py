@@ -409,7 +409,7 @@ def item_of(state, key):
 def card(item, metric, words, number=str, suffix=lambda unit: ' ' + unit):
     """The card of a plane picked on a full view, as a person's (server.map_sheet): its callsign for the title, and rows of
     an icon, a name and a value at the right, most telling first, as many as the glass has room for: the airline and
-    flight, the route, the aircraft and its registration, its altitude (climbing, level or descending) and speed, and
+    flight, the aircraft and its registration (unless that is the title), its altitude (climbing, level or descending) and speed, and
     its squawk. `words` has the screen's words for `ground` and `squawk`."""
     flights = flights_of({'attributes': {SOURCE_ATTRIBUTE: [item]}})
     if not flights:
@@ -420,14 +420,12 @@ def card(item, metric, words, number=str, suffix=lambda unit: ' ' + unit):
     airline = _text(item.get('airline'), 40) or flight.airline
     if airline or flight.flight:
         rows.append([glyph['airplane'], airline or flight.callsign, flight.flight])
-    if flight.origin or flight.destination:
-        place = lambda side: _text(item.get(f'airport_{side}_city'), 20) or _text(item.get(f'airport_{side}_name'), 20) \
-            or _text(item.get(f'airport_{side}_code_iata'), 4)
-        rows.append([glyph['map-marker'], f'{place("origin") or "?"} {ROUTE} {place("destination") or "?"}',
-                     f'{flight.origin or "?"} {ROUTE} {flight.destination or "?"}'])
+    title = flight.callsign or flight.flight or flight.registration or flight.model or flight.id
     model = _text(item.get('aircraft_model'), 40) or flight.model
-    if model or flight.registration:
-        rows.append([glyph['information-outline'], model, flight.registration])
+    # A registration the title already shows (a light aircraft flies under its own) is not said twice.
+    registration = '' if flight.registration == title else flight.registration
+    if model or registration:
+        rows.append([glyph['information-outline'], model, registration])
     climb = _number(item.get('vertical_speed'))
     trend = 'arrow-right' if climb is None or abs(climb) < LEVEL_FPM else 'arrow-up' if climb > 0 else 'arrow-down'
     height = words['ground'] if flight.on_ground else altitude_text(flight, metric, number, suffix)
@@ -437,7 +435,6 @@ def card(item, metric, words, number=str, suffix=lambda unit: ' ' + unit):
     squawk = _text(item.get('squawk'), 4)
     if squawk:
         rows.append([glyph['information-outline'], words['squawk'], squawk])
-    title = flight.callsign or flight.flight or flight.registration or flight.model or flight.id
     return {'t': title[:60], 'r': [[icon, name[:40], value[:24]] for icon, name, value in rows]}
 
 
