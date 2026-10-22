@@ -315,7 +315,7 @@ def altitude_text(flight, metric, number=str, suffix=lambda unit: ' ' + unit):
 def speed_text(flight, metric, number=str, suffix=lambda unit: ' ' + unit):
     if flight.speed is None:
         return ''
-    return number(str(round(flight.speed * 1.852))) + suffix('km/h') if metric else number(str(round(flight.speed))) + suffix('kn')
+    return number(str(round(flight.speed * 1.852))) + suffix('km/h') if metric else number(str(round(flight.speed))) + suffix('kts')
 
 
 # Between a route's two airports: an en dash, which the screen's fonts have; they have no arrow (packages/core.yaml).
