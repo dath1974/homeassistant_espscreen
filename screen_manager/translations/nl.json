@@ -1453,7 +1453,11 @@
       },
       "map": {
         "since_time": "sinds {time}",
-        "battery": "Batterij"
+        "battery": "Batterij",
+        "aircraft": {
+          "ground": "Aan de grond",
+          "squawk": "Squawk"
+        }
       },
       "media": {
         "playlist": "Playlist",

@@ -1453,7 +1453,11 @@
       },
       "map": {
         "since_time": "od {time}",
-        "battery": "Bateria"
+        "battery": "Bateria",
+        "aircraft": {
+          "ground": "Na ziemi",
+          "squawk": "Squawk"
+        }
       },
       "media": {
         "playlist": "Playlista",

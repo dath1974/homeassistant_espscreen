@@ -3883,8 +3883,10 @@ class Manager:
             LOG.info('A map for %s: not a map tile of %s', entity, screen['name'])
             return
         width, height = box
-        # A finger on a marker (firmware 0.21.0+): that one in the middle, closer in, with its card over the bottom.
-        focus = request.get('focus') if request.get('focus') in map_card.shown(tile, self.ha.states, self.registry_index()) else ''
+        # A finger on a marker (firmware 0.21.0+): that one in the middle, closer in, with its card over the bottom. A
+        # plane picked (`air:<id>`) keeps the view as it is: the same picture, with the plane's card.
+        picked = aircraft.picked_of(request.get('focus')) if aircraft.source_of(tile) else None
+        focus = request.get('focus') if not picked and request.get('focus') in map_card.shown(tile, self.ha.states, self.registry_index()) else ''
         # Zoomed and moved by the screen's own keys (dev): the same picture drawn around another middle.
         move = map_card.move_of(request.get('move'))
         render = self.map_render(tile, camera_feed.shape_of(screen), camera_feed.live_dark(request), full=True, focus=focus, move=move)
@@ -3897,7 +3899,12 @@ class Manager:
             url = f'{base}/camera/{token}.bmp'
         # Where each marker is on that picture, and the card of the one picked: pixels and words, never a place.
         sheet = {'h': self.map_hits.get((render[0](), width, height), [])[:16], 'f': focus}
-        if focus:
+        if picked:
+            sheet['f'] = aircraft.PICKED + picked
+            plane = self.air_card(tile, picked, screen)
+            if plane:
+                sheet['c'] = plane
+        elif focus:
             sheet['c'] = await self.map_sheet(focus)
         await self.send_auxiliary(inbox, {'v': 1, 'op': 'camera', 't': 'full', 'e': entity, 'u': url, 'm': sheet}, action, request)
         LOG.info('Map of %s full screen on %s%s%s', entity, screen['name'], f' around {focus}' if focus else '', '' if url else ': no image')
@@ -3905,6 +3912,20 @@ class Manager:
     # How long a card keeps getting its planes after the screen last asked for them; the screen asks every 30 s.
     AIR_LEASE_SECONDS = 75
     AIR_CARDS_PER_SCREEN = 8
+
+    def air_card(self, tile, key, screen):
+        """The card of a plane picked on a map's full view (aircraft.card), in the screen's language, numbers and units;
+        None once its source no longer lists it."""
+        item = aircraft.item_of(self.ha.states.get(aircraft.source_of(tile)), key)
+        if item is None:
+            return None
+        metric = (getattr(self.ha, 'units', None) or {}).get('length') == 'km'
+        token = i18n.SCREEN.set(i18n.screen_context(screen))
+        try:
+            words = {'ground': screen_t('addon.screen.map.aircraft.ground'), 'squawk': screen_t('addon.screen.map.aircraft.squawk')}
+            return aircraft.card(item, metric, words, number=i18n.screen_number, suffix=i18n.unit_suffix)
+        finally:
+            i18n.SCREEN.reset(token)
 
     def air_message(self, key, screen):
         """The op "air" for one card: its planes on the view its picture shows, in the screen's language and numbers."""
@@ -3924,7 +3945,11 @@ class Manager:
                                       circle=map_card.circle_of(tile, self.ha.states, card['size'], board, self.registry_index()))
         finally:
             i18n.SCREEN.reset(token)
-        return aircraft.message(key[1], key[2], card['size'], planes, aircraft.style_of(options), card['move_text'], card['focus'])
+        sheet = None
+        if card.get('picked'):
+            plane = self.air_card(tile, card['picked'], screen)
+            sheet = {'f': aircraft.PICKED + card['picked'], **({'c': plane} if plane else {})}
+        return aircraft.message(key[1], key[2], card['size'], planes, aircraft.style_of(options), card['move_text'], card['focus'], sheet)
 
     async def air_send(self, inbox, keys):
         """The planes of these cards to one screen, each card its own message."""
@@ -3963,9 +3988,11 @@ class Manager:
             tile = tiles[index]
             full = asked == 'full'
             focus = request.get('focus') if full and request.get('focus') in map_card.shown(tile, self.ha.states, self.registry_index()) else ''
+            # A plane picked on the full view: its card goes with every message of the planes, so it follows the plane.
+            picked = aircraft.picked_of(request.get('focus')) if full else None
             move_text = request.get('move') if full and isinstance(request.get('move'), str) else ''
             key = (inbox, asked, index)
-            self.air_cards[key] = {'tile': tile, 'size': size, 'shape': shape, 'full': full, 'focus': focus,
+            self.air_cards[key] = {'tile': tile, 'size': size, 'shape': shape, 'full': full, 'focus': focus, 'picked': picked,
                                    'move': map_card.move_of(move_text) if full else None, 'move_text': move_text[:48], 'until': until}
             keys.append(key)
         mine = sorted((k for k in self.air_cards if k[0] == inbox), key=lambda k: self.air_cards[k]['until'])

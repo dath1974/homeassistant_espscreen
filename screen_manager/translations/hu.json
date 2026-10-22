@@ -1453,7 +1453,11 @@
       },
       "map": {
         "since_time": "{time} óta",
-        "battery": "Akkumulátor"
+        "battery": "Akkumulátor",
+        "aircraft": {
+          "ground": "A földön",
+          "squawk": "Squawk"
+        }
       },
       "media": {
         "playlist": "Lejátszási lista",

@@ -565,6 +565,20 @@ class Screens(unittest.IsolatedAsyncioTestCase):
                 await m.answer_camera({'inbox': 'text.d1_tiles', 'entity': 'person.alex', 'idx': '0', 'focus': 'person.jo'})
             message, = [entry[2] for entry in ha.log if entry[0] == 'send']
             self.assertEqual((message['m']['f'], 'c' in message['m']), ('', False))
+            # A plane picked on a map with aircraft (`air:<id>`): the same picture, with the plane's card; one the source no
+            # longer lists, no card.
+            source = 'sensor.flightradar24_current_in_area'
+            ha.states[source] = {'state': '1', 'attributes': {'flights': [
+                {'id': 'abc', 'latitude': 52.36, 'longitude': 4.87, 'altitude': 3000, 'callsign': 'KLM123', 'airline': 'KLM'}]}}
+            seed_layout(m, 'text.d1_tiles', validate_layout({'title': 'Home', 'tiles': [
+                {'entity': 'screen.map', 'name': '', 'options': {'display': 'map', 'framing': 'home', 'aircraft': source}}]}))
+            for focus, title in (('air:abc', 'KLM123'), ('air:gone', None)):
+                ha.log.clear()
+                with self.assertLogs('screen_manager', 'INFO'):
+                    await m.answer_camera({'inbox': 'text.d1_tiles', 'entity': 'screen.map', 'idx': '0', 'focus': focus})
+                message, = [entry[2] for entry in ha.log if entry[0] == 'send']
+                self.assertEqual(message['m']['f'], focus)
+                self.assertEqual((message['m'].get('c') or {}).get('t'), title)
             # A person's own tile tapped (firmware 0.21.0+): that person's map, opened on them.
             seed_layout(m, 'text.d1_tiles', validate_layout({'title': 'Home', 'tiles': [{'entity': 'person.sam', 'name': ''}]}))
             ha.log.clear()

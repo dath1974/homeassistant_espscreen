@@ -3,6 +3,7 @@
 // reports, the plane's outline turned to its heading, the arrow's tick, a label kept inside its card, labels kept apart
 // with leader lines, and whether a full view's planes belong to the picture on the glass.
 #include "../components/smart_display/aircraft_plan.h"
+#include <algorithm>
 #include <cassert>
 #include <cmath>
 #include <cstdio>
@@ -38,9 +39,18 @@ int main() {
   assert(near(nose(0).x, 50) && near(nose(0).y, 40));
   assert(near(nose(90).x, 60, 0.05f) && near(nose(90).y, 50, 0.05f));
   assert(near(nose(180).x, 50, 0.05f) && near(nose(180).y, 60, 0.05f));
-  // The wings span the plane's width across its heading.
-  const auto wings = plane_shape(c, 20, 0)[1];
-  assert(near(wings.p[1].x, 40) && near(wings.p[2].x, 60));
+  // The wings span the plane's width across its heading, and every piece is rooted in the fuselage: a corner of each
+  // triangle lies on it, so the outline is one solid piece (the tail joined to the body).
+  float left = 1e9f, right = -1e9f;
+  for (const auto &t : plane_shape(c, 20, 0)) {
+    bool rooted = false;
+    for (const auto &q : t.p) {
+      left = std::min(left, q.x); right = std::max(right, q.x);
+      rooted = rooted || (std::fabs(q.x - c.x) <= 0.07f * 20 + 0.01f && std::fabs(q.y - c.y) <= 10.01f);
+    }
+    assert(rooted);
+  }
+  assert(near(left, 40) && near(right, 60));
   // Every point stays within the plane's size of its middle, whatever the heading.
   for (int heading = 0; heading < 360; heading += 15)
     for (const auto &t : plane_shape(c, 20, heading))
@@ -142,6 +152,28 @@ int main() {
   assert(fits_view(full, "1,0.00,0.00", ""));
   assert(!fits_view(full, "", ""));
   assert(!fits_view(full, "1,0.00,0.00", "person.someone"));
+
+  // A plane picked (`air:<id>`) is the same view as nobody picked; a person picked is another.
+  assert(picks_plane("air:abc") && picked_id("air:abc") == "abc" && !picks_plane("person.sam") && picked_id("person.sam").empty());
+  Overlay seen;
+  seen.move = ""; seen.focus = "";
+  assert(fits_view(seen, "", "air:abc") && !fits_view(seen, "", "person.sam"));
+  seen.focus = "air:old";
+  assert(fits_view(seen, "", "") && fits_view(seen, "", "air:new"));
+  // A finger picks the nearest plane with an id within its reach, where it is now, on the picture as shown.
+  {
+    Overlay full;
+    full.at = 0; full.glide = false;
+    Plane a; a.x = 100; a.y = 100; a.id = "a";
+    Plane b; b.x = 120; b.y = 100; b.id = "b";
+    Plane none; none.x = 300; none.y = 300;  // a card's plane: no id, never picked
+    full.planes = {a, b, none};
+    assert(pick(full, 104, 100, 16, 0) == "a");
+    assert(pick(full, 117, 101, 16, 0) == "b");
+    assert(pick(full, 160, 100, 16, 0).empty());
+    assert(pick(full, 300, 300, 16, 0).empty());
+    assert(pick(full, 208, 200, 16, 0, 2.0f, 2.0f) == "a");  // on a picture shown twice as large
+  }
 
   std::puts("aircraft plan: ok");
   return 0;

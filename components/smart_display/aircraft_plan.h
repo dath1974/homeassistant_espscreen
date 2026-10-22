@@ -37,6 +37,16 @@ struct Plane {
   std::string label;           // its lines, joined by '\n'
   std::vector<int16_t> track;  // x, y, x, y ... oldest first, ending where the plane is
   int watch = 0;               // 1 to WATCH_COLOURS for a watched plane, in its colour
+  std::string id;              // a full view's: what a finger picks it by (the map's focus `air:<id>`)
+};
+
+// A full view's card of the plane picked (aircraft.card), which comes with every report so it follows the plane: its
+// focus (`air:<id>`), its title and its rows, an icon (a codepoint), a name and a value. No title: the plane is gone.
+struct CardRow { uint32_t icon; std::string name, value; };
+struct Card {
+  bool given = false;
+  std::string focus, title;
+  std::vector<CardRow> rows;
 };
 
 struct Overlay {
@@ -49,6 +59,7 @@ struct Overlay {
   std::string move, focus;  // a full view's: the move of its keys and the one picked it was placed for
   uint32_t at = 0;          // millis() when it came
   std::vector<Plane> planes;
+  Card card;  // a full view's, while a plane is picked
 };
 
 struct Point { float x, y; };
@@ -64,20 +75,31 @@ inline Point at(const Overlay &o, const Plane &p, uint32_t now, float sx = 1, fl
   return {(p.x + p.vx * minutes) * sx, (p.y + p.vy * minutes) * sy};
 }
 
-// The triangles of a plane seen from above, `size` pixels nose to tail, turned to `heading`: the fuselage, the two
-// wings and the tail, so it reads as a plane even a few millimetres across.
+// The triangles of an airliner seen from above, `size` pixels nose to tail, turned to `heading`: a nose cone, the
+// fuselage, a tail cone, swept wings and a tailplane, each rooted in the fuselage so the outline is one solid piece
+// even a few millimetres across. The first triangle is the nose cone, its tip first.
 struct Triangle { std::array<Point, 3> p; };
-inline std::array<Triangle, 4> plane_shape(Point c, float size, int heading) {
+constexpr size_t PLANE_TRIANGLES = 12;
+inline std::array<Triangle, PLANE_TRIANGLES> plane_shape(Point c, float size, int heading) {
   const float a = (heading < 0 ? 0 : heading) * 3.14159265f / 180.0f, s = std::sin(a), k = std::cos(a);
-  const float h = size / 2;
+  const float h = size / 2, f = 0.07f * size, r = 0.9f * f;  // half the fuselage's width; where the wings take root
   // In the plane's own frame (x right, y forward), then turned: forward is north at heading 0, up on the glass.
   auto turn = [&](float x, float y) { return Point{c.x + x * k + y * s, c.y + x * s - y * k}; };
-  return {{
-      {{turn(0, h), turn(-0.13f * size, -0.40f * h), turn(0.13f * size, -0.40f * h)}},                 // nose to body
-      {{turn(0, 0.25f * h), turn(-0.5f * size, -0.15f * h), turn(0.5f * size, -0.15f * h)}},          // wings
-      {{turn(0, -0.30f * h), turn(-0.06f * size, -h), turn(0.06f * size, -h)}},                        // tail boom
-      {{turn(0, -0.70f * h), turn(-0.22f * size, -h), turn(0.22f * size, -h)}},                        // tailplane
-  }};
+  const float shoulder = 0.62f * h, tail_start = -0.72f * h;
+  std::array<Triangle, PLANE_TRIANGLES> out{};
+  size_t n = 0;
+  auto quad = [&](Point p0, Point p1, Point p2, Point p3) {
+    out[n++] = {{turn(p0.x, p0.y), turn(p1.x, p1.y), turn(p2.x, p2.y)}};
+    out[n++] = {{turn(p0.x, p0.y), turn(p2.x, p2.y), turn(p3.x, p3.y)}};
+  };
+  out[n++] = {{turn(0, h), turn(-f, shoulder), turn(f, shoulder)}};                       // nose cone
+  quad({-f, shoulder}, {f, shoulder}, {f, tail_start}, {-f, tail_start});                // fuselage
+  out[n++] = {{turn(-f, tail_start), turn(f, tail_start), turn(0, -h)}};                 // tail cone
+  for (const float side : {-1.0f, 1.0f}) {
+    quad({side * r, 0.30f * h}, {side * 0.50f * size, -0.22f * h}, {side * 0.50f * size, -0.34f * h}, {side * r, -0.08f * h});  // wing
+    quad({side * r, -0.60f * h}, {side * 0.19f * size, -0.86f * h}, {side * 0.19f * size, -0.96f * h}, {side * r, -0.80f * h});  // tailplane
+  }
+  return out;
 }
 // The short line an arrow marker points along: from the dot's edge out by `length`, toward `heading`.
 inline std::array<Point, 2> heading_tick(Point c, float radius, float length, int heading) {
@@ -220,8 +242,27 @@ inline std::vector<std::string> lines(const std::string &label) {
   return out;
 }
 
-// Whether a full view's overlay belongs to the picture on the glass: placed for the move its keys show and the one picked.
+// A plane picked on a full view: the map's focus `air:<id>`, which keeps the view as it is (a person's frames it anew).
+constexpr const char *PICKED = "air:";
+inline bool picks_plane(const std::string &focus) { return focus.rfind(PICKED, 0) == 0; }
+inline std::string picked_id(const std::string &focus) { return picks_plane(focus) ? focus.substr(4) : std::string(); }
+// Whether a full view's overlay belongs to the picture on the glass: placed for the move its keys show and the person
+// picked; a plane picked is the same view as nobody picked.
 inline bool fits_view(const Overlay &o, const std::string &move_shown, const std::string &focus) {
-  return o.move == move_shown && o.focus == focus;
+  auto view_of = [](const std::string &f) { return picks_plane(f) ? std::string() : f; };
+  return o.move == move_shown && view_of(o.focus) == view_of(focus);
+}
+// The plane nearest `x`, `y` on a picture shown at `sx`, `sy` of the one the planes were placed on, within `reach`
+// pixels of it, at `now`; "" for none. Only a full view's planes carry an id.
+inline std::string pick(const Overlay &o, float x, float y, float reach, uint32_t now, float sx = 1, float sy = 1) {
+  std::string best;
+  float nearest = reach * reach;
+  for (const auto &p : o.planes) {
+    if (p.id.empty()) continue;
+    const Point c = at(o, p, now, sx, sy);
+    const float d = (c.x - x) * (c.x - x) + (c.y - y) * (c.y - y);
+    if (d <= nearest) { nearest = d; best = p.id; }
+  }
+  return best;
 }
 }  // namespace aircraft_plan
