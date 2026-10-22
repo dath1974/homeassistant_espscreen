@@ -93,9 +93,11 @@ streets, a request names a zoom and two whole numbers and nothing else, and it c
 a day, one store for every screen.
 
 A chart is printed for a scale, so each shows at the distances it is readable at: the aviation charts at Region or a
-radius of a few kilometers or more, and the topographic map at every distance. A dense screen draws the chart's tiles
-larger rather than its text smaller. Closer in than a chart is drawn for, outside the United States, or while its server
-gives nothing, the map shows its streets instead, and Tessera asks the server again after ten minutes.
+radius of a few kilometers or more, and the topographic map at every distance. The FAA's charts are scans, so Tessera
+always takes the sharpest level of them the view can use, on any screen; the USGS map draws its words at one size, so on
+a dense screen it takes a level further out and draws it larger rather than its words smaller. Closer in than a chart is
+drawn for, outside the United States, or while its server gives nothing, the map shows its streets instead, and Tessera
+asks the server again after ten minutes.
 
 ## When it is drawn again
 

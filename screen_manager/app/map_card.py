@@ -799,7 +799,7 @@ def draw_chart(canvas, view, tiles, look, dark, night='invert'):
         ox, oy, scale = view.tile_origin(tz, tx, ty)
         x0, y0 = round(ox * s), round(oy * s)
         x1, y1 = round((ox + TILE_PX * scale) * s), round((oy + TILE_PX * scale) * s)
-        canvas.image.paste(picture.resize((x1 - x0, y1 - y0), Image.Resampling.BICUBIC), (x0, y0))
+        canvas.image.paste(picture.resize((x1 - x0, y1 - y0), Image.Resampling.LANCZOS), (x0, y0))
     if not dark:
         return
     if night not in ('invert', 'colours'):
