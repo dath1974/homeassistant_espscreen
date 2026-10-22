@@ -19,6 +19,7 @@ struct View {
   float sx = 1, sy = 1;  // the picture on the glass against the one the planes were placed on
   bool hidden = false;
   std::vector<int> spots;  // where each label stood the last time, kept while it stays clear (aircraft_plan.h)
+  std::string picked;      // the plane a finger picked on a full view, ringed
 };
 
 // A plane's colour: a watched plane's own (Home Assistant's colours, in the order of aircraft.WATCH_COLOURS), else its
@@ -118,6 +119,12 @@ static void draw(lv_event_t *e) {
     const ap::Point c = places[i];
     const float grow = p.watch ? ap::WATCH_SCALE : 1.0f;
     const int d = (int) std::lround(s.dot * grow), size = (int) std::lround(s.plane * grow);
+    if (!view->picked.empty() && p.id == view->picked) {
+      // The plane picked: a wide ring in the ink round a halo of the card's colour, outside a watched plane's own.
+      const int across = (o.marker == ap::PLANE && p.heading != ap::NO_HEADING ? size : d) + 8 * s.halo + 4 * s.line;
+      ring(layer, c, across + 2 * s.halo, 2 * s.line + 2 * s.halo, halo);
+      ring(layer, c, across, 2 * s.line, theme::color(theme::INK));
+    }
     if (p.watch) {
       // A ring in its colour round a halo of the card's, a little beyond the marker.
       const int across = (o.marker == ap::PLANE && p.heading != ap::NO_HEADING ? size : d) + 4 * s.halo + 2 * s.line;
@@ -266,6 +273,33 @@ void release(View *&view) {
   }
   delete view;
   view = nullptr;
+}
+
+std::string pick(View *view, int x, int y, int reach) {
+  if (!view || !view->layer || view->hidden) return "";
+  lv_area_t a;
+  lv_obj_get_coords(view->layer, &a);
+  return ap::pick(view->overlay, (float) (x - a.x1), (float) (y - a.y1), (float) reach, lv_tick_get(), view->sx, view->sy);
+}
+
+bool where(View *view, const std::string &id, int &x, int &y) {
+  if (!view || !view->layer || view->hidden || id.empty()) return false;
+  for (const auto &p : view->overlay.planes) {
+    if (p.id != id) continue;
+    lv_area_t a;
+    lv_obj_get_coords(view->layer, &a);
+    const ap::Point at = ap::at(view->overlay, p, lv_tick_get(), view->sx, view->sy);
+    x = a.x1 + (int) std::lround(at.x);
+    y = a.y1 + (int) std::lround(at.y);
+    return true;
+  }
+  return false;
+}
+
+void set_picked(View *view, const std::string &id) {
+  if (!view || view->picked == id) return;
+  view->picked = id;
+  if (view->layer) lv_obj_invalidate(view->layer);
 }
 
 void tick(View *view, uint32_t now) {

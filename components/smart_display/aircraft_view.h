@@ -4,6 +4,8 @@
 #include "lvgl.h"
 #include "aircraft_plan.h"
 
+#include <string>
+
 namespace aircraft_view {
 struct View;  // the object over a picture and the planes it shows
 // Lays `o` over `picture`: in the picture's parent, just above it, at its place and size. Creates the view the first
@@ -15,6 +17,12 @@ void follow(View *view, lv_obj_t *picture);
 void set_hidden(View *view, bool hidden);
 // The card shows something else, or went: its object goes, if it is still there, and the view with it.
 void release(View *&view);
+// The id of the plane nearest a finger at `x`, `y` on the glass, within `reach` pixels of it; "" for none (a full view's).
+std::string pick(View *view, int x, int y, int reach);
+// Where plane `id` is on the glass now, false when the view has no such plane.
+bool where(View *view, const std::string &id, int &x, int &y);
+// The plane picked on a full view, ringed; "" for none.
+void set_picked(View *view, const std::string &id);
 // Every second (runtime_tiles::tick): planes that glide are drawn where they are now.
 void tick(View *view, uint32_t now);
 }  // namespace aircraft_view

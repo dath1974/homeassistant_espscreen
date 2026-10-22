@@ -49,6 +49,10 @@ PLANES = [
 ]
 # Registrations, which a watched plane can be matched on as well as its callsign.
 REGISTRATIONS = {'a1': 'PH-BXA', 'a3': 'G-EUXC', 'a6': 'EI-IFB'}
+# What a source gives beyond the label's fields, for the card of the plane a finger picks on the full view.
+DETAILS = {'a1': {'airline': 'KLM Royal Dutch Airlines', 'flight_number': 'KL1234', 'aircraft_model': 'Boeing 737-800',
+                  'airport_origin_city': 'London', 'airport_destination_city': 'Amsterdam', 'vertical_speed': -700,
+                  'squawk': '1000'}}
 NOW = 1000.0
 
 
@@ -62,7 +66,7 @@ def state_at(seconds):
         flights.append({'id': key, 'callsign': callsign, 'aircraft_code': model, 'latitude': lat2, 'longitude': lon2,
                         'altitude': feet, 'heading': heading, 'ground_speed': knots, 'airport_origin_code_iata': origin,
                         'airport_destination_code_iata': destination, 'on_ground': 1 if ground else 0,
-                        'aircraft_registration': REGISTRATIONS.get(key, '')})
+                        'aircraft_registration': REGISTRATIONS.get(key, ''), **DETAILS.get(key, {})})
     return {'state': str(len(flights)), 'attributes': {'friendly_name': 'Current in area', 'flights': flights}}
 
 
@@ -118,9 +122,31 @@ class Study(map_tiles.Study):
             planes = aircraft.overlay(view, aircraft.flights_of(map_tiles.STATES[SOURCE]), options, self.tracks, SOURCE, size,
                                       self.board.scale, full, False, self.now,
                                       circle=map_card.circle_of(tile, map_tiles.STATES, size, self.board))
-            message = aircraft.message(data['air'], index, size, planes, aircraft.style_of(options), move, data.get('focus', ''))
+            # A plane picked on the full view: its card with the planes, as server.Manager.air_message sends it.
+            picked = aircraft.picked_of(data.get('focus')) if full else None
+            sheet = None
+            if picked:
+                item = aircraft.item_of(map_tiles.STATES[SOURCE], picked)
+                plane = aircraft.card(item, False, {'ground': 'On the ground', 'squawk': 'Squawk'}) if item else None
+                sheet = {'f': aircraft.PICKED + picked, **({'c': plane} if plane else {})}
+            if full:
+                self.full_planes = planes
+            message = aircraft.message(data['air'], index, size, planes, aircraft.style_of(options), move,
+                                       '' if picked else data.get('focus', ''), sheet)
             async with self.turn:
                 await self.send(message)
+
+    async def after_full(self, name, look, side):
+        """A finger on a plane of the square's full view: ringed, with its card over the bottom; again to let it go."""
+        plane = next((p for p in getattr(self, 'full_planes', []) if len(p) > 9 and p[9] == 'a1'), None)
+        if name != 'square' or plane is None:
+            return
+        ox, oy = (side['width'] - self.full_box[0]) // 2, (side['height'] - self.full_box[1]) // 2
+        await self.tap(ox + plane[0], oy + plane[1])
+        await asyncio.sleep(3)
+        await self.render(f'{name}-plane-{look}', timeout=8)
+        await self.tap(ox + plane[0], oy + plane[1])
+        await asyncio.sleep(1)
 
     async def until(self, found, *args, **kwargs):
         # map_tiles waits for the full view's "Downloading image"; the loader now says "camera: loaded".

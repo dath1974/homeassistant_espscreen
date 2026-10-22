@@ -1453,7 +1453,11 @@
       },
       "map": {
         "since_time": "с {time}",
-        "battery": "Батарея"
+        "battery": "Батарея",
+        "aircraft": {
+          "ground": "На земле",
+          "squawk": "Код ответчика"
+        }
       },
       "media": {
         "playlist": "Плейлист",

@@ -11155,7 +11155,19 @@ inline void air_full_place() {
                     aircraft_plan::fits_view(air_full, map_move_shown.text(), map_focus);
   if (!fits) { aircraft_view::set_hidden(air_full_view, true); return; }
   aircraft_view::show(air_full_view, camera_picture, air_full);
+  aircraft_view::set_picked(air_full_view, aircraft_plan::picked_id(map_focus));
   aircraft_view::set_hidden(air_full_view, false);
+}
+inline void map_sheet_draw();
+// The card of the plane picked, with every report of its planes (aircraft.card): the map's markers stay as they are.
+inline void air_full_card(const aircraft_plan::Card &card) {
+  if (!card.given || card.focus.empty() || card.focus != map_focus) return;
+  map_sheet.entity = camera.entity;
+  map_sheet.focus = card.focus;
+  map_sheet.title = card.title;
+  map_sheet.rows.clear();
+  for (const auto &row : card.rows) map_sheet.rows.push_back({row.icon, row.name, row.value});
+  map_sheet_draw();
 }
 inline void air_receive(aircraft_plan::Overlay &&next) {
   next.at = lv_tick_get();
@@ -11164,6 +11176,7 @@ inline void air_receive(aircraft_plan::Overlay &&next) {
     if (!camera_root || next.index != camera_map_index) return;
     air_full = std::move(next);
     air_full_place();
+    air_full_card(air_full.card);
     return;
   }
   const int index = next.index;
@@ -11960,7 +11973,14 @@ inline void map_sheet_draw() {
   // As many rows as the lower half of the glass holds, which the app left free under the one picked.
   const int rows = std::max(1, std::min<int>(map_sheet.rows.size(), (overlay_card::screen_height() / 2 - m.pad) / m.row_h));
   const int h = rows * m.row_h;
-  map_card_obj = effects_page::card(camera_root, side + m.pad, overlay_card::screen_height() - m.pad - h, w, h, m.radius);
+  int y = overlay_card::screen_height() - m.pad - h;
+  // A plane picked keeps the view as it is, so its card goes to the top when the plane is where the card would be.
+  int px = 0, py = 0;
+  if (aircraft_view::where(air_full_view, aircraft_plan::picked_id(map_focus), px, py) && py >= y - ui::px(24)) {
+    const auto bar = detail_bar::metrics();
+    y = bar.y + bar.key + bar.gap;
+  }
+  map_card_obj = effects_page::card(camera_root, side + m.pad, y, w, h, m.radius);
   lv_obj_add_flag(map_card_obj, LV_OBJ_FLAG_CLICKABLE);  // a finger on the card is no finger on the map
   const int text_h = lv_font_get_line_height(effects_page::row_font);
   const int icon_h = effects_page::icon_font ? lv_font_get_line_height(effects_page::icon_font) : 0;
@@ -12007,6 +12027,15 @@ inline void map_preview() {
 #endif
   // The planes lie on the picture of the view they were placed for, and wait while another is on its way.
   air_full_place();
+}
+// Pick a plane (or none with ""): the view stays as it is, the plane is ringed at once, and its card comes with the
+// planes' next message and the picture's answer, then with every report.
+inline void map_pick_plane(const std::string &id) {
+  map_focus = id.empty() ? std::string() : aircraft_plan::PICKED + id;
+  aircraft_view::set_picked(air_full_view, id);
+  map_sheet.focus.clear();
+  map_sheet_draw();
+  pictures_round();
 }
 // Focus a marker (or everyone again with ""): the card goes at once, the new picture and card come with the answer.
 // Another focus is another view: the keys' move starts again from it.
@@ -12110,14 +12139,20 @@ inline void map_keys_place() {
   if (!camera_root || !map_zoom_keys || !map_pad) return;
   const auto b = view_bar();
   const int top = b.y + b.key + b.gap;
-  int bottom = overlay_card::screen_height() - b.y - ui::mm(3);
-  if (map_card_obj) { lv_obj_update_layout(map_card_obj); bottom = lv_obj_get_y(map_card_obj) - b.gap; }
+  int top_free = top, bottom = overlay_card::screen_height() - b.y - ui::mm(3);
+  if (map_card_obj) {
+    // Over the card at the bottom; under it when a plane picked sent it to the top.
+    lv_obj_update_layout(map_card_obj);
+    const int y = lv_obj_get_y(map_card_obj);
+    if (y < overlay_card::screen_height() / 2) top_free = y + lv_obj_get_height(map_card_obj) + b.gap;
+    else bottom = y - b.gap;
+  }
   const int width = overlay_card::screen_width();
   // Their sizes are only measured once LVGL laid them out: right after the view opens they would read 0.
   lv_obj_update_layout(camera_root);
   auto place = [&](lv_obj_t *box, int x) {
     const int h = lv_obj_get_height(box);
-    if (bottom - h < top) { lv_obj_add_flag(box, LV_OBJ_FLAG_HIDDEN); return; }
+    if (bottom - h < top_free) { lv_obj_add_flag(box, LV_OBJ_FLAG_HIDDEN); return; }
     lv_obj_remove_flag(box, LV_OBJ_FLAG_HIDDEN);
     lv_obj_set_pos(box, x, bottom - h);
     lv_obj_move_foreground(box);
@@ -12167,7 +12202,9 @@ inline void camera_open(const std::string &entity, const std::string &name, int 
   camera_back = view_key(camera_root, bar, detail_bar::BACK, map_index >= 0);
   lv_obj_set_pos(camera_back, home.x, home.y);
   lv_obj_add_event_cb(camera_back, [](lv_event_t *) {
-    // A map focused on someone goes back to everyone first (firmware 0.21.0+); then the key closes the view.
+    // A map focused on someone goes back to everyone first (firmware 0.21.0+), a plane picked to none; then the key
+    // closes the view.
+    if (aircraft_plan::picks_plane(map_focus)) { map_pick_plane(""); return; }
     if (!map_focus.empty() && !map_pinned) { map_focus_on(""); return; }
     // Closed after this event: the key that sends it goes with the view.
     lv_async_call([](void *) { camera_close(); }, nullptr);
@@ -12188,6 +12225,13 @@ inline void camera_open(const std::string &entity, const std::string &name, int 
     lv_indev_get_point(input, &point);
     lv_area_t area;
     lv_obj_get_coords(camera_picture, &area);
+    // A plane under the finger first (a full view's, aircraft_view::pick): picked, or let go when it is the one picked.
+    const std::string plane = aircraft_view::pick(air_full_view, point.x, point.y, ui::px(16));
+    if (!plane.empty()) {
+      map_pick_plane(aircraft_plan::picked_id(map_focus) == plane ? std::string() : plane);
+      return;
+    }
+    if (aircraft_plan::picks_plane(map_focus)) { map_pick_plane(""); return; }
     const int x = point.x - area.x1, y = point.y - area.y1;
     const MapSheet::Hit *best = nullptr;
     long nearest = 0;

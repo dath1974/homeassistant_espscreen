@@ -440,8 +440,9 @@ std::string receive(const std::string &payload) {
       };
       for (JsonVariant item : root["a"].as<JsonArray>()) {
         if (next.planes.size() >= aircraft_plan::MOST_PLANES) break;
-        // The ninth, a watched plane's colour (aircraft.watch_colour), came with watched aircraft.
-        if (!item.is<JsonArray>() || item.size() < 8 || item.size() > 9) continue;
+        // The ninth, a watched plane's colour (aircraft.watch_colour), came with watched aircraft; the tenth, a full
+        // view's, the plane's id a finger picks it by.
+        if (!item.is<JsonArray>() || item.size() < 8 || item.size() > 10) continue;
         aircraft_plan::Plane plane;
         if (!whole(item[0], -8192, 8192, plane.x) || !whole(item[1], -8192, 8192, plane.y) ||
             !whole(item[2], -1, 359, plane.heading) || !whole(item[3], -1, aircraft_plan::BANDS - 1, plane.band) ||
@@ -452,8 +453,24 @@ std::string receive(const std::string &payload) {
           plane.track.push_back((int16_t) std::max(-8192, std::min(8192, point.as<int>())));
         }
         if (plane.track.size() % 2) plane.track.pop_back();
-        if (item.size() == 9 && !whole(item[8], 0, aircraft_plan::WATCH_COLOURS, plane.watch)) plane.watch = 0;
+        if (item.size() >= 9 && !whole(item[8], 0, aircraft_plan::WATCH_COLOURS, plane.watch)) plane.watch = 0;
+        if (item.size() == 10) plane.id = string(item[9], 32);
         next.planes.push_back(std::move(plane));
+      }
+      // A full view's plane picked: its card, as a person's (`m` of a full view's picture), on every report.
+      if (next.full && root["m"].is<JsonObject>()) {
+        auto m = root["m"];
+        next.card.given = true;
+        next.card.focus = string(m["f"], 40);
+        if (m["c"].is<JsonObject>()) {
+          auto c = m["c"];
+          next.card.title = string(c["t"], 60);
+          if (c["r"].is<JsonArray>()) for (JsonVariant row : c["r"].as<JsonArray>()) {
+            if (!row.is<JsonArray>() || row.size() != 3 || next.card.rows.size() >= 8) continue;
+            const std::string code = string(row[0], 6);
+            next.card.rows.push_back({code.empty() ? 0u : (uint32_t) strtoul(code.c_str(), nullptr, 16), string(row[1], 40), string(row[2], 24)});
+          }
+        }
       }
       air_receive(std::move(next));
       result = model.ready() ? "Synced" : "Loading tiles";
