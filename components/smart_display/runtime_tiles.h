@@ -11963,10 +11963,24 @@ inline void camera_close() {
 // names what it shows. Every word and icon comes ready from the app, from Home Assistant.
 inline std::string camera_name;  // the tile's own name, the top bar's when nobody is picked
 inline void map_keys_place();
+// The map's name pill over the full view: in the title's font, or for a plane picked (its callsign, often a
+// registration such as N612AB) in the top bar's smaller one, and as wide as its text, so it is read whole.
+inline void map_title_fit(bool small) {
+  const lv_font_t *font = small && control_font ? control_font : (watch_font ? watch_font : detail_font);
+  if (!font) return;
+  const int bar = detail_bar::metrics().key, line = lv_font_get_line_height(font), pad = ui::px(ui::large() ? 22 : 16);
+  lv_obj_set_style_text_font(camera_title, font, 0);
+  lv_obj_set_style_pad_ver(camera_title, std::max(0, (bar - line) / 2), 0);
+  lv_point_t size;
+  lv_text_get_size(&size, lv_label_get_text(camera_title), font, 0, 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
+  lv_obj_set_width(camera_title, std::min<int>(size.x + 1 + 2 * pad, detail_bar::middle(camera_root).w));
+  lv_obj_align(camera_title, LV_ALIGN_TOP_MID, 0, detail_bar::metrics().y);
+}
 inline void map_sheet_draw() {
   if (map_card_obj) { lv_obj_delete(map_card_obj); map_card_obj = nullptr; }
   const bool picked = camera_root && !map_focus.empty() && map_sheet.focus == map_focus && !map_sheet.title.empty();
   if (camera_title) lv_label_set_text(camera_title, (picked ? map_sheet.title : camera_name).c_str());
+  if (camera_title && camera_map_index >= 0) map_title_fit(picked && aircraft_plan::picks_plane(map_focus));
   // A bare view shows no name, only the callsign of a plane picked.
   if (camera_title && camera_bare) {
     if (picked) lv_obj_remove_flag(camera_title, LV_OBJ_FLAG_HIDDEN);

@@ -16,7 +16,7 @@
   the last seconds you choose. It moves the planes on every report of the sensor, without a new picture, and in
   between lets them fly on along their heading for up to 30 seconds. You choose the altitudes a plane is shown
   between, whether planes on the ground show, and how many at most. Tap the map to see the planes over the whole
-  screen, and tap a plane there for its card: the airline and flight, the route, the aircraft and its registration,
+  screen, and tap a plane there for its card: the airline and flight, the aircraft and its registration,
   its altitude and speed, and its squawk, following the plane on every report. You can also list up to eight aircraft
   to watch by registration or callsign, each in a colour of its own: a watched plane always shows, larger and ringed,
   with its label. Labels keep clear of each other and of the map's keys, as on a radar display: one with no room

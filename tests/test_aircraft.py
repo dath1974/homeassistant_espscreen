@@ -339,7 +339,6 @@ class PickedTest(unittest.TestCase):
         self.assertEqual(card['t'], 'KLM123')
         self.assertEqual(card['r'], [
             [glyph['airplane'], 'KLM Royal Dutch Airlines', 'KL1601'],
-            [glyph['map-marker'], 'Billund – London', 'AMS – LHR'],
             [glyph['information-outline'], 'Embraer E190', 'PH-EZA'],
             [glyph['arrow-down'], '2500 ft', '160 kts'],
             [glyph['information-outline'], 'Squawk', '4521']])
@@ -350,7 +349,9 @@ class PickedTest(unittest.TestCase):
         ground = aircraft.card(flight(on_ground=1, speed=12), False, self.WORDS)
         self.assertEqual(ground['r'][-1], [glyph['speedometer'], 'On the ground', '12 kts'])
         bare = aircraft.card({'id': 'x1', 'latitude': 1, 'longitude': 2, 'aircraft_registration': 'N12345'}, False, self.WORDS)
-        self.assertEqual(bare, {'t': 'N12345', 'r': [[glyph['information-outline'], '', 'N12345']]})
+        self.assertEqual(bare, {'t': 'N12345', 'r': []}, 'its registration is the title: not said again')
+        light = aircraft.card(flight(callsign='N12345', aircraft_registration='N12345', aircraft_model='Cessna 172'), False, self.WORDS)
+        self.assertEqual(light['r'][0], [glyph['information-outline'], 'Cessna 172', ''])
         self.assertIsNone(aircraft.card({'id': 'x1'}, False, self.WORDS), 'no place, no plane')
 
 
