@@ -11975,9 +11975,15 @@ inline void map_sheet_draw() {
   if (!picked || map_sheet.rows.empty() || !effects_page::row_font) { map_keys_place(); return; }
   const auto m = effects_page::screen_metrics();
   const int side = (overlay_card::screen_width() - m.width) / 2, w = m.width - 2 * m.pad;
+  // A plane's card is read, not tapped: the small text in rows as high as it needs, so more of it fits.
+  const bool plane = aircraft_plan::picks_plane(map_focus);
+  const lv_font_t *font = plane && small_font ? small_font : effects_page::row_font;
+  const int text_h = lv_font_get_line_height(font);
+  const int icon_h = effects_page::icon_font ? lv_font_get_line_height(effects_page::icon_font) : 0;
+  const int row_h = plane ? std::max(text_h, icon_h) + ui::px(ui::large() ? 10 : 6) : m.row_h;
   // As many rows as the lower half of the glass holds, which the app left free under the one picked.
-  const int rows = std::max(1, std::min<int>(map_sheet.rows.size(), (overlay_card::screen_height() / 2 - m.pad) / m.row_h));
-  const int h = rows * m.row_h;
+  const int rows = std::max(1, std::min<int>(map_sheet.rows.size(), (overlay_card::screen_height() / 2 - m.pad) / row_h));
+  const int h = rows * row_h + (plane ? ui::px(ui::large() ? 8 : 4) : 0);
   int y = overlay_card::screen_height() - m.pad - h;
   // A plane picked keeps the view as it is, so its card goes to the top when the plane is where the card would be.
   int px = 0, py = 0;
@@ -11987,24 +11993,33 @@ inline void map_sheet_draw() {
   }
   map_card_obj = effects_page::card(camera_root, side + m.pad, y, w, h, m.radius);
   lv_obj_add_flag(map_card_obj, LV_OBJ_FLAG_CLICKABLE);  // a finger on the card is no finger on the map
-  const int text_h = lv_font_get_line_height(effects_page::row_font);
-  const int icon_h = effects_page::icon_font ? lv_font_get_line_height(effects_page::icon_font) : 0;
+  const int top = plane ? ui::px(ui::large() ? 4 : 2) : 0;
   for (int n = 0; n < rows; ++n) {
     const auto &row = map_sheet.rows[n];
-    auto *line = effects_page::plain(map_card_obj, 0, n * m.row_h, w, m.row_h);
+    auto *line = effects_page::plain(map_card_obj, 0, top + n * row_h, w, row_h);
     int x = m.inset;
     if (effects_page::icon_font) {
       auto *icon = effects_page::text(line, effects_page::glyph(row.icon, "\U000F034E"), effects_page::icon_font, theme::MUTED);
       lv_obj_set_width(icon, LV_SIZE_CONTENT);
-      lv_obj_set_pos(icon, m.inset - 2, (m.row_h - icon_h) / 2);
+      lv_obj_set_pos(icon, m.inset - 2, (row_h - icon_h) / 2);
       x += m.icon + 6;
     }
-    auto *name = effects_page::text(line, row.name, effects_page::row_font, theme::INK);
-    lv_obj_set_pos(name, x, (m.row_h - text_h) / 2);
-    lv_obj_set_width(name, std::max(20, w * 3 / 5 - x));
-    auto *value = effects_page::text(line, row.value, effects_page::row_font, theme::MUTED, LV_TEXT_ALIGN_RIGHT);
-    lv_obj_set_width(value, w * 2 / 5 - m.inset);
-    lv_obj_set_pos(value, w * 3 / 5, (m.row_h - text_h) / 2);
+    // The value as wide as it is (at most half the row), the name in the rest: a short value leaves its room to the name.
+    const int gap = ui::px(ui::large() ? 10 : 6), right = w - m.inset;
+    int value_w = 0;
+    if (!row.value.empty()) {
+      lv_point_t size;
+      lv_text_get_size(&size, row.value.c_str(), font, 0, 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
+      value_w = std::min<int>(size.x + 1, (right - x) / 2);
+    }
+    auto *name = effects_page::text(line, row.name, font, theme::INK);
+    lv_obj_set_pos(name, x, (row_h - text_h) / 2);
+    lv_obj_set_width(name, std::max(20, right - x - (value_w ? value_w + gap : 0)));
+    if (value_w) {
+      auto *value = effects_page::text(line, row.value, font, theme::MUTED, LV_TEXT_ALIGN_RIGHT);
+      lv_obj_set_width(value, value_w);
+      lv_obj_set_pos(value, right - value_w, (row_h - text_h) / 2);
+    }
   }
   map_keys_place();
 }
