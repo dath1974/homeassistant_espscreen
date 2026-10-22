@@ -70,10 +70,16 @@ class Zooms(unittest.TestCase):
         self.assertEqual(map_charts.chart_zoom('topo', 16.5), 16, 'street')
         for chart in map_charts.CHARTS:
             self.assertIsNotNone(map_charts.chart_zoom(chart, map_card.DISTANCES['region']), chart)
-        # A glass twice as dense draws a tile twice as large, so its text keeps its size.
-        self.assertEqual(map_charts.chart_zoom('sectional', 13.0, 2.0), 11)
-        self.assertEqual(map_charts.chart_zoom('sectional', 10.5, 2.0), 10)
-        self.assertIsNone(map_charts.chart_zoom('sectional', 13.5, 2.0))
+        # A scan: its text follows the card's scale whatever level is asked for, so the closest level, the sharpest,
+        # on any glass; never a level further out, enlarged.
+        self.assertEqual(map_charts.chart_zoom('sectional', 10.2), 11)
+        self.assertEqual(map_charts.chart_zoom('sectional', 10.71, 1.83), 11, 'a 6-mile radius on a 311 dpi card')
+        self.assertEqual(map_charts.chart_zoom('ifr_low', 9.3, 2.0), 10)
+        self.assertIsNone(map_charts.chart_zoom('sectional', 12.5, 2.0))
+        # The USGS map draws its words at one size in pixels: a glass twice as dense draws a level further out twice as
+        # large, so its words keep their size.
+        self.assertEqual(map_charts.chart_zoom('topo', 13.0, 2.0), 12)
+        self.assertEqual(map_charts.chart_zoom('topo', 13.0), 13)
 
     def test_the_tiles_under_a_view(self):
         view = map_card.View(*CHICAGO, 11.0, (480, 320))

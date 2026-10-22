@@ -9,8 +9,13 @@ under it is drawn with its streets.
 
 A chart is printed for a scale, and its service draws closer levels than it was scanned at, magnified. So each chart
 has the tile zooms worth asking for (`zoom`: its service's first, and the closest still sharp) and the closest view it
-is drawn at (`most`), past which the card shows its streets. A card draws the chart at the tile zoom nearest its own
-(dpi-corrected: a dense glass draws a tile larger rather than its text smaller).
+is drawn at (`most`), past which the card shows its streets.
+
+Which tile zoom a card asks for depends on what the tiles are. The FAA's charts are scans (`scanned`): every level is
+the same picture made smaller, so the size of its text on the glass follows the card's own scale whatever level is
+asked for, and the closest level (up to the sharpest) is always the sharpest picture. The USGS map is drawn anew for
+each level with its words at one size in pixels, so a card asks for the level nearest its own, one further out on a
+dense glass, which draws the tiles larger rather than its words smaller.
 """
 import asyncio
 from collections import OrderedDict
@@ -31,13 +36,13 @@ FAA = 'https://tiles.arcgis.com/tiles/ssFJjBXIUyZDrSYZ/arcgis/rest/services'
 # enough. The region distance (10.5) shows every chart.
 CHARTS = {
     'sectional': {'url': FAA + '/VFR_Sectional/MapServer/tile/{z}/{y}/{x}', 'zoom': (8, 11), 'most': 12.0, 'credit': 'FAA',
-                  'night': 0.6},
+                  'night': 0.6, 'scanned': True},
     'ifr_low': {'url': FAA + '/IFR_AreaLow/MapServer/tile/{z}/{y}/{x}', 'zoom': (7, 11), 'most': 12.0, 'credit': 'FAA',
-                'night': 'colours'},
+                'night': 'colours', 'scanned': True},
     'ifr_high': {'url': FAA + '/IFR_High/MapServer/tile/{z}/{y}/{x}', 'zoom': (5, 9), 'most': 10.5, 'credit': 'FAA',
-                 'night': 'colours'},
+                 'night': 'colours', 'scanned': True},
     'topo': {'url': 'https://basemap.nationalmap.gov/arcgis/rest/services/USGSTopo/MapServer/tile/{z}/{y}/{x}',
-             'zoom': (0, 16), 'most': 17.5, 'credit': 'USGS', 'night': 'invert'},
+             'zoom': (0, 16), 'most': 17.5, 'credit': 'USGS', 'night': 'invert', 'scanned': False},
 }
 TILE_PX = 256
 # The most tiles one card asks for: a view far before a chart's first zoom would need many more.
@@ -54,7 +59,13 @@ COOLDOWN = 600
 def chart_zoom(chart, zoom, dpi_scale=1.0):
     """The tile zoom a view at `zoom` draws `chart` at, or None when the chart has nothing readable for it."""
     low, high = CHARTS[chart]['zoom']
-    # A tile is drawn at its own pixels on a 170 dpi glass; a denser one draws it larger, so its text stays readable.
+    if CHARTS[chart]['scanned']:
+        # A scan: the closest level, so its tiles are drawn at their own pixels or smaller, never enlarged when a sharper
+        # level is to be had.
+        if zoom > CHARTS[chart]['most'] + 1e-9:
+            return None
+        return max(low, min(high, int(math.ceil(zoom - 0.05))))
+    # A tile is drawn at its own pixels on a 170 dpi glass; a denser one draws it larger, so its words stay readable.
     wanted = zoom - math.log2(max(1.0, dpi_scale))
     if wanted > CHARTS[chart]['most'] + 1e-9:
         return None
