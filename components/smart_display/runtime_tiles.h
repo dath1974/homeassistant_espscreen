@@ -11967,6 +11967,11 @@ inline void map_sheet_draw() {
   if (map_card_obj) { lv_obj_delete(map_card_obj); map_card_obj = nullptr; }
   const bool picked = camera_root && !map_focus.empty() && map_sheet.focus == map_focus && !map_sheet.title.empty();
   if (camera_title) lv_label_set_text(camera_title, (picked ? map_sheet.title : camera_name).c_str());
+  // A bare view shows no name, only the callsign of a plane picked.
+  if (camera_title && camera_bare) {
+    if (picked) lv_obj_remove_flag(camera_title, LV_OBJ_FLAG_HIDDEN);
+    else lv_obj_add_flag(camera_title, LV_OBJ_FLAG_HIDDEN);
+  }
   if (!picked || map_sheet.rows.empty() || !effects_page::row_font) { map_keys_place(); return; }
   const auto m = effects_page::screen_metrics();
   const int side = (overlay_card::screen_width() - m.width) / 2, w = m.width - 2 * m.pad;
@@ -12209,10 +12214,22 @@ inline void camera_open(const std::string &entity, const std::string &name, int 
     // Closed after this event: the key that sends it goes with the view.
     lv_async_call([](void *) { camera_close(); }, nullptr);
   }, LV_EVENT_SHORT_CLICKED, nullptr);
-  // A bare map (the map tile's tap `clean`) has nothing over it: no back key, no name, no keys; a tap anywhere closes it.
+  // A bare map (the map tile's tap `clean`) has nothing over it: no back key, no name, no keys; a tap anywhere closes it,
+  // but one on a plane picks it, and the next lets go of it before one closes the view.
   if (bare) {
     lv_obj_add_flag(camera_back, LV_OBJ_FLAG_HIDDEN);
     lv_obj_add_event_cb(camera_root, [](lv_event_t *) {
+      lv_point_t point;
+      lv_indev_t *input = lv_indev_active();
+      if (input) {
+        lv_indev_get_point(input, &point);
+        const std::string plane = aircraft_view::pick(air_full_view, point.x, point.y, ui::px(16));
+        if (!plane.empty()) {
+          map_pick_plane(aircraft_plan::picked_id(map_focus) == plane ? std::string() : plane);
+          return;
+        }
+      }
+      if (aircraft_plan::picks_plane(map_focus)) { map_pick_plane(""); return; }
       lv_async_call([](void *) { camera_close(); }, nullptr);
     }, LV_EVENT_SHORT_CLICKED, nullptr);
   }
