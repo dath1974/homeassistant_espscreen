@@ -80,7 +80,7 @@ class LabelTest(unittest.TestCase):
         self.assertEqual(aircraft.label_of(f, 'none', False), '')
         self.assertEqual(aircraft.label_of(f, 'callsign', False), 'KLM123')
         self.assertEqual(aircraft.label_of(f, 'altitude', False), 'KLM123\n35000 ft')
-        self.assertEqual(aircraft.label_of(f, 'full', False), 'KLM123 · B738\n35000 ft · 450 kn\nAMS – LHR')
+        self.assertEqual(aircraft.label_of(f, 'full', False), 'KLM123 · B738\n35000 ft · 450 kts\nAMS – LHR')
         self.assertEqual(aircraft.label_of(f, 'altitude', True), 'KLM123\n10670 m')
 
     def test_auto_follows_the_room(self):
@@ -97,7 +97,7 @@ class OverlayTest(unittest.TestCase):
         [plane] = aircraft.overlay(VIEW, flights, aircraft.options_of(tile()))
         x, y, heading, band, vx, vy, label, track, watched = plane
         self.assertEqual((x, y, heading, band, track), (200, 150, 90, 4, []))
-        # 450 knots due east at zoom 10 over 52 degrees north: about 151 pixels a minute.
+        # 450 ktsots due east at zoom 10 over 52 degrees north: about 151 pixels a minute.
         self.assertTrue(140 < vx < 160 and vy == 0, (vx, vy))
         self.assertEqual(label, 'KLM123\n35000 ft')
 
@@ -123,7 +123,7 @@ class OverlayTest(unittest.TestCase):
         self.assertEqual(tracks.of(SOURCE, 'abc', 900, aircraft.FORGET_SECONDS + 1), [])
 
     def test_message_fits_the_screen(self):
-        planes = [[100 + n, 100, 90, 3, 50, 0, 'CALLSIGN' + str(n) + '\n35000 ft · 450 kn\nAMS – LHR', list(range(40))] for n in range(20)]
+        planes = [[100 + n, 100, 90, 3, 50, 0, 'CALLSIGN' + str(n) + '\n35000 ft · 450 kts\nAMS – LHR', list(range(40))] for n in range(20)]
         body = aircraft.message('tile', 3, (400, 300), planes, {'m': 'dot', 'c': 'altitude', 'g': 1})
         self.assertLessEqual(len(json.dumps(body, ensure_ascii=False, separators=(',', ':')).encode()), aircraft.MESSAGE_BYTES)
         self.assertGreater(len(body['a']), 5)
@@ -167,7 +167,7 @@ class WatchTest(unittest.TestCase):
         self.assertEqual([(p[6], p[8]) for p in planes], [('', 0), ('BAW432', aircraft.WATCH_COLOURS.index('blue') + 1)])
 
     def test_kept_when_the_message_is_too_long(self):
-        planes = [[100 + n, 100, 90, 3, 50, 0, 'CALLSIGN' + str(n) + '\n35000 ft · 450 kn\n' + 'A' * 160, list(range(40)), 0] for n in range(20)]
+        planes = [[100 + n, 100, 90, 3, 50, 0, 'CALLSIGN' + str(n) + '\n35000 ft · 450 kts\n' + 'A' * 160, list(range(40)), 0] for n in range(20)]
         planes.append([5, 5, 90, 3, 0, 0, 'BAW432', [], 4])
         body = aircraft.message('tile', 0, (400, 300), planes, {'m': 'dot', 'c': 'altitude', 'g': 1})
         self.assertEqual(body['a'][-1][6], 'BAW432')
@@ -341,14 +341,14 @@ class PickedTest(unittest.TestCase):
             [glyph['airplane'], 'KLM Royal Dutch Airlines', 'KL1601'],
             [glyph['map-marker'], 'Billund – London', 'AMS – LHR'],
             [glyph['information-outline'], 'Embraer E190', 'PH-EZA'],
-            [glyph['arrow-down'], '2500 ft', '160 kn'],
+            [glyph['arrow-down'], '2500 ft', '160 kts'],
             [glyph['information-outline'], 'Squawk', '4521']])
         # Metric where Home Assistant counts in kilometres; level flight, on the ground; only what the source gives.
         metric = aircraft.card(flight(vertical_speed=50), True, self.WORDS)
         self.assertEqual(metric['r'][-1], [glyph['arrow-right'], '10670 m', '833 km/h'])
         self.assertEqual(aircraft.card(flight(vertical_speed=900), False, self.WORDS)['r'][-1][0], glyph['arrow-up'])
         ground = aircraft.card(flight(on_ground=1, speed=12), False, self.WORDS)
-        self.assertEqual(ground['r'][-1], [glyph['speedometer'], 'On the ground', '12 kn'])
+        self.assertEqual(ground['r'][-1], [glyph['speedometer'], 'On the ground', '12 kts'])
         bare = aircraft.card({'id': 'x1', 'latitude': 1, 'longitude': 2, 'aircraft_registration': 'N12345'}, False, self.WORDS)
         self.assertEqual(bare, {'t': 'N12345', 'r': [[glyph['information-outline'], '', 'N12345']]})
         self.assertIsNone(aircraft.card({'id': 'x1'}, False, self.WORDS), 'no place, no plane')
