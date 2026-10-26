@@ -2040,7 +2040,16 @@
           "ifr_low": "IFR low (US)",
           "ifr_high": "IFR high (US)",
           "topo": "USGS topo (US)",
-          "chart_hint": "A chart from the FAA or the USGS, United States only, and not for navigation. It shows at the distances it is drawn for; closer in, or outside the United States, the map shows its streets."
+          "chart_hint": "A chart from the FAA or the USGS, United States only, and not for navigation. It shows at the distances it is drawn for; closer in, or outside the United States, the map shows its streets.",
+          "radar": "Radar scope"
+        },
+        "scope": {
+          "label": "Phosphor",
+          "hint": "The scope glows in this colour whatever the look, and the aircraft over it with it.",
+          "green": "Green",
+          "amber": "Amber",
+          "blue": "Blue",
+          "white": "White"
         },
         "look": {
           "label": "Look",
@@ -2099,6 +2108,12 @@
             "label": "Track",
             "hide": "Hide",
             "show": "Show"
+          },
+          "plane_sweep": {
+            "label": "Sweep",
+            "hide": "Off",
+            "show": "On",
+            "hint": "On the full screen a beam turns once every four seconds and lights up each plane it passes."
           },
           "plane_track_s": {
             "label": "Track length",

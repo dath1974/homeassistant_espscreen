@@ -1,7 +1,7 @@
 // clang++ -std=c++17 -Wall -Wextra -Werror -I. tests/test_aircraft_plan.cpp -o /tmp/test_aircraft_plan && /tmp/test_aircraft_plan
 // Aircraft over a map (components/smart_display/aircraft_plan.h, docs/MAP.md "Aircraft"): where a plane is between two
 // reports, the plane's outline turned to its heading, the arrow's tick, a label kept inside its card, labels kept apart
-// with leader lines, and whether a full view's planes belong to the picture on the glass.
+// with leader lines, whether a full view's planes belong to the picture on the glass, and a radar scope's light and beam.
 #include "../components/smart_display/aircraft_plan.h"
 #include <algorithm>
 #include <cassert>
@@ -173,6 +173,28 @@ int main() {
     assert(pick(full, 160, 100, 16, 0).empty());
     assert(pick(full, 300, 300, 16, 0).empty());
     assert(pick(full, 208, 200, 16, 0, 2.0f, 2.0f) == "a");  // on a picture shown twice as large
+  }
+
+  // A radar scope (docs/MAP.md, "Radar"): low planes dim, high ones bright; no altitude is drawn as the ground's.
+  for (int b = 1; b < BANDS; ++b) assert(band_light(b) > band_light(b - 1));
+  assert(band_light(NO_BAND) == band_light(0) && band_light(2) == 1.0f && band_light(BANDS - 1) <= 2.0f);
+  // The beam turns clockwise from north once in SWEEP_MS; bearings on the glass are from up, clockwise.
+  assert(near(beam(0), 0) && near(beam(SWEEP_MS / 4), 90) && near(beam(SWEEP_MS + SWEEP_MS / 2), 180));
+  const Point mid{100, 100};
+  assert(near(bearing(mid, {100, 50}), 0) && near(bearing(mid, {150, 100}), 90) && near(bearing(mid, {100, 150}), 180) &&
+         near(bearing(mid, {50, 100}), 270));
+  // A plane lights up as the beam passes and fades after; one the beam is about to reach is dark.
+  assert(near(behind(10, 350), 20) && near(behind(350, 10), 340));
+  assert(near(afterglow(behind(90, 90)), 1) && afterglow(behind(120, 90)) > afterglow(behind(200, 90)) &&
+         near(afterglow(behind(80, 90)), 0));
+  // The box round a wedge holds its ends and every quarter it passes, and no more.
+  {
+    const Box east = wedge_box(mid, 50, 80, 100);  // round east: the middle, out to x 150
+    assert(east.x <= 100 && east.x + east.w >= 150 && east.y <= 100 - 8 && east.y + east.h >= 100 + 8 && east.x >= 96);
+    const Box north = wedge_box(mid, 50, 350, 10);  // across north, over the turn of 360
+    assert(north.y <= 50 && north.y + north.h >= 100 && north.x <= 100 - 8 && north.x + north.w >= 100 + 8 && north.y + north.h <= 104);
+    const Box half = wedge_box(mid, 50, 0, 180);  // east half
+    assert(half.y <= 50 && half.y + half.h >= 150 && half.x + half.w >= 150 && half.x >= 96);
   }
 
   std::puts("aircraft plan: ok");

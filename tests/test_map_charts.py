@@ -43,7 +43,7 @@ class Choices(unittest.TestCase):
     def test_every_chart_is_a_choice_of_the_catalogue(self):
         streets = catalogue.of_type('person')['map']['streets']
         self.assertEqual(streets[:2], ['show', 'hide'], 'the streets stay the default, a plain ground the next')
-        self.assertEqual(set(streets[2:]), set(map_charts.CHARTS))
+        self.assertEqual(set(streets[2:]) - {'radar'}, set(map_charts.CHARTS), 'every chart, and the radar scope (test_map_radar.py)')
         self.assertEqual(tuple(streets), map_card.CHOICES['streets'], MAP_OPTIONS['streets'])
         for chart, about in map_charts.CHARTS.items():
             self.assertTrue(about['night'] in ('invert', 'colours') or 0 < about['night'] < 1, chart)

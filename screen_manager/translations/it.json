@@ -2415,7 +2415,16 @@
           "ifr_low": "IFR bassa (USA)",
           "ifr_high": "IFR alta (USA)",
           "topo": "USGS Topo (USA)",
-          "chart_hint": "Una carta della FAA o dell’USGS, solo Stati Uniti, e non per la navigazione. Appare alle distanze per cui è disegnata; più da vicino, o fuori dagli Stati Uniti, la mappa mostra le sue strade."
+          "chart_hint": "Una carta della FAA o dell’USGS, solo Stati Uniti, e non per la navigazione. Appare alle distanze per cui è disegnata; più da vicino, o fuori dagli Stati Uniti, la mappa mostra le sue strade.",
+          "radar": "Schermo radar"
+        },
+        "scope": {
+          "label": "Fosfori",
+          "hint": "Lo schermo si illumina di questo colore qualunque sia l'aspetto, e con esso gli aerei.",
+          "green": "Verde",
+          "amber": "Ambra",
+          "blue": "Blu",
+          "white": "Bianco"
         },
         "look": {
           "label": "Aspetto",
@@ -2474,6 +2483,12 @@
             "label": "Traccia",
             "hide": "Nascondi",
             "show": "Mostra"
+          },
+          "plane_sweep": {
+            "label": "Scansione",
+            "hide": "No",
+            "show": "Sì",
+            "hint": "A schermo intero un fascio ruota ogni quattro secondi e illumina ogni aereo che incontra."
           },
           "plane_track_s": {
             "label": "Lunghezza della traccia",

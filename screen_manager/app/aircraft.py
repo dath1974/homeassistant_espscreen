@@ -356,7 +356,7 @@ def thin(points, most):
 
 
 def overlay(view, flights, options, tracks=None, source='', size=None, scale=1.0, full=False, metric=False, now=None,
-            number=str, suffix=lambda unit: ' ' + unit, circle=None):
+            number=str, suffix=lambda unit: ' ' + unit, circle=None, radar=False):
     """The planes of one card on its frame: [x, y, heading, band, vx, vy, label, track, watched], with -1 for a heading
     or band it has none of, the track as x, y, x, y ... oldest first, ending where the plane is, and `watched` the colour
     of a watched plane (watch_colour), which comes last so the screen draws it on top, always with a label. A full view's
@@ -368,7 +368,8 @@ def overlay(view, flights, options, tracks=None, source='', size=None, scale=1.0
     for flight in shown(flights, options, view, circle):
         colour = watch_colour(flight, watched) if watched else 0
         x, y = view.point(flight.lat, flight.lon)
-        vx, vy = velocity(flight, view) if options['plane_motion'] == 'glide' else (0, 0)
+        # A scope's planes carry their motion whether they glide or not: its arrow is where a plane is a minute on.
+        vx, vy = velocity(flight, view) if options['plane_motion'] == 'glide' or radar else (0, 0)
         track = []
         if options['plane_track'] == 'show' and tracks is not None:
             places = tracks.of(source, flight.id, options['plane_track_s'], now)
@@ -438,9 +439,15 @@ def card(item, metric, words, number=str, suffix=lambda unit: ' ' + unit):
     return {'t': title[:60], 'r': [[icon, name[:40], value[:24]] for icon, name, value in rows]}
 
 
-def style_of(options):
-    """How the screen draws every plane of a card: its marker, its colour and whether it glides between reports."""
-    return {'m': options['plane_marker'], 'c': options['plane_colour'], 'g': 1 if options['plane_motion'] == 'glide' else 0}
+def style_of(options, scope=None, full=False):
+    """How the screen draws every plane of a card: its marker, its colour and whether it glides between reports. `scope`
+    (map_card.scope_of and scope_middle: the phosphor and the middle on the picture) draws them as a radar scope's (`r`),
+    with its beam turning on a full view that sweeps."""
+    style = {'m': options['plane_marker'], 'c': options['plane_colour'], 'g': 1 if options['plane_motion'] == 'glide' else 0}
+    if scope:
+        tint, (x, y) = scope
+        style['r'] = {'t': tint, 'x': round(x), 'y': round(y), 'w': 1 if full and options['plane_sweep'] == 'show' else 0}
+    return style
 
 
 def cards_of(request, most):

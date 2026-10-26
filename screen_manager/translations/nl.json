@@ -2040,7 +2040,16 @@
           "ifr_low": "IFR laag (VS)",
           "ifr_high": "IFR hoog (VS)",
           "topo": "USGS Topo (VS)",
-          "chart_hint": "Een kaart van de FAA of de USGS, alleen de Verenigde Staten, en niet voor navigatie. Hij verschijnt op de afstanden waarvoor hij getekend is; dichterbij, of buiten de Verenigde Staten, toont de kaart zijn straten."
+          "chart_hint": "Een kaart van de FAA of de USGS, alleen de Verenigde Staten, en niet voor navigatie. Hij verschijnt op de afstanden waarvoor hij getekend is; dichterbij, of buiten de Verenigde Staten, toont de kaart zijn straten.",
+          "radar": "Radarscherm"
+        },
+        "scope": {
+          "label": "Fosfor",
+          "hint": "Het scherm gloeit in deze kleur, wat de weergave ook is, en de vliegtuigen erop ook.",
+          "green": "Groen",
+          "amber": "Amber",
+          "blue": "Blauw",
+          "white": "Wit"
         },
         "look": {
           "label": "Uiterlijk",
@@ -2099,6 +2108,12 @@
             "label": "Spoor",
             "hide": "Verbergen",
             "show": "Tonen"
+          },
+          "plane_sweep": {
+            "label": "Zwaaiende bundel",
+            "hide": "Uit",
+            "show": "Aan",
+            "hint": "Op het volledige scherm draait elke vier seconden een bundel rond die elk vliegtuig dat hij passeert laat oplichten."
           },
           "plane_track_s": {
             "label": "Lengte van het spoor",

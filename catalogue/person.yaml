@@ -21,6 +21,8 @@ displays:
 # first names beside the markers, the zones, the streets or a plain ground, and the screen's look or one of its own.
 # In place of the streets a map can show a chart (map_charts.py): the FAA's VFR sectional, IFR low or IFR high
 # enroute chart, or the USGS topographic map, United States only, with the streets wherever the chart has nothing.
+# `radar` draws a radar scope instead (map_card.draw_scope): range rings, bearings and the coast, water and highways in
+# faint phosphor on black, in the phosphor of `scope`, whatever the look; the aircraft over it take the scope's style.
 map:
   framing: [everyone, home, person, place]
   distance: [neighbourhood, street, town, region, radius]
@@ -32,7 +34,8 @@ map:
   markers: [photo, initials]
   names: [auto, always, never]
   zones: [show, hide]
-  streets: [show, hide, sectional, ifr_low, ifr_high, topo]
+  streets: [show, hide, sectional, ifr_low, ifr_high, topo, radar]
+  scope: [green, amber, blue, white]
   look: [auto, light, dark]
   with: [person, device_tracker]
   max: 8
@@ -41,7 +44,8 @@ map:
   # report. Their marker (a dot, a dot with its heading, or a plane turned to it), their label, their colour (by
   # altitude band or the screen's accent), the ones on the ground, whether they glide along their heading between two
   # reports, and their track. The numbers: [default, lowest, highest] of the track's seconds, the most planes on the
-  # card and the altitudes in feet a plane is shown between.
+  # card and the altitudes in feet a plane is shown between. On a radar scope (`streets: radar`) a full view's beam can
+  # turn and light up the planes it passes (`plane_sweep`).
   aircraft:
     plane_marker: [dot, arrow, plane]
     plane_label: [auto, none, callsign, altitude, full]
@@ -49,6 +53,7 @@ map:
     plane_ground: [hide, show]
     plane_motion: [glide, hold]
     plane_track: [hide, show]
+    plane_sweep: [hide, show]
     plane_track_s: [60, 10, 900]
     plane_most: [15, 1, 20]
     plane_min: [0, 0, 60000]

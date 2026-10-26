@@ -3942,14 +3942,18 @@ class Manager:
             planes = aircraft.overlay(view, aircraft.flights_of(self.ha.states.get(source)), options, self.air_tracks, source,
                                       card['size'], board.scale, card['full'], metric, number=i18n.screen_number,
                                       suffix=i18n.unit_suffix,
-                                      circle=map_card.circle_of(tile, self.ha.states, card['size'], board, self.registry_index()))
+                                      circle=map_card.circle_of(tile, self.ha.states, card['size'], board, self.registry_index()),
+                                      radar=bool(map_card.scope_of(tile)))
         finally:
             i18n.SCREEN.reset(token)
+        middle = map_card.scope_middle(tile, self.ha.states, card['size'], board, self.registry_index(), card['full'],
+                                       card['focus'] or None, card['move'])
+        scope = (map_card.scope_of(tile), middle) if middle else None
         sheet = None
         if card.get('picked'):
             plane = self.air_card(tile, card['picked'], screen)
             sheet = {'f': aircraft.PICKED + card['picked'], **({'c': plane} if plane else {})}
-        return aircraft.message(key[1], key[2], card['size'], planes, aircraft.style_of(options), card['move_text'], card['focus'], sheet)
+        return aircraft.message(key[1], key[2], card['size'], planes, aircraft.style_of(options, scope, card['full']), card['move_text'], card['focus'], sheet)
 
     async def air_send(self, inbox, keys):
         """The planes of these cards to one screen, each card its own message."""

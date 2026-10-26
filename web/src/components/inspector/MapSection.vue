@@ -49,14 +49,17 @@ const framing = computed(() => {
   const value = current("framing", MAP?.framing[0]) as string;
   return !people.value && value === "everyone" ? "home" : value;
 });
-type MapChoice = "framing" | "distance" | "follow" | "markers" | "names" | "zones" | "streets" | "look" | "show";
+type MapChoice = "framing" | "distance" | "follow" | "markers" | "names" | "zones" | "streets" | "scope" | "look" | "show";
 const choices = (key: MapChoice) => offeredChoices(props.tile, key, (MAP?.[key] ?? [])
   // Around this person is a person's map: the map tile has no person of its own. Everyone needs people on the map.
   .filter((value) => !(key === "framing" && value === "person" && mapTile.value))
   .filter((value) => !(key === "framing" && value === "everyone" && !people.value))
   .map((value) => [value, t(`editor.tile.map.${key}.${value}`)] as [string, string]), current(key, MAP?.[key]?.[0]), controlled.value);
 // A chart in place of the streets (map_charts.py): the FAA's or the USGS's, United States only.
-const charted = computed(() => !["show", "hide"].includes(current("streets", MAP?.streets[0]) as string));
+const charted = computed(() => !["show", "hide", "radar"].includes(current("streets", MAP?.streets[0]) as string));
+// A radar scope in place of the streets (map_card.draw_scope): lit in its own phosphor whatever the look, and on its
+// full view a beam that can turn.
+const radar = computed(() => current("streets", MAP?.streets[0]) === "radar");
 // What a tap on the map tile does: the full view with its keys, the map alone over the whole glass (`clean`, closed by
 // another tap), or nothing. The catalogue's screen taps; the tile's other taps mean nothing on a map.
 const tap = computed(() => current("tap", "auto") as string);
@@ -114,7 +117,7 @@ function setRadius(text: string) {
 const source = computed(() => (props.tile.options?.aircraft as string | undefined) ?? "");
 const sources = computed(() => (inv.inventory.aircraft || []).map((item) => ({ id: item.id, name: item.name || item.id, hint: item.id })));
 const sourceName = computed(() => source.value ? entities.entityName(source.value) : t("editor.tile.map.aircraft.choose"));
-type AirChoice = "plane_marker" | "plane_label" | "plane_colour" | "plane_ground" | "plane_motion" | "plane_track";
+type AirChoice = "plane_marker" | "plane_label" | "plane_colour" | "plane_ground" | "plane_motion" | "plane_track" | "plane_sweep";
 const airChoices = (key: AirChoice) => offeredChoices(props.tile, key, (AIR_CHOICES[key] ?? [])
   .map((value) => [value, t(`editor.tile.map.aircraft.${key}.${value}`)] as [string, string]), current(key, AIR_CHOICES[key]?.[0]), controlled.value);
 const airValue = (key: string) => current(key, AIR_CHOICES[key]?.[0] ?? AIR_NUMBERS[key]?.[0]);
@@ -185,10 +188,13 @@ function remove(id: string) { setTileOption(props.tile, "map", mapWith.value.fil
     <PropRow :label="t('editor.tile.map.streets.label')" icon="map-outline" :hint="charted ? t('editor.tile.map.streets.chart_hint') : undefined">
       <ChoiceField :choices="choices('streets')" :value="current('streets', MAP?.streets[0])" :tile="tile" preview-key="streets" :aria-label="t('editor.tile.map.streets.label')" @pick="(v) => setTileOption(tile, 'streets', v)" />
     </PropRow>
+    <PropRow v-if="radar" :label="t('editor.tile.map.scope.label')" icon="palette-outline" :hint="t('editor.tile.map.scope.hint')">
+      <ChoiceField :choices="choices('scope')" :value="current('scope', MAP?.scope?.[0])" :tile="tile" preview-key="scope" :aria-label="t('editor.tile.map.scope.label')" @pick="(v) => setTileOption(tile, 'scope', v)" />
+    </PropRow>
     <PropRow v-if="people" :label="t('editor.tile.map.zones.label')" icon="map-marker-radius-outline">
       <ChoiceField :choices="choices('zones')" :value="current('zones', MAP?.zones[0])" :tile="tile" preview-key="zones" :aria-label="t('editor.tile.map.zones.label')" @pick="(v) => setTileOption(tile, 'zones', v)" />
     </PropRow>
-    <PropRow :label="t('editor.tile.map.look.label')" icon="theme-light-dark">
+    <PropRow v-if="!radar" :label="t('editor.tile.map.look.label')" icon="theme-light-dark">
       <ChoiceField :choices="choices('look')" :value="current('look', MAP?.look[0])" :tile="tile" preview-key="look" :aria-label="t('editor.tile.map.look.label')" @pick="(v) => setTileOption(tile, 'look', v)" />
     </PropRow>
     <PropRow v-if="mapTile" :label="t('editor.tile.map.tap.label')" icon="gesture-tap" :hint="t(`editor.tile.map.tap.${tap}_hint`)">
@@ -244,6 +250,9 @@ function remove(id: string) { setTileOption(props.tile, "map", mapWith.value.fil
       </PropRow>
       <PropRow :label="t('editor.tile.map.aircraft.plane_motion.label')" icon="play" :hint="t(`editor.tile.map.aircraft.plane_motion.${airValue('plane_motion')}_hint`)">
         <ChoiceField :choices="airChoices('plane_motion')" :value="airValue('plane_motion')" :tile="tile" preview-key="plane_motion" :aria-label="t('editor.tile.map.aircraft.plane_motion.label')" @pick="(v) => setTileOption(tile, 'plane_motion', v)" />
+      </PropRow>
+      <PropRow v-if="radar" :label="t('editor.tile.map.aircraft.plane_sweep.label')" icon="crosshairs" :hint="t('editor.tile.map.aircraft.plane_sweep.hint')">
+        <ChoiceField :choices="airChoices('plane_sweep')" :value="airValue('plane_sweep')" :tile="tile" preview-key="plane_sweep" :aria-label="t('editor.tile.map.aircraft.plane_sweep.label')" @pick="(v) => setTileOption(tile, 'plane_sweep', v)" />
       </PropRow>
       <PropRow :label="t('editor.tile.map.aircraft.plane_track.label')" icon="gesture-swipe-horizontal">
         <ChoiceField :choices="airChoices('plane_track')" :value="airValue('plane_track')" :tile="tile" preview-key="plane_track" :aria-label="t('editor.tile.map.aircraft.plane_track.label')" @pick="(v) => setTileOption(tile, 'plane_track', v)" />

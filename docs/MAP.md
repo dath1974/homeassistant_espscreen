@@ -44,8 +44,9 @@ middle, so each stays to be seen; the one a finger picked never moves.
 | **Markers** | **Photo**: a person's picture in their marker, as Home Assistant shows it, and their initials when they have none. **Initials**: always the letters. |
 | **Names** | First names beside the markers: where the card has room (from about 200 pixels high, and always over the whole screen), always, or never. |
 | **Zones** | Your zones as soft circles, or none. |
-| **Base map** | The streets from Home Assistant's map, a plain ground with only the zones and people (nothing is fetched), or a chart of the United States: the FAA's VFR sectional, IFR low or IFR high enroute chart, or the USGS topographic map. See "Charts". |
-| **Look** | As the screen (light or dark with it), or always light, or always dark. |
+| **Base map** | The streets from Home Assistant's map, a plain ground with only the zones and people (nothing is fetched), or a chart of the United States: the FAA's VFR sectional, IFR low or IFR high enroute chart, or the USGS topographic map. See "Charts". Or **Radar scope**, see "Radar". |
+| **Phosphor** (radar scope) | The scope's colour: green, amber, blue or white. |
+| **Look** | As the screen (light or dark with it), or always light, or always dark. A radar scope has none. |
 | **Tap** (map tile) | **Full screen with keys**: the full view above, with its back key, name and keys. **Full screen, map only**: the map over the whole screen with nothing over it, and a tap anywhere closes it. **Nothing**: a tap does nothing. |
 | **On the picture** | The tile's name on a small label at the bottom left, or nothing. |
 
@@ -98,6 +99,29 @@ always takes the sharpest level of them the view can use, on any screen; the USG
 a dense screen it takes a level further out and draws it larger rather than its words smaller. Closer in than a chart is
 drawn for, outside the United States, or while its server gives nothing, the map shows its streets instead, and Tessera
 asks the server again after ten minutes.
+
+## Radar
+
+Base map can also be Radar scope: the map drawn as an old radar tube, lit in one phosphor on black whatever the look.
+Phosphor picks it: green, amber, blue or white. Range rings stand round the middle the map is framed on, labelled in
+nautical miles as every radar scope counts them, with at most four between the middle and the nearer edge; bearing
+lines every 30 degrees; and a compass rose of ticks and bearings on the largest circle the card holds whole, or on the
+radius's circle, beyond which the scope is dark. Under them is a faint video map from the same street tiles: the coast
+of open water, the water itself a breath lighter, the motorways, and the main roads close in. Narrow canals and ditches
+are left out, so a low country does not fill the scope with lines. Every few rows of the picture are a shade darker, as
+the lines of a tube are. The card carries "OpenStreetMap" when the street tiles came.
+
+The aircraft over a scope take its style (the `r` of op "air": the phosphor and the scope's middle on the picture).
+Colour by altitude becomes the phosphor's brightness, dim on the ground and low down and brightest at the top, and One
+colour is the phosphor's glow; watched aircraft keep their own colours. Each plane is a blip with a soft glow. The
+arrow marker becomes a vector to where the plane will be in a minute, which the app sends even when planes hold
+between reports. A track is the plane's history, a dot at each place it was with the older ones fainter, and a label
+is a square data block in the plane's own phosphor.
+
+On the full view a beam can turn (Sweep, under Aircraft): once every four seconds, clockwise from north, with an
+afterglow behind it, and each plane flares as the beam passes and fades over the rest of the turn. It is drawn by the
+screen over the picture, about twelve times a second, and only what the beam swept and the planes whose light changed
+are drawn again, never the whole picture. A card on a page never sweeps, so a page of map cards stays still.
 
 ## When it is drawn again
 

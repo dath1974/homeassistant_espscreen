@@ -338,6 +338,22 @@ constexpr uint32_t PARTLY_CLOUDY = 0x7E9BB5, CLOUDY = 0x78909C, NIGHT_SKY = 0x5C
 constexpr uint32_t ALARM = 0xE53935, CHARGING = 0x43A047;
 }  // namespace ha
 
+// ---- A radar scope (docs/MAP.md, "Radar")
+// A map drawn as a radar scope (`streets: radar`) is lit in one phosphor whatever the look, as an old tube is: its
+// ground, its glow and its hottest light, in the order of catalogue/person.yaml `map.scope`. The add-on draws the scope
+// under the planes in the same three (map_card.SCOPE, tests/test_map_radar.py keeps them equal); every shade between
+// is mixed from them.
+namespace radar {
+struct Tint { uint32_t ground, glow, hot; };
+inline constexpr Tint TINTS[] = {
+  /* green, a Pip-Boy's */       {0x04140A, 0x1AFF80, 0xB8FFD6},
+  /* amber, a terminal's */      {0x140C02, 0xFFB000, 0xFFE4A0},
+  /* blue */                     {0x030E16, 0x33CCFF, 0xC4F0FF},
+  /* white, a P4 tube's */       {0x0C0E0E, 0xE6F2EE, 0xFFFFFF},
+};
+constexpr int TINT_COUNT = sizeof(TINTS) / sizeof(TINTS[0]);
+}  // namespace radar
+
 // ---- Home Assistant's colours on their way to the glass
 // Grey is what Home Assistant draws for something off; the add-on's timelines add a lighter grey for off and one for no
 // data. In dark those greys come from the table; every other state colour stays itself.

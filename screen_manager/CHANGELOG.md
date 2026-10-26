@@ -25,6 +25,12 @@
   IFR charts get dark paper and light ink with their colours kept as printed, and the topographic map is turned round;
   closer in, or outside the United States, the map shows its streets. The app fetches these from the FAA's and the
   USGS's own public servers, since Home Assistant has none for them. Not for navigation.
+- **A radar scope for the map.** A map's Base map can be Radar scope: range rings in nautical miles, bearing lines, a
+  compass rose and a faint outline of the coast, water and highways, lit in green, amber, blue or white phosphor on
+  black whatever the look. The aircraft over it take the scope's style: their brightness by altitude, a blip with a
+  soft glow, a vector to where each plane will be in a minute, a trail of fading dots for its track and square data
+  blocks for its labels. On the full screen a beam can sweep round once every four seconds, lighting up each plane as
+  it passes (Sweep, under Aircraft).
 - **Speaker and microphone on the Guition and Waveshare ESP32-P4 screens, experimental.** The Guition JC8012P4A1
   (10.1 inch, also its V2 and V3), JC1060P470 (7 inch, also its V2) and JC4880P443 (4.3 inch) now use their speaker and
   microphone, both at once, and the Waveshare ESP32-P4-WIFI6-Touch-LCD-7B, LCD-7 and LCD-10.1 their speaker and two

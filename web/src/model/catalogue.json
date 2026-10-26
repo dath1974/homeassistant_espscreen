@@ -1638,7 +1638,14 @@
      "sectional",
      "ifr_low",
      "ifr_high",
-     "topo"
+     "topo",
+     "radar"
+    ],
+    "scope": [
+     "green",
+     "amber",
+     "blue",
+     "white"
     ],
     "look": [
      "auto",
@@ -1676,6 +1683,10 @@
       "hold"
      ],
      "plane_track": [
+      "hide",
+      "show"
+     ],
+     "plane_sweep": [
       "hide",
       "show"
      ],

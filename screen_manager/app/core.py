@@ -242,8 +242,8 @@ PICTURE_OPTIONS = {key: tuple(catalogue.of_type('camera')['picture'][key]) for k
 # default and is never stored. `map` lists who rides along beside the tile's own person, people and device trackers.
 # None of it reaches a screen (screen_options): the screen gets pixels, never a place.
 MAP_CARD = catalogue.of_type('person')['map']
-MAP_OPTIONS = {key: tuple(MAP_CARD[key]) for key in ('framing', 'distance', 'follow', 'markers', 'names', 'zones', 'streets', 'look',
-                                                     'show')}
+MAP_OPTIONS = {key: tuple(MAP_CARD[key]) for key in ('framing', 'distance', 'follow', 'markers', 'names', 'zones', 'streets', 'scope',
+                                                     'look', 'show')}
 # The map of the screen's own cards (app 0.4.36, firmware 0.21.0): the same map without a person of its own, following
 # everyone Home Assistant knows the place of or the people and trackers chosen (`follow`).
 MAP_TILE = 'screen.map'
