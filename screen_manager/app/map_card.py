@@ -972,7 +972,8 @@ def draw_scope(canvas, view, centre, tint, dpi_scale, full=False, radius=None):
             x1, y1 = cx + m.sin(a) * (rose - length), cy - m.cos(a) * (rose - length)
             draw.line((x0 * s, y0 * s, x1 * s, y1 * s), fill=colour, width=line)
             if bearing % (30 if large else 90) == 0:
-                text = '%03d' % bearing if large else 'NESW'[bearing // 90]
+                # North is 360, as a radar's rose writes it, not 000.
+                text = '%03d' % (bearing or 360) if large else 'NESW'[bearing // 90]
                 tx, ty = cx + m.sin(a) * (rose - length - 8 * dpi_scale), cy - m.cos(a) * (rose - length - 8 * dpi_scale)
                 if ty > top + 6 * dpi_scale:
                     draw.text((tx * s, ty * s), text, font=face, anchor='mm', fill=glow if bearing == 0 else colour)

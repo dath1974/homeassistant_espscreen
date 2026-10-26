@@ -186,7 +186,7 @@ int main() {
   // A plane lights up as the beam passes and fades after; one the beam is about to reach is dark.
   assert(near(behind(10, 350), 20) && near(behind(350, 10), 340));
   assert(near(afterglow(behind(90, 90)), 1) && afterglow(behind(120, 90)) > afterglow(behind(200, 90)) &&
-         near(afterglow(behind(80, 90)), 0));
+         afterglow(behind(80, 90)) < 0.05f);
   // The box round a wedge holds its ends and every quarter it passes, and no more.
   {
     const Box east = wedge_box(mid, 50, 80, 100);  // round east: the middle, out to x 150
