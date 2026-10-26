@@ -197,6 +197,21 @@ int main() {
     assert(half.y <= 50 && half.y + half.h >= 150 && half.x + half.w >= 150 && half.x >= 96);
   }
 
+  // A scope draws a plane again whole: an area grows by every plane it touches, where it was and where it is now, until
+  // none lies across its edge; one it does not touch leaves it as it was.
+  {
+    assert(holds({0, 0, 10, 10}, {2, 2, 8, 8}) && !holds({0, 0, 10, 10}, {2, 2, 9, 8}));
+    const Box j = join({0, 0, 4, 4}, {10, 20, 5, 5});
+    assert(j.x == 0 && j.y == 0 && j.w == 15 && j.h == 25);
+    const std::vector<std::array<Box, 2>> planes = {{Box{40, 10, 30, 10}, Box{44, 10, 30, 10}},  // across the edge
+                                                   {Box{200, 200, 20, 10}, Box{200, 200, 20, 10}}};  // far away
+    const Box grown = take_in({0, 0, 50, 50}, planes);
+    assert(grown.x == 0 && grown.y == 0 && grown.w == 74 && grown.h == 50);
+    // A chain: the first plane's box, taken in, reaches a second.
+    const std::vector<std::array<Box, 2>> chain = {{Box{45, 0, 20, 5}, Box{45, 0, 20, 5}}, {Box{60, 0, 20, 5}, Box{60, 0, 20, 5}}};
+    assert(take_in({0, 0, 50, 50}, chain).w == 80);
+  }
+
   std::puts("aircraft plan: ok");
   return 0;
 }
