@@ -118,7 +118,7 @@ static float scope_reach(ap::Point c, const lv_area_t &a) {
   return far + 2;
 }
 // The beam and its afterglow, a fan of slices fading behind it, under every plane.
-static constexpr int TRAIL_SLICES = 8;
+static constexpr int TRAIL_SLICES = 4;
 static void draw_beam(lv_layer_t *layer, const ap::Overlay &o, ap::Point c, float reach, float beam, int width) {
   auto at = [&](float b) {
     const float r = b * 3.14159265f / 180.0f;
@@ -127,7 +127,7 @@ static void draw_beam(lv_layer_t *layer, const ap::Overlay &o, ap::Point c, floa
   const lv_color_t glow = phosphor(o, 1.0f);
   for (int k = 0; k < TRAIL_SLICES; ++k) {
     const float to = beam - ap::SWEEP_TRAIL * k / TRAIL_SLICES, from = beam - ap::SWEEP_TRAIL * (k + 1) / TRAIL_SLICES;
-    triangle(layer, c, at(from), at(to), glow, (lv_opa_t) (96 * (TRAIL_SLICES - k) / TRAIL_SLICES));
+    triangle(layer, c, at(from), at(to), glow, (lv_opa_t) (110 * (TRAIL_SLICES - k) / TRAIL_SLICES));
   }
   line(layer, c, at(beam), phosphor(o, 1.6f), width, LV_OPA_COVER);
 }

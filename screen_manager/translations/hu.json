@@ -2488,7 +2488,7 @@
             "label": "Pásztázás",
             "hide": "Ki",
             "show": "Be",
-            "hint": "Teljes képernyőn egy sugár négy másodpercenként körbefordul, és felvillantja az érintett repülőket."
+            "hint": "Teljes képernyőn egy sugár hat másodpercenként körbefordul, és felvillantja az érintett repülőket."
           },
           "plane_track_s": {
             "label": "Nyomvonal hossza",

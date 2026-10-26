@@ -2488,7 +2488,7 @@
             "label": "Wiązka",
             "hide": "Wył.",
             "show": "Wł.",
-            "hint": "Na pełnym ekranie wiązka obraca się co cztery sekundy i rozświetla każdy samolot, który mija."
+            "hint": "Na pełnym ekranie wiązka obraca się co sześć sekund i rozświetla każdy samolot, który mija."
           },
           "plane_track_s": {
             "label": "Długość śladu",

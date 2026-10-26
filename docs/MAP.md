@@ -118,7 +118,7 @@ arrow marker becomes a vector to where the plane will be in a minute, which the 
 between reports. A track is the plane's history, a dot at each place it was with the older ones fainter, and a label
 is a square data block in the plane's own phosphor.
 
-On the full view a beam can turn (Sweep, under Aircraft): once every four seconds, clockwise from north, with an
+On the full view a beam can turn (Sweep, under Aircraft): once every six seconds, clockwise from north, with an
 afterglow behind it, and each plane flares as the beam passes and fades over the rest of the turn. It is drawn by the
 screen over the picture, about twelve times a second, and only what the beam swept and the planes whose light changed
 are drawn again, never the whole picture. A card on a page never sweeps, so a page of map cards stays still.
