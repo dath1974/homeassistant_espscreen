@@ -25,4 +25,8 @@ bool where(View *view, const std::string &id, int &x, int &y);
 void set_picked(View *view, const std::string &id);
 // Every second (runtime_tiles::tick): planes that glide are drawn where they are now.
 void tick(View *view, uint32_t now);
+// A radar scope's colours (theme.h radar::TINTS): its phosphor at `light` (0 the ground, 1 the glow, 2 the hottest
+// light), and its ground, for what lies over a scope in its style (the card of a plane picked, the name over it).
+lv_color_t phosphor(const aircraft_plan::Overlay &o, float light);
+lv_color_t ground(const aircraft_plan::Overlay &o);
 }  // namespace aircraft_view
