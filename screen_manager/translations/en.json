@@ -2113,7 +2113,7 @@
             "label": "Sweep",
             "hide": "Off",
             "show": "On",
-            "hint": "On the full screen a beam turns once every six seconds and lights up each plane it passes."
+            "hint": "On the full screen a beam turns once every four seconds and lights up each plane it passes."
           },
           "plane_track_s": {
             "label": "Track length",

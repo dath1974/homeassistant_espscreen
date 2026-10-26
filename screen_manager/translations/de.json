@@ -2488,7 +2488,7 @@
             "label": "Abtaststrahl",
             "hide": "Aus",
             "show": "An",
-            "hint": "Im Vollbild dreht sich alle sechs Sekunden ein Strahl und lässt jedes Flugzeug aufleuchten, das er überstreicht."
+            "hint": "Im Vollbild dreht sich alle vier Sekunden ein Strahl und lässt jedes Flugzeug aufleuchten, das er überstreicht."
           },
           "plane_track_s": {
             "label": "Spurlänge",

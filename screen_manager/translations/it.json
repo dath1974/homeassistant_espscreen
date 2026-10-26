@@ -2488,7 +2488,7 @@
             "label": "Scansione",
             "hide": "No",
             "show": "Sì",
-            "hint": "A schermo intero un fascio ruota ogni sei secondi e illumina ogni aereo che incontra."
+            "hint": "A schermo intero un fascio ruota ogni quattro secondi e illumina ogni aereo che incontra."
           },
           "plane_track_s": {
             "label": "Lunghezza della traccia",

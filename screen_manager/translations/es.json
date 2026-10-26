@@ -2488,7 +2488,7 @@
             "label": "Barrido",
             "hide": "No",
             "show": "Sí",
-            "hint": "En pantalla completa un haz gira cada seis segundos e ilumina cada avión por el que pasa."
+            "hint": "En pantalla completa un haz gira cada cuatro segundos e ilumina cada avión por el que pasa."
           },
           "plane_track_s": {
             "label": "Longitud de la estela",

@@ -113,14 +113,14 @@ the lines of a tube are. The card carries "OpenStreetMap" when the street tiles 
 
 The aircraft over a scope take its style (the `r` of op "air": the phosphor and the scope's middle on the picture).
 Colour by altitude becomes the phosphor's brightness, dim on the ground and low down and brightest at the top, and One
-colour is the phosphor's glow; watched aircraft keep their own colours. Each plane is a blip with a soft glow. The
+colour is the phosphor's glow; watched aircraft keep their own colours. Each plane is a small blip, half the size of a street map's marker. The
 arrow marker becomes a vector to where the plane will be in a minute, which the app sends even when planes hold
 between reports. A track is the plane's history, a dot at each place it was with the older ones fainter, and a label
 is a square data block in the plane's own phosphor.
 
-On the full view a beam can turn (Sweep, under Aircraft): once every six seconds, clockwise from north, out to the
-compass rose, with an afterglow fading behind it, and each plane flares as the beam passes and fades over the rest of
-the turn. As on a radar, a plane is painted where the beam last found it: it moves, takes its new label, appears or goes
+On the full view a beam can turn (Sweep, under Aircraft): once every four seconds, clockwise from north, out to the
+compass rose, with an afterglow fading behind it, and each plane shows at full light as the beam passes and dims over
+the rest of the turn. As on a radar, a plane is painted where the beam last found it: it moves, takes its new label, appears or goes
 only as the beam crosses its bearing, planes beyond the rose too. It is drawn by the screen over the picture, about
 twelve times a second, and only what the beam swept and the planes it changed are drawn again, never the whole picture.
 A card on a page never sweeps, so a page of map cards stays still.

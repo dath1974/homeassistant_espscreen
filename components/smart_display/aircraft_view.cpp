@@ -64,11 +64,14 @@ static lv_color_t colour_of(const ap::Overlay &o, const ap::Plane &p) {
   return theme::color(p.band >= 0 && p.band < ap::BANDS ? BANDS[p.band] : theme::AIRCRAFT_GROUND);
 }
 
-// The sizes of the reference look, larger on a full view, which is seen from further away.
+// The sizes of the reference look, larger on a full view, which is seen from further away. A scope's blips and plane
+// symbols are half as large: a radar's returns are small points on the tube.
 struct Sizes { int dot, plane, tick, line, halo, pad, gap, radius; };
-static Sizes sizes(bool full) {
-  return {ui::px(full ? 12 : 8), ui::px(full ? 24 : 16), ui::px(full ? 9 : 6), std::max(1, ui::px(2)),
-          std::max(1, ui::px(2)), ui::px(3), ui::px(4), ui::px(4)};
+static Sizes sizes(const ap::Overlay &o) {
+  const bool full = o.full;
+  const int part = o.radar.on ? 2 : 1;
+  return {std::max(3, ui::px(full ? 12 : 8) / part), std::max(6, ui::px(full ? 24 : 16) / part), ui::px(full ? 9 : 6),
+          std::max(1, ui::px(2)), std::max(1, ui::px(2)), ui::px(3), ui::px(4), ui::px(4)};
 }
 
 // LVGL's precise points are whole numbers or floats by its configuration.
@@ -133,9 +136,9 @@ static float scope_reach(const View *view, ap::Point c, const lv_area_t &a) {
   return far + 2;
 }
 // The beam and its afterglow, a fan of slices fading behind it, under every plane.
-// The trail fades in six slices, each a sixth dimmer than the one before. Every slice costs about as much as the rows it
-// spans (some 6 ms out to the corner of the AMOLED 2.41), so the beam ends at the rose and six is as smooth as it affords.
-static constexpr int TRAIL_SLICES = 6;
+// The trail fades in four slices, each a quarter dimmer than the one before. Every slice costs about as much as the rows it
+// spans (some 6 ms out to the corner of the AMOLED 2.41), so the beam ends at the rose.
+static constexpr int TRAIL_SLICES = 4;
 // Each slice is drawn in pieces SEGMENT_PX long from the middle out: LVGL works out a triangle over the whole box round
 // it, and the box of one long thin slice across a diagonal is most of a quarter of the glass.
 static constexpr float SEGMENT_PX = 80.0f;
@@ -161,7 +164,7 @@ static void draw_beam(lv_layer_t *layer, const ap::Overlay &o, ap::Point c, floa
 // The box a plane's marker, its glow and rings, its vector and its track take on the glass, at `c`; its label beside.
 static ap::Box plane_box(const View *view, const ap::Plane &p, ap::Point c) {
   const ap::Overlay &o = view->overlay;
-  const Sizes s = sizes(o.full);
+  const Sizes s = sizes(o);
   const int r = (int) std::lround((o.marker == ap::PLANE ? s.plane : s.dot) * ap::WATCH_SCALE) + 8 * s.halo + 4 * s.line;
   ap::Box box{(int) std::floor(c.x) - r, (int) std::floor(c.y) - r, 2 * r + 2, 2 * r + 2};
   auto take = [&](float x, float y, int pad) { box = ap::join(box, {(int) std::floor(x) - pad, (int) std::floor(y) - pad, 2 * pad + 2, 2 * pad + 2}); };
@@ -172,7 +175,7 @@ static ap::Box plane_box(const View *view, const ap::Plane &p, ap::Point c) {
   return box;
 }
 // How lit a plane is by the beam, in steps, so a plane is drawn again only when it changes a step.
-static constexpr int GLOW_STEPS = 6;
+static constexpr int GLOW_STEPS = 12;
 static int glow_step(const View *view, ap::Point c, ap::Point plane, float beam) {
   if (!latches(view->overlay)) return 0;
   return (int) std::lround(ap::afterglow(ap::behind(beam, ap::bearing(c, plane))) * GLOW_STEPS);
@@ -185,7 +188,7 @@ static void draw(lv_event_t *e) {
   lv_area_t a;
   lv_obj_get_coords(lv_event_get_target_obj(e), &a);
   const ap::Overlay &o = shown(view);
-  const Sizes s = sizes(o.full);
+  const Sizes s = sizes(o);
   const uint32_t now = lv_tick_get();
   const bool radar = o.radar.on;
   // On a scope the halo is its ground, so every mark reads as lit phosphor on the dark tube.
@@ -229,13 +232,11 @@ static void draw(lv_event_t *e) {
     const ap::Point c = places[i];
     const float grow = p.watch ? ap::WATCH_SCALE : 1.0f;
     const int d = (int) std::lround(s.dot * grow), size = (int) std::lround(s.plane * grow);
-    if (radar) {
-      // A blip: a soft glow round it, brighter as the beam passes and fading after.
-      const int step = glow_step(view, middle, c, beam);
-      const float flare = (float) step / GLOW_STEPS;
-      if (step && !p.watch) colour = phosphor(o, ap::band_light(o.by_altitude ? p.band : 2) + 0.7f * flare);
-      const int across = (o.marker == ap::PLANE ? size : d) * 8 / 5;
-      dot(layer, c, across, colour, 0, colour, (lv_opa_t) (28 + 72 * flare));
+    if (radar && o.radar.sweep && !p.watch) {
+      // A return: at full light as the beam passes, dimming over the turn to under half of its own until the next pass.
+      const float lit = (float) glow_step(view, middle, c, beam) / GLOW_STEPS;
+      const float own = ap::band_light(o.by_altitude ? p.band : 2), dim = own * 0.45f;
+      colour = phosphor(o, dim + (1.9f - dim) * lit);
     }
     if (!view->picked.empty() && p.id == view->picked) {
       // The plane picked: a wide ring in the ink round a halo of the card's colour, outside a watched plane's own.
@@ -369,7 +370,7 @@ static void draw(lv_event_t *e) {
 // is now with its new label (or goes, when the reports dropped it), drawn again whole where it was and where it is, and
 // the planes whose light changed a step are drawn again round their marker, the same pixels everywhere else.
 static ap::Box guess_box(const View *view, const ap::Plane &p, ap::Point c) {
-  const int r = sizes(view->overlay.full).plane * 2;
+  const int r = sizes(view->overlay).plane * 2;
   return ap::join(plane_box(view, p, c), {(int) c.x - 3 * r, (int) c.y - r, 6 * r, 2 * r});
 }
 static void sweep(lv_timer_t *timer) {
@@ -424,7 +425,7 @@ static void sweep(lv_timer_t *timer) {
   }
   // The watched planes last, so they lie over the others, as the app sends them.
   if (changed) std::stable_partition(painted.planes.begin(), painted.planes.end(), [](const ap::Plane &p) { return p.watch == 0; });
-  const int reach = sizes(o.full).plane * 2;
+  const int reach = sizes(o).plane * 2;
   for (const auto &p : painted.planes) {
     const ap::Point at = on_glass(p);
     if (glow_step(view, c, at, was) == glow_step(view, c, at, beam)) continue;

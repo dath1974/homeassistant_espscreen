@@ -2488,7 +2488,7 @@
             "label": "Balayage",
             "hide": "Non",
             "show": "Oui",
-            "hint": "En plein écran, un faisceau tourne toutes les six secondes et illumine chaque avion qu’il croise."
+            "hint": "En plein écran, un faisceau tourne toutes les quatre secondes et illumine chaque avion qu’il croise."
           },
           "plane_track_s": {
             "label": "Longueur de la trace",

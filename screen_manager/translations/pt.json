@@ -2488,7 +2488,7 @@
             "label": "Varrimento",
             "hide": "Não",
             "show": "Sim",
-            "hint": "Em ecrã inteiro um feixe roda a cada seis segundos e ilumina cada avião por onde passa."
+            "hint": "Em ecrã inteiro um feixe roda a cada quatro segundos e ilumina cada avião por onde passa."
           },
           "plane_track_s": {
             "label": "Comprimento do rasto",
