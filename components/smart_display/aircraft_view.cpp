@@ -223,8 +223,14 @@ void follow(View *view, lv_obj_t *picture) {
   if (!view || !view->layer || !picture) return;
   lv_obj_update_layout(picture);
   const int w = lv_obj_get_width(picture), h = lv_obj_get_height(picture);
-  lv_obj_set_size(view->layer, w, h);
-  lv_obj_align_to(view->layer, picture, LV_ALIGN_TOP_LEFT, 0, 0);
+  // Set only when they change: LVGL sets a size or a place through the object's style, which draws the whole object
+  // again even when the value is the one it had, the whole glass on a full view, with every report.
+  const bool resized = w != lv_obj_get_width(view->layer) || h != lv_obj_get_height(view->layer);
+  if (resized) lv_obj_set_size(view->layer, w, h);
+  lv_area_t at, own;
+  lv_obj_get_coords(picture, &at);
+  lv_obj_get_coords(view->layer, &own);
+  if (resized || at.x1 != own.x1 || at.y1 != own.y1) lv_obj_align_to(view->layer, picture, LV_ALIGN_TOP_LEFT, 0, 0);
   const int index = lv_obj_get_index(picture);
   if (index >= 0 && lv_obj_get_index(view->layer) != index + 1) lv_obj_move_to_index(view->layer, index + 1);
   view->sx = view->overlay.width > 0 ? (float) w / view->overlay.width : 1;
