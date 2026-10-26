@@ -2415,7 +2415,16 @@
           "ifr_low": "IFR basse (É.-U.)",
           "ifr_high": "IFR haute (É.-U.)",
           "topo": "USGS Topo (É.-U.)",
-          "chart_hint": "Une carte de la FAA ou de l’USGS, États-Unis uniquement, et pas pour la navigation. Elle s’affiche aux distances pour lesquelles elle est dessinée ; plus près, ou hors des États-Unis, la carte montre ses rues."
+          "chart_hint": "Une carte de la FAA ou de l’USGS, États-Unis uniquement, et pas pour la navigation. Elle s’affiche aux distances pour lesquelles elle est dessinée ; plus près, ou hors des États-Unis, la carte montre ses rues.",
+          "radar": "Écran radar"
+        },
+        "scope": {
+          "label": "Phosphore",
+          "hint": "L'écran brille dans cette couleur quel que soit l'aspect, et les avions dessus aussi.",
+          "green": "Vert",
+          "amber": "Ambre",
+          "blue": "Bleu",
+          "white": "Blanc"
         },
         "look": {
           "label": "Apparence",
@@ -2474,6 +2483,12 @@
             "label": "Trace",
             "hide": "Masquer",
             "show": "Afficher"
+          },
+          "plane_sweep": {
+            "label": "Balayage",
+            "hide": "Non",
+            "show": "Oui",
+            "hint": "En plein écran, un faisceau tourne toutes les quatre secondes et illumine chaque avion qu’il croise."
           },
           "plane_track_s": {
             "label": "Longueur de la trace",

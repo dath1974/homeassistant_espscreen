@@ -2415,7 +2415,16 @@
           "ifr_low": "IFR alacsony (USA)",
           "ifr_high": "IFR magas (USA)",
           "topo": "USGS topo (USA)",
-          "chart_hint": "Az FAA vagy az USGS térképe, csak az Egyesült Államokra, és nem navigációra. Azokon a távolságokon látszik, amelyekre rajzolták; közelebbről vagy az Egyesült Államokon kívül a térkép az utcáit mutatja."
+          "chart_hint": "Az FAA vagy az USGS térképe, csak az Egyesült Államokra, és nem navigációra. Azokon a távolságokon látszik, amelyekre rajzolták; közelebbről vagy az Egyesült Államokon kívül a térkép az utcáit mutatja.",
+          "radar": "Radarkép"
+        },
+        "scope": {
+          "label": "Fénypor",
+          "hint": "A radarkép a megjelenéstől függetlenül ebben a színben világít, a rajta lévő repülők is.",
+          "green": "Zöld",
+          "amber": "Borostyán",
+          "blue": "Kék",
+          "white": "Fehér"
         },
         "look": {
           "label": "Megjelenés",
@@ -2474,6 +2483,12 @@
             "label": "Nyomvonal",
             "hide": "Elrejtés",
             "show": "Megjelenítés"
+          },
+          "plane_sweep": {
+            "label": "Pásztázás",
+            "hide": "Ki",
+            "show": "Be",
+            "hint": "Teljes képernyőn egy sugár négy másodpercenként körbefordul, és felvillantja az érintett repülőket."
           },
           "plane_track_s": {
             "label": "Nyomvonal hossza",

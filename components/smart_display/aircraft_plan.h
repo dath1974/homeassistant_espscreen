@@ -49,6 +49,15 @@ struct Card {
   std::vector<CardRow> rows;
 };
 
+// A map drawn as a radar scope (docs/MAP.md, "Radar"; the style's `r`): its phosphor (theme.h radar::TINTS), the middle
+// of the scope on the picture, and on a full view whether its beam turns.
+struct Radar {
+  bool on = false;
+  int tint = 0;
+  int x = 0, y = 0;
+  bool sweep = false;
+};
+
 struct Overlay {
   bool full = false;  // the full view of tile `index`, else the card of tile `index` on the page
   int index = -1;
@@ -60,6 +69,7 @@ struct Overlay {
   uint32_t at = 0;          // millis() when it came
   std::vector<Plane> planes;
   Card card;  // a full view's, while a plane is picked
+  Radar radar;
 };
 
 struct Point { float x, y; };
@@ -107,7 +117,42 @@ inline std::array<Point, 2> heading_tick(Point c, float radius, float length, in
   return {{{c.x + s * radius, c.y + k * radius}, {c.x + s * (radius + length), c.y + k * (radius + length)}}};
 }
 
+// ---- A radar scope's planes
+// Its phosphor by band of altitude, as a share of the way from the ground to the glow (up to 1) and on from the glow to
+// its hottest light (over 1): low planes dim, high ones bright, all in one hue. NO_BAND is drawn as the ground's.
+inline constexpr float BAND_LIGHT[BANDS] = {0.5f, 0.75f, 1.0f, 1.35f, 1.7f};
+inline float band_light(int band) { return BAND_LIGHT[band >= 0 && band < BANDS ? band : 0]; }
+// The beam of a full view that sweeps: once round in SWEEP_MS, clockwise from north, its afterglow a trail of
+// SWEEP_TRAIL degrees behind it, drawn every SWEEP_FRAME_MS. A plane it passes lights up and fades over AFTERGLOW
+// degrees of the turn.
+constexpr uint32_t SWEEP_MS = 4000, SWEEP_FRAME_MS = 80;
+constexpr float SWEEP_TRAIL = 40.0f, AFTERGLOW = 300.0f;
+// The beam's bearing at `now`, degrees from north, clockwise.
+inline float beam(uint32_t now) { return (now % SWEEP_MS) * 360.0f / SWEEP_MS; }
+// The bearing of `p` from `c` on the glass, degrees from north (up), clockwise.
+inline float bearing(Point c, Point p) {
+  const float a = std::atan2(p.x - c.x, c.y - p.y) * 180.0f / 3.14159265f;
+  return a < 0 ? a + 360.0f : a;
+}
+// How many degrees the beam at `beam_at` has turned since it passed `at`: 0 just as it passes, up to 360.
+inline float behind(float beam_at, float at) { return std::fmod(beam_at - at + 720.0f, 360.0f); }
+// How lit a plane is the beam passed `since` degrees ago: 1 as it passes, fading to 0 at AFTERGLOW.
+inline float afterglow(float since) { return since >= AFTERGLOW ? 0.0f : 1.0f - since / AFTERGLOW; }
+
 struct Box { int x, y, w, h; };
+// The box round the wedge of a circle of radius `r` about `c`, from bearing `from` clockwise to bearing `to` (less than
+// a turn): its middle, its two ends and every quarter of north, east, south and west it passes.
+inline Box wedge_box(Point c, float r, float from, float to) {
+  auto at = [&](float b) { const float a = b * 3.14159265f / 180.0f; return Point{c.x + std::sin(a) * r, c.y - std::cos(a) * r}; };
+  float x0 = c.x, y0 = c.y, x1 = c.x, y1 = c.y;
+  auto take = [&](Point p) { x0 = std::min(x0, p.x); y0 = std::min(y0, p.y); x1 = std::max(x1, p.x); y1 = std::max(y1, p.y); };
+  const float span = std::fmod(to - from + 720.0f, 360.0f);
+  take(at(from));
+  take(at(from + span));
+  for (int q = 0; q < 4; ++q) if (behind(q * 90.0f, from) <= span) take(at(q * 90.0f));
+  const int x = (int) std::floor(x0) - 2, y = (int) std::floor(y0) - 2;
+  return {x, y, (int) std::ceil(x1) + 2 - x + 1, (int) std::ceil(y1) + 2 - y + 1};
+}
 // A label's place beside its plane: to the right of the marker, its middle on the plane's height; to the left where the
 // right has no room; and kept inside the frame.
 inline Box label_box(Point c, int reach, int w, int h, int frame_w, int frame_h, int gap) {

@@ -2415,7 +2415,16 @@
           "ifr_low": "IFR niska (USA)",
           "ifr_high": "IFR wysoka (USA)",
           "topo": "USGS Topo (USA)",
-          "chart_hint": "Mapa FAA lub USGS, tylko Stany Zjednoczone, nie do nawigacji. Pokazuje się przy odległościach, dla których jest rysowana; bliżej lub poza Stanami Zjednoczonymi mapa pokazuje ulice."
+          "chart_hint": "Mapa FAA lub USGS, tylko Stany Zjednoczone, nie do nawigacji. Pokazuje się przy odległościach, dla których jest rysowana; bliżej lub poza Stanami Zjednoczonymi mapa pokazuje ulice.",
+          "radar": "Ekran radaru"
+        },
+        "scope": {
+          "label": "Luminofor",
+          "hint": "Ekran świeci tym kolorem niezależnie od wyglądu, a samoloty na nim również.",
+          "green": "Zielony",
+          "amber": "Bursztynowy",
+          "blue": "Niebieski",
+          "white": "Biały"
         },
         "look": {
           "label": "Wygląd",
@@ -2474,6 +2483,12 @@
             "label": "Ślad",
             "hide": "Ukryj",
             "show": "Pokaż"
+          },
+          "plane_sweep": {
+            "label": "Wiązka",
+            "hide": "Wył.",
+            "show": "Wł.",
+            "hint": "Na pełnym ekranie wiązka obraca się co cztery sekundy i rozświetla każdy samolot, który mija."
           },
           "plane_track_s": {
             "label": "Długość śladu",

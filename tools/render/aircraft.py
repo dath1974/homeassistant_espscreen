@@ -1,9 +1,10 @@
 """Render aircraft over map tiles (docs/MAP.md, "Aircraft") with the real firmware on the host (tools/render/host.py)
 and the add-on's own aircraft.py: planes as a dot, a dot with its heading and a plane, their labels and tracks, on a
 square card, two single cards and the full view, light and dark, and each card again after 20 s more of flight; a
-watched plane by its registration and one by its callsign; and a map of aircraft only, centred on a place of its own.
+watched plane by its registration and one by its callsign; a map of aircraft only, centred on a place of its own; and
+radar scopes in three phosphors, the full view's beam turning.
 
-    python3 tools/render/aircraft.py guition waveshare43 [--tiles DIR]
+    python3 tools/render/aircraft.py guition waveshare43 [--tiles DIR] [--pages radar amber blue]
 
 It is map_tiles.py's study with a source of flights: the program asks for its map cards' planes the way it asks ESP
 Screens (esphome.screen_camera with `air`), and this script answers as server.Manager.answer_air does. The planes are
@@ -90,10 +91,26 @@ PAGES = [
     ('crowd', [('screen.map', 'Approach', 'square', {'show': 'aircraft', 'framing': 'place', 'centre': 'EHAM', 'distance': 'radius',
                                                     'radius': 9000, 'aircraft': SOURCE, 'plane_motion': 'hold', 'plane_marker': 'plane',
                                                     'plane_label': 'altitude'})]),
+    # A radar scope (docs/MAP.md, "Radar") round the airport: blips with their minute's vector and history, by altitude in
+    # the green phosphor, the full view's beam turning; and a scope in amber with planes and one in blue with dots, each
+    # on a page of its own (two map cards of one page show one picture here).
+    ('radar', [('screen.map', 'Scope', 'square', {'show': 'aircraft', 'framing': 'place', 'centre': 'EHAM', 'distance': 'radius',
+                                                 'radius': 25000, 'streets': 'radar', 'aircraft': SOURCE, 'plane_motion': 'hold',
+                                                 'plane_marker': 'arrow', 'plane_label': 'altitude', 'plane_track': 'show',
+                                                 'plane_track_s': 120, 'plane_sweep': 'show', 'plane_ground': 'show',
+                                                 'plane_watch': [{'id': 'RYR8812', 'colour': 'red'}]})]),
+    ('amber', [('screen.map', 'Amber', 'single', {'show': 'aircraft', 'framing': 'place', 'centre': 'EHAM', 'distance': 'region',
+                                                  'streets': 'radar', 'scope': 'amber', 'aircraft': SOURCE, 'plane_motion': 'hold',
+                                                  'plane_marker': 'plane'})]),
+    ('blue', [('screen.map', 'Blue', 'single', {'show': 'aircraft', 'framing': 'place', 'centre': 'EHAM', 'distance': 'region',
+                                                 'streets': 'radar', 'scope': 'blue', 'aircraft': SOURCE, 'plane_motion': 'hold',
+                                                 'plane_colour': 'accent', 'plane_track': 'show'})]),
 ]
 
 
 class Study(map_tiles.Study):
+    FULL_VIEWS = (*map_tiles.Study.FULL_VIEWS, 'radar', 'amber')
+
     def __init__(self, *args):
         super().__init__(*args)
         self.tracks, self.now, self.asked = aircraft.Tracks(), NOW, {}
@@ -121,7 +138,10 @@ class Study(map_tiles.Study):
             options = aircraft.options_of(tile)
             planes = aircraft.overlay(view, aircraft.flights_of(map_tiles.STATES[SOURCE]), options, self.tracks, SOURCE, size,
                                       self.board.scale, full, False, self.now,
-                                      circle=map_card.circle_of(tile, map_tiles.STATES, size, self.board))
+                                      circle=map_card.circle_of(tile, map_tiles.STATES, size, self.board),
+                                      radar=bool(map_card.scope_of(tile)))
+            middle = map_card.scope_middle(tile, map_tiles.STATES, size, self.board, None, full, data.get('focus') or None,
+                                           map_card.move_of(move) if full else None)
             # A plane picked on the full view: its card with the planes, as server.Manager.air_message sends it.
             picked = aircraft.picked_of(data.get('focus')) if full else None
             sheet = None
@@ -131,7 +151,7 @@ class Study(map_tiles.Study):
                 sheet = {'f': aircraft.PICKED + picked, **({'c': plane} if plane else {})}
             if full:
                 self.full_planes = planes
-            message = aircraft.message(data['air'], index, size, planes, aircraft.style_of(options), move,
+            message = aircraft.message(data['air'], index, size, planes, aircraft.style_of(options, (map_card.scope_of(tile), middle) if middle else None, full), move,
                                        '' if picked else data.get('focus', ''), sheet)
             async with self.turn:
                 await self.send(message)
@@ -179,9 +199,10 @@ def main():
     parser.add_argument('variants', nargs='+')
     parser.add_argument('--out', type=Path, default=run.REPO / '.esphome' / 'aircraft' / 'out')
     parser.add_argument('--tiles', type=Path, help='a folder of Home Assistant vector tiles, z_x_y.mvt')
+    parser.add_argument('--pages', nargs='+', help='only these pages (radar, amber, blue, ...)')
     args = parser.parse_args()
     args.out = args.out.resolve()
-    map_tiles.PAGES[:] = PAGES
+    map_tiles.PAGES[:] = [page for page in PAGES if not args.pages or page[0] in args.pages]
     # Each tile's state with its extras, as the add-on sends it: a map tile's mark and `air`, which makes it ask for planes.
     plain = send_layout.state_message
     send_layout.state_message = lambda i, tile, states: plain(i, tile, states, core.extras(tile, states))

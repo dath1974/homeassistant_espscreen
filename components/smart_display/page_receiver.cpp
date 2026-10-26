@@ -431,6 +431,17 @@ std::string receive(const std::string &payload) {
       next.marker = marker == "plane" ? aircraft_plan::PLANE : marker == "arrow" ? aircraft_plan::ARROW : aircraft_plan::DOT;
       next.by_altitude = string(style["c"], 10) != "accent";
       next.glide = !(style["g"].is<int>() && style["g"].as<int>() == 0);
+      // A map drawn as a radar scope: its phosphor, the scope's middle on the picture and whether a full view's beam turns.
+      if (style["r"].is<JsonObject>()) {
+        auto r = style["r"];
+        static constexpr const char *TINTS[theme::radar::TINT_COUNT] = {"green", "amber", "blue", "white"};
+        const std::string tint = string(r["t"], 8);
+        next.radar.on = true;
+        for (int n = 0; n < theme::radar::TINT_COUNT; ++n) if (tint == TINTS[n]) next.radar.tint = n;
+        next.radar.x = r["x"].is<int>() ? std::max(-8192, std::min(8192, r["x"].as<int>())) : next.width / 2;
+        next.radar.y = r["y"].is<int>() ? std::max(-8192, std::min(8192, r["y"].as<int>())) : next.height / 2;
+        next.radar.sweep = next.full && r["w"].is<int>() && r["w"].as<int>() == 1;
+      }
       next.move = string(root["mv"], 48);
       next.focus = string(root["f"], 120);
       auto whole = [](JsonVariant v, int low, int high, int &out) {

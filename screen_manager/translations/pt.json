@@ -2415,7 +2415,16 @@
           "ifr_low": "IFR baixa (EUA)",
           "ifr_high": "IFR alta (EUA)",
           "topo": "USGS Topo (EUA)",
-          "chart_hint": "Uma carta da FAA ou do USGS, apenas Estados Unidos, e não para navegação. Aparece nas distâncias para que foi desenhada; mais perto, ou fora dos Estados Unidos, o mapa mostra as suas ruas."
+          "chart_hint": "Uma carta da FAA ou do USGS, apenas Estados Unidos, e não para navegação. Aparece nas distâncias para que foi desenhada; mais perto, ou fora dos Estados Unidos, o mapa mostra as suas ruas.",
+          "radar": "Ecrã de radar"
+        },
+        "scope": {
+          "label": "Fósforo",
+          "hint": "O ecrã brilha nesta cor seja qual for o aspeto, e os aviões sobre ele também.",
+          "green": "Verde",
+          "amber": "Âmbar",
+          "blue": "Azul",
+          "white": "Branco"
         },
         "look": {
           "label": "Aspeto",
@@ -2474,6 +2483,12 @@
             "label": "Rasto",
             "hide": "Ocultar",
             "show": "Mostrar"
+          },
+          "plane_sweep": {
+            "label": "Varrimento",
+            "hide": "Não",
+            "show": "Sim",
+            "hint": "Em ecrã inteiro um feixe roda a cada quatro segundos e ilumina cada avião por onde passa."
           },
           "plane_track_s": {
             "label": "Comprimento do rasto",

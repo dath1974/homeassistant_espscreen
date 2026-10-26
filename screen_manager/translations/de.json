@@ -2415,7 +2415,16 @@
           "ifr_low": "IFR Low (USA)",
           "ifr_high": "IFR High (USA)",
           "topo": "USGS Topo (USA)",
-          "chart_hint": "Eine Karte der FAA oder des USGS, nur für die USA und nicht zur Navigation. Sie erscheint bei den Entfernungen, für die sie gezeichnet ist; näher heran oder außerhalb der USA zeigt die Karte ihre Straßen."
+          "chart_hint": "Eine Karte der FAA oder des USGS, nur für die USA und nicht zur Navigation. Sie erscheint bei den Entfernungen, für die sie gezeichnet ist; näher heran oder außerhalb der USA zeigt die Karte ihre Straßen.",
+          "radar": "Radarschirm"
+        },
+        "scope": {
+          "label": "Leuchtfarbe",
+          "hint": "Der Schirm leuchtet in dieser Farbe, unabhängig vom Erscheinungsbild, und die Flugzeuge darauf ebenso.",
+          "green": "Grün",
+          "amber": "Bernstein",
+          "blue": "Blau",
+          "white": "Weiß"
         },
         "look": {
           "label": "Aussehen",
@@ -2474,6 +2483,12 @@
             "label": "Spur",
             "hide": "Ausblenden",
             "show": "Anzeigen"
+          },
+          "plane_sweep": {
+            "label": "Abtaststrahl",
+            "hide": "Aus",
+            "show": "An",
+            "hint": "Im Vollbild dreht sich alle vier Sekunden ein Strahl und lässt jedes Flugzeug aufleuchten, das er überstreicht."
           },
           "plane_track_s": {
             "label": "Spurlänge",

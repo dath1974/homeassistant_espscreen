@@ -5,7 +5,7 @@ import { ofType } from "./catalogue";
 
 /** The page document's names (appearance) of the tile options, as page_layout.APPEARANCE has them. */
 export const AIR_APPEARANCE = { airSource: "aircraft", airMarker: "plane_marker", airLabel: "plane_label", airColour: "plane_colour",
-  airGround: "plane_ground", airMotion: "plane_motion", airTrack: "plane_track", airTrackSeconds: "plane_track_s",
+  airGround: "plane_ground", airMotion: "plane_motion", airTrack: "plane_track", airSweep: "plane_sweep", airTrackSeconds: "plane_track_s",
   airMost: "plane_most", airMin: "plane_min", airMax: "plane_max", airWatch: "plane_watch" } as const;
 export type AirField = keyof typeof AIR_APPEARANCE;
 export type AirOption = (typeof AIR_APPEARANCE)[AirField];

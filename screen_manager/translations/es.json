@@ -2415,7 +2415,16 @@
           "ifr_low": "IFR baja (EE. UU.)",
           "ifr_high": "IFR alta (EE. UU.)",
           "topo": "USGS Topo (EE. UU.)",
-          "chart_hint": "Una carta de la FAA o del USGS, solo de Estados Unidos y no apta para la navegación. Se muestra a las distancias para las que está dibujada; más cerca, o fuera de Estados Unidos, el mapa muestra sus calles."
+          "chart_hint": "Una carta de la FAA o del USGS, solo de Estados Unidos y no apta para la navegación. Se muestra a las distancias para las que está dibujada; más cerca, o fuera de Estados Unidos, el mapa muestra sus calles.",
+          "radar": "Pantalla de radar"
+        },
+        "scope": {
+          "label": "Fósforo",
+          "hint": "La pantalla brilla en este color sea cual sea el aspecto, y los aviones sobre ella también.",
+          "green": "Verde",
+          "amber": "Ámbar",
+          "blue": "Azul",
+          "white": "Blanco"
         },
         "look": {
           "label": "Aspecto",
@@ -2474,6 +2483,12 @@
             "label": "Estela",
             "hide": "Ocultar",
             "show": "Mostrar"
+          },
+          "plane_sweep": {
+            "label": "Barrido",
+            "hide": "No",
+            "show": "Sí",
+            "hint": "En pantalla completa un haz gira cada cuatro segundos e ilumina cada avión por el que pasa."
           },
           "plane_track_s": {
             "label": "Longitud de la estela",

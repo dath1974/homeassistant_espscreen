@@ -816,6 +816,182 @@ def draw_chart(canvas, view, tiles, look, dark, night='invert'):
     canvas.image = turned
 
 
+
+# ----- A radar scope -----
+# `streets: radar` (docs/MAP.md, "Radar"): the map as a radar scope, a lit phosphor on black, whatever the look. The
+# coast, the water and the highways are a faint video map under range rings, bearings and a compass rose round the
+# middle the card is framed on, and the screen draws its aircraft over it in the same phosphor (aircraft_view.cpp).
+# Each phosphor (`scope`) is its ground, its glow and its hottest light, theme.h radar::TINTS in the same order; every
+# shade between is mixed from those, here as on the screen (tests/test_map_radar.py keeps them equal).
+SCOPE = {
+    'green': (0x04140A, 0x1AFF80, 0xB8FFD6),
+    'amber': (0x140C02, 0xFFB000, 0xFFE4A0),
+    'blue': (0x030E16, 0x33CCFF, 0xC4F0FF),
+    'white': (0x0C0E0E, 0xE6F2EE, 0xFFFFFF),
+}
+# How much of the glow each part of the scope is, mixed into its ground.
+SCOPE_SHARE = {'water': 0.06, 'coast': 0.3, 'highway': 0.2, 'road': 0.11, 'grid': 0.16, 'ring': 0.42, 'rose': 0.6,
+               'place': 0.5, 'outside': 0.55}
+# Range rings in nautical miles, as every radar scope counts them: the first of these that leaves at most RINGS rings
+# between the middle and the nearer edge of the frame.
+RING_STEPS = (0.25, 0.5, 1, 2, 5, 10, 20, 25, 50, 100, 200, 250, 500)
+RINGS = 4
+NM = 1852.0
+
+
+def scope_look(tint):
+    """A look (as LIGHT and DARK) of the phosphor `tint`, so the zones, people and name on a scope are in it too."""
+    ground, glow, _ = (_rgb(c) for c in SCOPE[tint])
+
+    def at(share):
+        r, g, b = _mix(ground, glow, share)
+        return (r << 16) | (g << 8) | b
+    return {
+        'land': SCOPE[tint][0], 'green': SCOPE[tint][0], 'water': at(SCOPE_SHARE['water']), 'water_line': at(SCOPE_SHARE['water']),
+        'building': SCOPE[tint][0], 'road': at(SCOPE_SHARE['road']), 'road_case': SCOPE[tint][0], 'major': at(SCOPE_SHARE['highway']),
+        'major_case': SCOPE[tint][0], 'path': SCOPE[tint][0], 'rail': SCOPE[tint][0], 'place': at(SCOPE_SHARE['place']),
+        'halo': SCOPE[tint][0], 'ink': SCOPE[tint][1], 'muted': at(0.6), 'card': SCOPE[tint][0], 'accent': SCOPE[tint][1],
+        'zone_fill': SCOPE[tint][1], 'zone_alpha': 22, 'zone_edge': at(0.6), 'shadow': 0x000000, 'shadow_alpha': 140,
+        'radius_fill': 0x000000, 'radius_alpha': 0, 'radius_edge': SCOPE[tint][1],
+    }
+
+
+def ring_step(px_per_nm, near):
+    """The nautical miles between two range rings, for a scope whose nearer edge is `near` pixels from its middle."""
+    for step in RING_STEPS:
+        if near / (step * px_per_nm) <= RINGS:
+            return step
+    return RING_STEPS[-1]
+
+
+def _miles(value):
+    return ('%g' % value).lstrip('0') if value < 1 else '%g' % value
+
+
+def draw_scope_map(canvas, view, tiles, look, dpi_scale):
+    """The video map under the scope: the water a breath lighter than the ground with its coast drawn, and the
+    highways and main roads as faint lines, from the same vector tiles as the streets."""
+    from types import SimpleNamespace
+    from PIL import Image, ImageChops, ImageDraw, ImageFilter
+    s = SUPERSAMPLE
+    mask = Image.new('L', canvas.image.size)
+    water = SimpleNamespace(image=mask)
+    _fill(water, view, tiles, 'ocean', 255)
+    _fill(water, view, tiles, 'water_polygons', 255)
+    draw = ImageDraw.Draw(mask)
+    for f, ps in _parts(view, tiles, 'water_lines'):
+        if f.tags.get('kind') == 'river':
+            w = _width_at((1.2, 3.0, 7.0), view.zoom) * dpi_scale * s
+            for line in ps:
+                if len(line) >= 2 and w > 0.4 * s:
+                    draw.line(line, fill=255, width=max(1, round(w)), joint='curve')
+    if mask.getbbox():
+        canvas.image.paste(_rgb(look['water']), mask=mask)
+        # The coast of open water only: ditches and canals narrower than a couple of pixels would cover a low country in
+        # lines, so they are taken out first (an opening: shrunk, then grown back).
+        thin = max(3, round(2.2 * dpi_scale * s)) | 1
+        mask = mask.filter(ImageFilter.MinFilter(thin)).filter(ImageFilter.MaxFilter(thin))
+        grow = max(3, round(1.4 * dpi_scale * s)) | 1
+        coast = ImageChops.subtract(mask.filter(ImageFilter.MaxFilter(grow)), mask)
+        ground, glow = _rgb(look['land']), _rgb(look['ink'])
+        canvas.image.paste(_mix(ground, glow, SCOPE_SHARE['coast']), mask=coast)
+    draw = ImageDraw.Draw(canvas.image)
+    # The main roads only close in, where they are few.
+    roads = (('motorway', 'trunk'), look['major'], 1.3, 0), (('primary',), look['road'], 1.0, 11.5)
+    for kinds, colour, width, closest in reversed(roads):
+        if view.zoom < closest:
+            continue
+        w = max(1, round(width * dpi_scale * s))
+        for f, ps in _parts(view, tiles, 'streets'):
+            if f.tags.get('kind') in kinds and not f.tags.get('tunnel'):
+                for line in ps:
+                    if len(line) >= 2:
+                        draw.line(line, fill=_rgb(colour), width=w, joint='curve')
+
+
+def draw_scope(canvas, view, centre, tint, dpi_scale, full=False, radius=None):
+    """The scope round `centre` (x, y on the frame): a soft glow from the middle, bearing lines every 30 degrees, range
+    rings every ring_step labelled in nautical miles, a compass rose of ticks and bearings on the largest circle the
+    frame holds whole (the distance `radius`'s circle, where the card has one, beyond which the scope is dark), and a
+    cross on the middle."""
+    import math as m
+    from PIL import Image, ImageDraw
+    s = SUPERSAMPLE
+    ground, glow, hot = (_rgb(c) for c in SCOPE[tint])
+    W, H = canvas.width, canvas.height
+    cx, cy = centre
+    far = max(m.hypot(x - cx, y - cy) for x, y in ((0, 0), (W, 0), (0, H), (W, H)))
+    near = min(cx, W - cx, cy, H - cy)
+    top = BAR * dpi_scale if full else 0
+    # The glow of a lit tube, strongest in the middle.
+    lit = Image.radial_gradient('L').resize((max(2, round(2 * far * s)),) * 2)
+    lit = lit.point(lambda v: round(max(0, 255 - v) * 0.09))
+    canvas.image.paste(glow, (round((cx - far) * s), round((cy - far) * s)), mask=lit)
+    draw = ImageDraw.Draw(canvas.image)
+    line = max(1, round(1.0 * dpi_scale * s))
+    grid = _mix(ground, glow, SCOPE_SHARE['grid'])
+    for bearing in range(0, 360, 30):
+        a = m.radians(bearing)
+        draw.line((cx * s, cy * s, (cx + m.sin(a) * far) * s, (cy - m.cos(a) * far) * s), fill=grid, width=line)
+    px_per_nm = NM / metres_per_pixel(view.lat, view.zoom)
+    edge = radius / metres_per_pixel(view.lat, view.zoom) if radius else None
+    step = ring_step(px_per_nm, edge or max(near, 40 * dpi_scale))
+    ring = _mix(ground, glow, SCOPE_SHARE['ring'])
+    face = font(10 * dpi_scale * s, 500)
+    rose = edge if edge else near - 4 * dpi_scale
+    # The miles of each ring where it crosses the bearing 105, between the rose's figures, the first with its unit; none
+    # where the ring runs along the rose, whose figures are there.
+    a = m.radians(105)
+    n = 1
+    while step * n * px_per_nm < far and n < 64:
+        r = step * n * px_per_nm
+        if edge is None or r < edge - 6 * dpi_scale:
+            draw.ellipse(((cx - r) * s, (cy - r) * s, (cx + r) * s, (cy + r) * s), outline=ring, width=line)
+            tx, ty = cx + m.sin(a) * r + 3 * dpi_scale, cy - m.cos(a) * r + 2 * dpi_scale
+            if abs(r - rose) > 24 * dpi_scale and tx + 34 * dpi_scale < W and top + 4 * dpi_scale < ty < H - 14 * dpi_scale:
+                draw.text((tx * s, ty * s), _miles(step * n) + (' NM' if n == 1 else ''), font=face, anchor='la', fill=ring)
+        n += 1
+    if edge:
+        # Beyond the distance's circle the scope is dark, and the circle is its edge.
+        outside = Image.new('L', canvas.image.size, round(255 * SCOPE_SHARE['outside']))
+        ImageDraw.Draw(outside).ellipse(((cx - edge) * s, (cy - edge) * s, (cx + edge) * s, (cy + edge) * s), fill=0)
+        canvas.image.paste(ground, mask=outside)
+        draw = ImageDraw.Draw(canvas.image)
+        draw.ellipse(((cx - edge) * s, (cy - edge) * s, (cx + edge) * s, (cy + edge) * s), outline=glow,
+                     width=max(1, round(1.4 * dpi_scale * s)))
+    if rose >= 36 * dpi_scale:
+        # Ticks every 10 degrees, longer every 30, inward from the circle; bearings in three figures on a large rose, the
+        # four quarters alone on a small one.
+        colour = _mix(ground, glow, SCOPE_SHARE['rose'])
+        large = rose >= 110 * dpi_scale
+        face = font((10.5 if large else 9.5) * dpi_scale * s, 500)
+        for bearing in range(0, 360, 5 if large else 10):
+            a = m.radians(bearing)
+            length = (9 if bearing % 30 == 0 else 5 if bearing % 10 == 0 else 3) * dpi_scale
+            x0, y0 = cx + m.sin(a) * rose, cy - m.cos(a) * rose
+            x1, y1 = cx + m.sin(a) * (rose - length), cy - m.cos(a) * (rose - length)
+            draw.line((x0 * s, y0 * s, x1 * s, y1 * s), fill=colour, width=line)
+            if bearing % (30 if large else 90) == 0:
+                text = '%03d' % bearing if large else 'NESW'[bearing // 90]
+                tx, ty = cx + m.sin(a) * (rose - length - 8 * dpi_scale), cy - m.cos(a) * (rose - length - 8 * dpi_scale)
+                if ty > top + 6 * dpi_scale:
+                    draw.text((tx * s, ty * s), text, font=face, anchor='mm', fill=glow if bearing == 0 else colour)
+    arm = 5 * dpi_scale
+    draw.line(((cx - arm) * s, cy * s, (cx + arm) * s, cy * s), fill=hot, width=line)
+    draw.line((cx * s, (cy - arm) * s, cx * s, (cy + arm) * s), fill=hot, width=line)
+
+
+def scanlines(image, dpi_scale):
+    """The lines of a tube: every few rows a shade darker, after the frame is scaled down."""
+    from PIL import Image, ImageDraw
+    period = max(2, round(2.5 * dpi_scale))
+    shade = Image.new('L', image.size, 0)
+    draw = ImageDraw.Draw(shade)
+    for y in range(0, image.height, period):
+        draw.line((0, y, image.width, y), fill=46)
+    image.paste((0, 0, 0), mask=shade)
+    return image
+
 # The full view's top bar (runtime_tiles.h camera_open: a 40 px key 8 px down on a 170 dpi board, 60 and 16 on a large one).
 BAR = 60
 
@@ -838,7 +1014,7 @@ def marker_size(size, dpi_scale):
 
 def render(size, people, zones, tiles, framing='everyone', distance=DEFAULT_DISTANCE, dark=False, dpi_scale=1.0,
            own=None, names=None, name=None, label_px=None, inset=None, photos=None, show_zones=True, full=False, focus=None,
-           move=None, centre=None, radius=None, chart=None, kind=None):
+           move=None, centre=None, radius=None, chart=None, kind=None, scope=None):
     """The card's picture: the streets, the zones, the people and the tile's name, in the look asked for.
 
     `tiles` are the decoded vector tiles of `view_for` ({} draws a plain ground without streets), `chart` a chart's picture
@@ -847,8 +1023,9 @@ def render(size, people, zones, tiles, framing='everyone', distance=DEFAULT_DIST
     `names`: None puts first names beside the markers where the card has room for them, True and False always and never.
     `photos` has a picture per entity that shows one in its marker. `full`: the view over the whole glass a tap opens,
     under the screen's own top bar (its round back key and the name), so the top keeps clear of people and the
-    attribution goes to the bottom. `move`: the full view moved by the screen's keys (`moved`)."""
-    look = DARK if dark else LIGHT
+    attribution goes to the bottom. `move`: the full view moved by the screen's keys (`moved`). `scope`: a phosphor of
+    SCOPE, drawing a radar scope round the middle the card is framed on in place of the streets, whatever `dark` says."""
+    look = scope_look(scope) if scope else DARK if dark else LIGHT
     label_px = label_px or 18 * dpi_scale
     inset = inset if inset is not None else 8 * dpi_scale
     pill_h = round(label_px * 1.55)
@@ -858,9 +1035,15 @@ def render(size, people, zones, tiles, framing='everyone', distance=DEFAULT_DIST
     view = focus_view(focus, people, size, dpi_scale) or frame_view(framing, distance, people, zones, size, own, keep, marker * 0.6, centre, radius)
     # The circle of the distance `radius` stands round the middle the card was framed on, wherever the keys moved it.
     circle = (view.lat, view.lon, radius or RADIUS[0]) if distance == 'radius' and framing != 'everyone' and not focus else None
+    middle = (view.lat, view.lon)
     view = moved(view, move)
     canvas = Canvas(size, _rgb(look['land']))
-    if chart:
+    if scope:
+        if tiles:
+            draw_scope_map(canvas, view, tiles, look, dpi_scale)
+        draw_scope(canvas, view, view.point(*middle), scope, dpi_scale, full, circle[2] if circle else None)
+        chart, circle = None, None
+    elif chart:
         tiles = {}
         draw_chart(canvas, view, chart, look, dark, map_charts.CHARTS[kind]['night'])
     elif tiles:
@@ -880,6 +1063,8 @@ def render(size, people, zones, tiles, framing='everyone', distance=DEFAULT_DIST
     if name:
         draw_name(canvas, name, look, label_px, pill_h, inset)
     image = canvas.finish()
+    if scope:
+        image = scanlines(image, dpi_scale)
     image.info['hits'] = hits
     return image, view
 
@@ -966,9 +1151,11 @@ MARK_DEGREES = MARK_METRES / 111320.0
 # Every choice of a map and its default, the first of the catalogue's (catalogue/person.yaml `map`).
 CHOICES = {'framing': FRAMINGS, 'distance': (*DISTANCES, 'radius'), 'overlay': ('name', 'none'), 'follow': ('everyone', 'chosen'),
            'markers': ('photo', 'initials'), 'names': ('auto', 'always', 'never'), 'zones': ('show', 'hide'),
-           'streets': ('show', 'hide', 'sectional', 'ifr_low', 'ifr_high', 'topo'), 'look': ('auto', 'light', 'dark'), 'show': ('both', 'people', 'aircraft')}
+           'streets': ('show', 'hide', 'sectional', 'ifr_low', 'ifr_high', 'topo', 'radar'), 'scope': tuple(SCOPE),
+           'look': ('auto', 'light', 'dark'), 'show': ('both', 'people', 'aircraft')}
 DEFAULTS = {'framing': 'everyone', 'distance': DEFAULT_DISTANCE, 'overlay': 'name', 'follow': 'everyone',
-            'markers': 'photo', 'names': 'auto', 'zones': 'show', 'streets': 'show', 'look': 'auto', 'show': 'both'}
+            'markers': 'photo', 'names': 'auto', 'zones': 'show', 'streets': 'show', 'scope': 'green', 'look': 'auto',
+            'show': 'both'}
 # The middle of a map framed on a place of its own: [latitude, longitude], kept to this many decimals (about a metre).
 CENTRE_DECIMALS = 5
 
@@ -1131,7 +1318,21 @@ def wants_streets(tile):
 def chart_of(tile):
     """The chart a card draws in place of its streets (map_charts.CHARTS), or None."""
     streets = options_of(tile)['streets']
-    return None if streets in ('show', 'hide') else streets
+    return None if streets in ('show', 'hide', 'radar') else streets
+
+
+def scope_of(tile):
+    """The phosphor of a card drawn as a radar scope (SCOPE), or None for a map."""
+    options = options_of(tile)
+    return options['scope'] if options['streets'] == 'radar' else None
+
+
+def scope_middle(tile, states, size, board, registry=None, full=False, focus=None, move=None):
+    """Where the middle of a radar scope is on the card's picture (x, y), as render draws it, or None for a map."""
+    if not scope_of(tile):
+        return None
+    framed = _framed(tile, states, size, board, registry, full, focus if full else None)
+    return moved(framed, move if full else None).point(framed.lat, framed.lon)
 
 
 def pictures_wanted(tile, states, registry=None):
@@ -1158,5 +1359,6 @@ def render_tile(tile, states, size, board, dark=False, tiles=None, registry=None
     image, _ = render(size, people, zones, (tiles or {}) if options['streets'] != 'hide' else {}, options['framing'],
                       options['distance'], dark_for(tile, dark), board.scale, people[0] if people else None, names,
                       name or None, board.label, board.inset, photos, options['zones'] == 'show' and people_shown(tile), full,
-                      focus if full else None, move if full else None, centre_of(tile), radius_of(tile), chart, chart_of(tile))
+                      focus if full else None, move if full else None, centre_of(tile), radius_of(tile), chart, chart_of(tile),
+                      scope_of(tile))
     return image

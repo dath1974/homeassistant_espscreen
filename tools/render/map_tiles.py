@@ -93,6 +93,9 @@ PAGES = [
 
 
 class Study(run.Run):
+    # The pages whose first card a tap opens over the whole glass.
+    FULL_VIEWS = ('square', 'singles', 'person')
+
     def __init__(self, build, out, pictures, streets):
         super().__init__(build, out, pictures, (1280, 720))
         self.streets = streets
@@ -231,7 +234,7 @@ class Study(run.Run):
                 await self.render(f'{name}-{look}')
                 shots += 1
                 # A tap opens the map over the whole glass, as a camera does: the first card of the page.
-                if name in ('square', 'singles', 'person'):
+                if name in self.FULL_VIEWS:
                     first = next(t for t in self.compiled if t.get('slot', 0) // grid.slots == page)
                     cells = side['width'] // grid.columns, (side['height'] - 60) // grid.rows
                     col, row = (first['slot'] % grid.slots) % grid.columns, (first['slot'] % grid.slots) // grid.columns
