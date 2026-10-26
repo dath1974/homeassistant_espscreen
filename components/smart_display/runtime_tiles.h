@@ -11163,6 +11163,16 @@ inline void air_full_place() {
   aircraft_view::set_hidden(air_full_view, false);
 }
 inline void map_sheet_draw();
+// The name over a map's full view: ink on the card's colour, or over a radar scope its phosphor on its ground.
+inline void map_title_paint() {
+  if (!camera_title || camera_map_index < 0) return;
+  const bool scope = air_full.radar.on && air_full.index == camera_map_index;
+  const lv_color_t ink = scope ? aircraft_view::phosphor(air_full, 1.0f) : theme::color(theme::INK);
+  const lv_color_t ground = scope ? aircraft_view::ground(air_full) : theme::color(theme::CARD);
+  // Set only when they change: each set draws the name again.
+  if (!lv_color_eq(lv_obj_get_style_text_color(camera_title, LV_PART_MAIN), ink)) lv_obj_set_style_text_color(camera_title, ink, 0);
+  if (!lv_color_eq(lv_obj_get_style_bg_color(camera_title, LV_PART_MAIN), ground)) lv_obj_set_style_bg_color(camera_title, ground, 0);
+}
 // The card of the plane picked, with every report of its planes (aircraft.card): the map's markers stay as they are.
 inline void air_full_card(const aircraft_plan::Card &card) {
   if (!card.given || card.focus.empty() || card.focus != map_focus) return;
@@ -11180,6 +11190,7 @@ inline void air_receive(aircraft_plan::Overlay &&next) {
     if (!camera_root || next.index != camera_map_index) return;
     air_full = std::move(next);
     air_full_place();
+    map_title_paint();
     air_full_card(air_full.card);
     return;
   }
@@ -11995,6 +12006,11 @@ inline void map_sheet_draw() {
   if (map_card_obj) { lv_obj_delete(map_card_obj); map_card_obj = nullptr; }
   const bool picked = camera_root && !map_focus.empty() && map_sheet.focus == map_focus && !map_sheet.title.empty();
   if (camera_title) lv_label_set_text(camera_title, (picked ? map_sheet.title : camera_name).c_str());
+  // Over a radar scope (aircraft_view.cpp) the name and the card of the plane picked are in the scope's phosphor on its
+  // ground, square as its data blocks: names in the glow, the rest dimmer.
+  const bool scope = air_full.radar.on && air_full.index == camera_map_index;
+  auto ink = [&](float light, theme::Role role) { return scope ? aircraft_view::phosphor(air_full, light) : theme::color(role); };
+  map_title_paint();
   if (camera_title && camera_map_index >= 0) map_title_fit(picked && aircraft_plan::picks_plane(map_focus));
   // A bare view shows no name, only the callsign of a plane picked.
   if (camera_title && camera_bare) {
@@ -12020,8 +12036,13 @@ inline void map_sheet_draw() {
     const auto bar = detail_bar::metrics();
     y = bar.y + bar.key + bar.gap;
   }
-  map_card_obj = effects_page::card(camera_root, side + m.pad, y, w, h, m.radius);
+  map_card_obj = effects_page::card(camera_root, side + m.pad, y, w, h, scope ? 0 : m.radius);
   lv_obj_add_flag(map_card_obj, LV_OBJ_FLAG_CLICKABLE);  // a finger on the card is no finger on the map
+  if (scope) {
+    lv_obj_set_style_bg_color(map_card_obj, aircraft_view::ground(air_full), 0);
+    lv_obj_set_style_bg_opa(map_card_obj, LV_OPA_90, 0);
+    lv_obj_set_style_border_color(map_card_obj, aircraft_view::phosphor(air_full, 0.45f), 0);
+  }
   const int top = plane ? ui::px(ui::large() ? 4 : 2) : 0;
   for (int n = 0; n < rows; ++n) {
     const auto &row = map_sheet.rows[n];
@@ -12029,6 +12050,7 @@ inline void map_sheet_draw() {
     int x = m.inset;
     if (effects_page::icon_font) {
       auto *icon = effects_page::text(line, effects_page::glyph(row.icon, "\U000F034E"), effects_page::icon_font, theme::MUTED);
+      if (scope) lv_obj_set_style_text_color(icon, ink(0.65f, theme::MUTED), 0);
       lv_obj_set_width(icon, LV_SIZE_CONTENT);
       lv_obj_set_pos(icon, m.inset - 2, (row_h - icon_h) / 2);
       x += m.icon + 6;
@@ -12042,10 +12064,12 @@ inline void map_sheet_draw() {
       value_w = std::min<int>(size.x + 1, (right - x) / 2);
     }
     auto *name = effects_page::text(line, row.name, font, theme::INK);
+    if (scope) lv_obj_set_style_text_color(name, ink(1.0f, theme::INK), 0);
     lv_obj_set_pos(name, x, (row_h - text_h) / 2);
     lv_obj_set_width(name, std::max(20, right - x - (value_w ? value_w + gap : 0)));
     if (value_w) {
       auto *value = effects_page::text(line, row.value, font, theme::MUTED, LV_TEXT_ALIGN_RIGHT);
+      if (scope) lv_obj_set_style_text_color(value, ink(0.65f, theme::MUTED), 0);
       lv_obj_set_width(value, value_w);
       lv_obj_set_pos(value, right - value_w, (row_h - text_h) / 2);
     }

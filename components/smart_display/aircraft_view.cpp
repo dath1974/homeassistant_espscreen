@@ -43,7 +43,8 @@ static const theme::radar::Tint &tint_of(const ap::Overlay &o) {
   return theme::radar::TINTS[o.radar.tint >= 0 && o.radar.tint < theme::radar::TINT_COUNT ? o.radar.tint : 0];
 }
 // `light` 0 is the ground, 1 the glow, 2 the hottest light (ap::BAND_LIGHT).
-static lv_color_t phosphor(const ap::Overlay &o, float light) {
+lv_color_t ground(const ap::Overlay &o) { return lv_color_hex(tint_of(o).ground); }
+lv_color_t phosphor(const ap::Overlay &o, float light) {
   const auto &t = tint_of(o);
   light = std::max(0.0f, std::min(2.0f, light));
   if (light <= 1) return lv_color_hex(theme::mix(t.glow, t.ground, (uint8_t) std::lround(light * 255)));
