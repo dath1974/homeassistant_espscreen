@@ -154,6 +154,34 @@ inline Box wedge_box(Point c, float r, float from, float to) {
   const int x = (int) std::floor(x0) - 2, y = (int) std::floor(y0) - 2;
   return {x, y, (int) std::ceil(x1) + 2 - x + 1, (int) std::ceil(y1) + 2 - y + 1};
 }
+inline bool overlaps(const Box &a, const Box &b);
+inline Box join(const Box &a, const Box &b) {
+  const int x0 = std::min(a.x, b.x), y0 = std::min(a.y, b.y);
+  return {x0, y0, std::max(a.x + a.w, b.x + b.w) - x0, std::max(a.y + a.h, b.y + b.h) - y0};
+}
+inline bool holds(const Box &outer, const Box &inner) {
+  return inner.x >= outer.x && inner.y >= outer.y && inner.x + inner.w <= outer.x + outer.w && inner.y + inner.h <= outer.y + outer.h;
+}
+inline Box moved(const Box &b, float dx, float dy) {
+  return {b.x + (int) std::floor(dx), b.y + (int) std::floor(dy), b.w + 1, b.h + 1};
+}
+// What a scope draws again to move a plane whole (aircraft_view.cpp): an area grows by every plane it touches, where the
+// plane was drawn and where it is now (`planes`, those two boxes each), until no plane lies across its edge. A label
+// drawn again only in part would show half its old place and half its new one.
+inline Box take_in(Box area, const std::vector<std::array<Box, 2>> &planes) {
+  for (int pass = 0; pass < 4; ++pass) {
+    bool grew = false;
+    for (const auto &p : planes) {
+      if (!overlaps(area, p[0]) && !overlaps(area, p[1])) continue;
+      const Box both = join(p[0], p[1]);
+      if (holds(area, both)) continue;
+      area = join(area, both);
+      grew = true;
+    }
+    if (!grew) break;
+  }
+  return area;
+}
 // A label's place beside its plane: to the right of the marker, its middle on the plane's height; to the left where the
 // right has no room; and kept inside the frame.
 inline Box label_box(Point c, int reach, int w, int h, int frame_w, int frame_h, int gap) {

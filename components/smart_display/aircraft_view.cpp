@@ -7,6 +7,7 @@
 #include "runtime_tiles.h"
 
 #include <algorithm>
+#include <map>
 #include <cmath>
 
 namespace aircraft_view {
@@ -22,6 +23,11 @@ struct View {
   std::string picked;      // the plane a finger picked on a full view, ringed
   lv_timer_t *sweeping = nullptr;  // a radar scope's beam turning, every ap::SWEEP_FRAME_MS
   float beam_drawn = -1;           // the bearing it was drawn at last
+  // A sweeping scope's planes by id: the box each was last drawn in whole on the glass (marker, vector, track, label and
+  // its leader) and where the plane was then, so the beam draws a plane again whole (ap::take_in).
+  // A plane the reports no longer list keeps its box (`gone`) until a draw has covered it whole, so the beam erases it whole.
+  struct Drawn { ap::Box box; ap::Point at; bool gone = false; };
+  std::map<std::string, Drawn> drawn;
 };
 
 // ---- A radar scope (docs/MAP.md, "Radar"): one phosphor (theme.h radar::TINTS) from its ground to its hottest light.
@@ -140,6 +146,19 @@ static void draw_beam(lv_layer_t *layer, const ap::Overlay &o, ap::Point c, floa
     }
   }
   line(layer, c, at(beam, reach), phosphor(o, 1.6f), width, LV_OPA_COVER);
+}
+// The box a plane's marker, its glow and rings, its vector and its track take on the glass, at `c`; its label beside.
+static ap::Box plane_box(const View *view, const ap::Plane &p, ap::Point c) {
+  const ap::Overlay &o = view->overlay;
+  const Sizes s = sizes(o.full);
+  const int r = (int) std::lround((o.marker == ap::PLANE ? s.plane : s.dot) * ap::WATCH_SCALE) + 8 * s.halo + 4 * s.line;
+  ap::Box box{(int) std::floor(c.x) - r, (int) std::floor(c.y) - r, 2 * r + 2, 2 * r + 2};
+  auto take = [&](float x, float y, int pad) { box = ap::join(box, {(int) std::floor(x) - pad, (int) std::floor(y) - pad, 2 * pad + 2, 2 * pad + 2}); };
+  if (p.vx || p.vy) take(c.x + p.vx * view->sx, c.y + p.vy * view->sy, s.line + 1);
+  lv_area_t a;
+  if (view->layer) lv_obj_get_coords(view->layer, &a); else a = {0, 0, 0, 0};
+  for (size_t n = 0; n + 1 < p.track.size(); n += 2) take(a.x1 + p.track[n] * view->sx, a.y1 + p.track[n + 1] * view->sy, s.line + 2);
+  return box;
 }
 // How lit a plane is by the beam, in steps, so a plane is drawn again only when it changes a step.
 static constexpr int GLOW_STEPS = 6;
@@ -276,6 +295,22 @@ static void draw(lv_event_t *e) {
   const std::vector<ap::Placed> placed = ap::place_labels(labels, frame_w, frame_h, s.gap, line_h, view->spots, blocked);
   view->spots.assign(placed.size(), ap::NO_SPOT);
   for (size_t i = 0; i < placed.size(); ++i) view->spots[i] = placed[i].spot;
+  // Where each plane of a sweeping scope stands whole, kept from a draw that held all of it: what the glass shows.
+  if (radar && o.radar.sweep) {
+    const lv_area_t &clip = layer->_clip_area;
+    const ap::Box drawn_area{clip.x1, clip.y1, clip.x2 - clip.x1 + 1, clip.y2 - clip.y1 + 1};
+    for (auto d = view->drawn.begin(); d != view->drawn.end();)
+      d = d->second.gone && ap::holds(drawn_area, d->second.box) ? view->drawn.erase(d) : std::next(d);
+    for (size_t i = 0; i < o.planes.size(); ++i) {
+      if (o.planes[i].id.empty()) continue;
+      ap::Box box = plane_box(view, o.planes[i], places[i]);
+      if (placed[i].shown) {
+        const ap::Box &l = placed[i].box;
+        box = ap::join(box, {a.x1 + l.x - 1, a.y1 + l.y - 1, l.w + 2, l.h + 2});
+      }
+      if (ap::holds(drawn_area, box)) view->drawn[o.planes[i].id] = {box, places[i], false};
+    }
+  }
   // The leaders under every label: a halo of the card's colour, then the plane's own.
   for (size_t i = 0; i < placed.size(); ++i) {
     if (!placed[i].shown || !placed[i].leader) continue;
@@ -319,15 +354,32 @@ static void sweep(lv_timer_t *timer) {
   const ap::Point c = scope_middle(view, a);
   const uint32_t now = lv_tick_get();
   const float was = view->beam_drawn < 0 ? ap::beam(now) : view->beam_drawn, beam = ap::beam(now);
-  const ap::Box box = ap::wedge_box(c, scope_reach(c, a), was - ap::SWEEP_TRAIL - 2, beam + 2);
-  lv_area_t area{box.x, box.y, box.x + box.w - 1, box.y + box.h - 1};
-  lv_obj_invalidate_area(view->layer, &area);
+  // Each plane where it was drawn and where it is now: an area that touches either draws both again whole. A plane not
+  // drawn yet (a new report's) takes a box as wide as a label could be on either side.
   const int reach = sizes(o.full).plane * 2;
+  std::vector<std::array<ap::Box, 2>> planes;
+  std::vector<ap::Point> places;
   for (const auto &p : o.planes) {
     const ap::Point at = ap::at(o, p, now, view->sx, view->sy), plane{a.x1 + at.x, a.y1 + at.y};
-    if (glow_step(view, c, plane, was) == glow_step(view, c, plane, beam)) continue;
-    lv_area_t blip{(int) plane.x - reach, (int) plane.y - reach, (int) plane.x + reach, (int) plane.y + reach};
-    lv_obj_invalidate_area(view->layer, &blip);
+    places.push_back(plane);
+    const auto d = view->drawn.find(p.id);
+    if (d != view->drawn.end()) {
+      planes.push_back({d->second.box, ap::moved(d->second.box, plane.x - d->second.at.x, plane.y - d->second.at.y)});
+    } else {
+      const ap::Box guess = ap::join(plane_box(view, p, plane), {(int) plane.x - 3 * reach, (int) plane.y - reach, 6 * reach, 2 * reach});
+      planes.push_back({guess, guess});
+    }
+  }
+  for (const auto &d : view->drawn) if (d.second.gone) planes.push_back({d.second.box, d.second.box});
+  auto invalidate = [&](ap::Box box) {
+    box = ap::take_in(box, planes);
+    lv_area_t area{box.x, box.y, box.x + box.w - 1, box.y + box.h - 1};
+    lv_obj_invalidate_area(view->layer, &area);
+  };
+  invalidate(ap::wedge_box(c, scope_reach(c, a), was - ap::SWEEP_TRAIL - 2, beam + 2));
+  for (size_t i = 0; i < o.planes.size(); ++i) {
+    if (glow_step(view, c, places[i], was) == glow_step(view, c, places[i], beam)) continue;
+    invalidate({(int) places[i].x - reach, (int) places[i].y - reach, 2 * reach + 1, 2 * reach + 1});
   }
 }
 // A scope whose beam turns draws itself again as the beam goes round, as a radar does: a new report, or a plane that
@@ -388,6 +440,8 @@ void show(View *&view, lv_obj_t *picture, const ap::Overlay &o) {
     lv_obj_add_event_cb(view->layer, deleted, LV_EVENT_DELETE, view);
   }
   view->overlay = o;
+  for (auto &d : view->drawn)
+    d.second.gone = std::none_of(o.planes.begin(), o.planes.end(), [&](const ap::Plane &p) { return p.id == d.first; });
   if (o.radar.on && o.radar.sweep && !view->sweeping) view->sweeping = lv_timer_create(sweep, ap::SWEEP_FRAME_MS, view);
   else if (!(o.radar.on && o.radar.sweep)) stop_sweep(view);
   follow(view, picture);
