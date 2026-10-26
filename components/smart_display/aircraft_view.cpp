@@ -124,7 +124,9 @@ static float scope_reach(ap::Point c, const lv_area_t &a) {
   return far + 2;
 }
 // The beam and its afterglow, a fan of slices fading behind it, under every plane.
-static constexpr int TRAIL_SLICES = 3;
+// The trail fades in a slice a degree wide each, a tenth dimmer than the one before: steps of a level or two of the
+// panel's colour, which read as one smooth fade (three wider slices showed as bands).
+static constexpr int TRAIL_SLICES = 10;
 // Each slice is drawn in pieces SEGMENT_PX long from the middle out: LVGL works out a triangle over the whole box round
 // it, and the box of one long thin slice across a diagonal is most of a quarter of the glass.
 static constexpr float SEGMENT_PX = 40.0f;
