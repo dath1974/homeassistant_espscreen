@@ -124,10 +124,10 @@ inline constexpr float BAND_LIGHT[BANDS] = {0.5f, 0.75f, 1.0f, 1.35f, 1.7f};
 inline float band_light(int band) { return BAND_LIGHT[band >= 0 && band < BANDS ? band : 0]; }
 // The beam of a full view that sweeps: once round in SWEEP_MS, clockwise from north, its afterglow a trail of
 // SWEEP_TRAIL degrees behind it, drawn every SWEEP_FRAME_MS. A plane it passes lights up and fades over AFTERGLOW
-// degrees of the turn. Every pixel of the trail changes each frame, so it is kept short: a panel without a tearing
-// signal (the QSPI AMOLEDs) takes a frame in strips, and a wide trail sent strip by strip shows the beam in steps.
+// degrees of the turn. Every pixel of the trail changes each frame, so it is kept short: each is a see-through pixel to
+// draw again (about a microsecond each in PSRAM on an ESP32-S3) and to send to the panel, every frame.
 constexpr uint32_t SWEEP_MS = 6000, SWEEP_FRAME_MS = 80;
-constexpr float SWEEP_TRAIL = 16.0f, AFTERGLOW = 300.0f;
+constexpr float SWEEP_TRAIL = 10.0f, AFTERGLOW = 300.0f;
 // The beam's bearing at `now`, degrees from north, clockwise.
 inline float beam(uint32_t now) { return (now % SWEEP_MS) * 360.0f / SWEEP_MS; }
 // The bearing of `p` from `c` on the glass, degrees from north (up), clockwise.

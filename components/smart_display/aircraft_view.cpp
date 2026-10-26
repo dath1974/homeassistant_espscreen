@@ -118,18 +118,28 @@ static float scope_reach(ap::Point c, const lv_area_t &a) {
   return far + 2;
 }
 // The beam and its afterglow, a fan of slices fading behind it, under every plane.
-static constexpr int TRAIL_SLICES = 4;
+static constexpr int TRAIL_SLICES = 3;
+// Each slice is drawn in pieces SEGMENT_PX long from the middle out: LVGL works out a triangle over the whole box round
+// it, and the box of one long thin slice across a diagonal is most of a quarter of the glass.
+static constexpr float SEGMENT_PX = 40.0f;
 static void draw_beam(lv_layer_t *layer, const ap::Overlay &o, ap::Point c, float reach, float beam, int width) {
-  auto at = [&](float b) {
-    const float r = b * 3.14159265f / 180.0f;
-    return ap::Point{c.x + std::sin(r) * reach, c.y - std::cos(r) * reach};
+  auto at = [&](float b, float r) {
+    const float a = b * 3.14159265f / 180.0f;
+    return ap::Point{c.x + std::sin(a) * r, c.y - std::cos(a) * r};
   };
   const lv_color_t glow = phosphor(o, 1.0f);
+  const int pieces = std::max(1, (int) std::ceil(reach / SEGMENT_PX));
   for (int k = 0; k < TRAIL_SLICES; ++k) {
     const float to = beam - ap::SWEEP_TRAIL * k / TRAIL_SLICES, from = beam - ap::SWEEP_TRAIL * (k + 1) / TRAIL_SLICES;
-    triangle(layer, c, at(from), at(to), glow, (lv_opa_t) (110 * (TRAIL_SLICES - k) / TRAIL_SLICES));
+    const lv_opa_t opa = (lv_opa_t) (110 * (TRAIL_SLICES - k) / TRAIL_SLICES);
+    triangle(layer, c, at(from, reach / pieces), at(to, reach / pieces), glow, opa);
+    for (int n = 1; n < pieces; ++n) {
+      const float r0 = reach * n / pieces, r1 = reach * (n + 1) / pieces;
+      triangle(layer, at(from, r0), at(to, r0), at(to, r1), glow, opa);
+      triangle(layer, at(from, r0), at(to, r1), at(from, r1), glow, opa);
+    }
   }
-  line(layer, c, at(beam), phosphor(o, 1.6f), width, LV_OPA_COVER);
+  line(layer, c, at(beam, reach), phosphor(o, 1.6f), width, LV_OPA_COVER);
 }
 // How lit a plane is by the beam, in steps, so a plane is drawn again only when it changes a step.
 static constexpr int GLOW_STEPS = 6;
