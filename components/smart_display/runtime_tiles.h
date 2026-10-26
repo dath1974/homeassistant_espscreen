@@ -12435,7 +12435,11 @@ inline void camera_show(lv_obj_t *parent, lv_obj_t *&picture, lv_image_dsc_t *so
 // and colour are part of it, so another track is another picture).
 inline std::string camera_key() {
   std::string key = "camera|" + camera.entity;
-  if (camera_map_index >= 0) key += "|" + map_focus + (theme::dark ? "|dark" : "") + (map_move.none() ? "" : "|" + map_move.text());
+  // A map's full view is a new picture when its movement mark changes (the app's map_card.fingerprint), as a map card's.
+  if (camera_map_index >= 0) {
+    key += "|" + map_focus + (theme::dark ? "|dark" : "") + (map_move.none() ? "" : "|" + map_move.text());
+    if (camera_map_index < (int) model.count) key += "|" + model.tiles[camera_map_index].extra().map_mark;
+  }
   // The cover's colour only shows beside a cover on long glass (saver_view::shape): on square glass it is no new picture.
   if (saver_camera) {
     key += "|saver|" + saver_now.picture + (saver_now.motion ? "|moves" : "");
@@ -12598,8 +12602,10 @@ inline void camera_want() {
   w.tag = camera_tag();
   w.slot = picture_loader::Slot::FULL;
   w.rank = picture_loader::Rank::VIEW;
-  // A camera at its pace, the screensaver's cover once; a map is drawn by the app, so it is always there to be had.
-  w.every = camera.once ? 0 : camera.every;
+  // A camera at its pace, the screensaver's cover once. A map is drawn by the app, so it is always there to be had, and
+  // only once for each picture it can be (camera_key): loaded again every few seconds, a full screen of map was half a
+  // second of the loop each time, a stall in everything that moves over it.
+  w.every = camera.once || camera_map_index >= 0 ? 0 : camera.every;
   w.drawn = camera_map_index >= 0;
   const std::string entity = camera.entity;
   w.ask = [entity] { camera_request(entity); };
