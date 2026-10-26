@@ -2113,7 +2113,7 @@
             "label": "Zwaaiende bundel",
             "hide": "Uit",
             "show": "Aan",
-            "hint": "Op het volledige scherm draait elke vier seconden een bundel rond die elk vliegtuig dat hij passeert laat oplichten."
+            "hint": "Op het volledige scherm draait elke zes seconden een bundel rond die elk vliegtuig dat hij passeert laat oplichten."
           },
           "plane_track_s": {
             "label": "Lengte van het spoor",
