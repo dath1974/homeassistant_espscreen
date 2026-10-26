@@ -8206,10 +8206,11 @@ inline bool render_camera_card(Widgets &w,const Tile &t,int width,int height){
   tile_picture_place(w,t,0,0,0);
   const bool photo=w.picture&&!lv_obj_has_flag(w.picture,LV_OBJ_FLAG_HIDDEN),waiting=!photo&&t.pictured()&&tile_picture_waiting(w,t);
   set_loading(w,waiting,width,height);
-  // Aircraft over a map tile's picture (docs/MAP.md, "Aircraft"): the last planes the card got, on the picture it shows.
+  // Aircraft over a map tile's picture (docs/MAP.md, "Aircraft"): the last planes the card got, on the picture it shows;
+  // not under a full view, which would be drawn again with it (air_tiles_place).
   if(photo&&t.is_map()&&t.extra().map_air){
     const auto air=air_tiles.find((int)w.index);
-    if(air!=air_tiles.end())aircraft_view::show(w.air,w.picture,air->second);
+    if(air!=air_tiles.end()&&!camera_root)aircraft_view::show(w.air,w.picture,air->second);
   }else if(w.air)aircraft_view::release(w.air);
   if(!photo&&!waiting)return false;
   // A tall card to style_tall, which gives the name the picture's ink; it only has no parts of its own.
