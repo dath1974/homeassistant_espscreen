@@ -320,6 +320,10 @@ static void sweep(lv_timer_t *timer) {
     lv_obj_invalidate_area(view->layer, &blip);
   }
 }
+// A scope whose beam turns draws itself again as the beam goes round, as a radar does: a new report, or a plane that
+// glides, shows where the beam passes it, and the whole layer is never drawn again at once (a full screen of it is a
+// seventh of a second, a stall in the beam).
+static bool sweeps(const View *view) { return view->overlay.radar.on && view->overlay.radar.sweep && view->sweeping; }
 static void stop_sweep(View *view) {
   if (view->sweeping) lv_timer_delete(view->sweeping);
   view->sweeping = nullptr;
@@ -337,6 +341,8 @@ void follow(View *view, lv_obj_t *picture) {
   if (!view || !view->layer || !picture) return;
   lv_obj_update_layout(picture);
   const int w = lv_obj_get_width(picture), h = lv_obj_get_height(picture);
+  const bool resized = w != lv_obj_get_width(view->layer) || h != lv_obj_get_height(view->layer);
+  const bool was_shown = !lv_obj_has_flag(view->layer, LV_OBJ_FLAG_HIDDEN);
   lv_obj_set_size(view->layer, w, h);
   lv_obj_align_to(view->layer, picture, LV_ALIGN_TOP_LEFT, 0, 0);
   const int index = lv_obj_get_index(picture);
@@ -346,7 +352,7 @@ void follow(View *view, lv_obj_t *picture) {
   const bool shown = !view->hidden && !lv_obj_has_flag(picture, LV_OBJ_FLAG_HIDDEN);
   if (shown) lv_obj_remove_flag(view->layer, LV_OBJ_FLAG_HIDDEN);
   else lv_obj_add_flag(view->layer, LV_OBJ_FLAG_HIDDEN);
-  lv_obj_invalidate(view->layer);
+  if (!sweeps(view) || resized || shown != was_shown) lv_obj_invalidate(view->layer);
 }
 
 void show(View *&view, lv_obj_t *picture, const ap::Overlay &o) {
@@ -420,7 +426,7 @@ void set_picked(View *view, const std::string &id) {
 }
 
 void tick(View *view, uint32_t now) {
-  if (!view || !view->layer || view->hidden || !view->overlay.glide || view->overlay.planes.empty()) return;
+  if (!view || !view->layer || view->hidden || !view->overlay.glide || view->overlay.planes.empty() || sweeps(view)) return;
   // Gliding until GLIDE_MS after the report, then once more where it stopped.
   if (now - view->overlay.at > ap::GLIDE_MS + 1000) return;
   lv_obj_invalidate(view->layer);
