@@ -441,12 +441,13 @@ def card(item, metric, words, number=str, suffix=lambda unit: ' ' + unit):
 
 def style_of(options, scope=None, full=False):
     """How the screen draws every plane of a card: its marker, its colour and whether it glides between reports. `scope`
-    (map_card.scope_of and scope_middle: the phosphor and the middle on the picture) draws them as a radar scope's (`r`),
-    with its beam turning on a full view that sweeps."""
+    (map_card.scope_of and scope_middle: the phosphor, and the middle and the rose's radius on the picture) draws them as a
+    radar scope's (`r`), with its beam turning on a full view that sweeps, out to the rose (`e`)."""
     style = {'m': options['plane_marker'], 'c': options['plane_colour'], 'g': 1 if options['plane_motion'] == 'glide' else 0}
     if scope:
-        tint, (x, y) = scope
-        style['r'] = {'t': tint, 'x': round(x), 'y': round(y), 'w': 1 if full and options['plane_sweep'] == 'show' else 0}
+        tint, (x, y, rose) = scope
+        style['r'] = {'t': tint, 'x': round(x), 'y': round(y), 'e': max(0, round(rose)),
+                      'w': 1 if full and options['plane_sweep'] == 'show' else 0}
     return style
 
 

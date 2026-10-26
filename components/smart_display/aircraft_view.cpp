@@ -20,15 +20,23 @@ struct View {
   float sx = 1, sy = 1;  // the picture on the glass against the one the planes were placed on
   bool hidden = false;
   std::vector<int> spots;  // where each label stood the last time, kept while it stays clear (aircraft_plan.h)
+  std::map<std::string, int> spot_of;  // the same by a plane's id, where it has one: a plane come or gone moves no other
   std::string picked;      // the plane a finger picked on a full view, ringed
   lv_timer_t *sweeping = nullptr;  // a radar scope's beam turning, every ap::SWEEP_FRAME_MS
   float beam_drawn = -1;           // the bearing it was drawn at last
-  // A sweeping scope's planes by id: the box each was last drawn in whole on the glass (marker, vector, track, label and
-  // its leader) and where the plane was then, so the beam draws a plane again whole (ap::take_in).
-  // A plane the reports no longer list keeps its box (`gone`) until a draw has covered it whole, so the beam erases it whole.
-  struct Drawn { ap::Box box; ap::Point at; bool gone = false; };
-  std::map<std::string, Drawn> drawn;
+  // A sweeping scope paints each plane as the beam last passed it, as a radar does (`painted`: the report's style, its
+  // planes as they were then, standing still): a plane moves, takes its new label or goes only when the beam crosses it,
+  // so whatever else draws a piece of the glass again draws the same pixels there. `drawn`: the box each plane was last
+  // drawn in whole (marker, vector, track, label and leader), which is drawn again whole when the beam moves it.
+  ap::Overlay painted;
+  bool latched = false;
+  std::map<std::string, ap::Box> drawn;
+  std::vector<ap::Box> again;  // planes whose labels moved in a draw, to draw again whole on the next frame
 };
+
+// What the layer shows: a sweeping scope's planes as painted, else the report's.
+static bool latches(const ap::Overlay &o) { return o.radar.on && o.radar.sweep; }
+static const ap::Overlay &shown(const View *view) { return latches(view->overlay) ? view->painted : view->overlay; }
 
 // ---- A radar scope (docs/MAP.md, "Radar"): one phosphor (theme.h radar::TINTS) from its ground to its hottest light.
 static const theme::radar::Tint &tint_of(const ap::Overlay &o) {
@@ -113,23 +121,24 @@ static void triangle(lv_layer_t *layer, ap::Point a, ap::Point b, ap::Point c, l
   lv_draw_triangle(layer, &dsc);
 }
 
-// The middle of a scope on the glass, and how far its farthest corner is.
+// The middle of a scope on the glass, and how far its beam reaches: to its rose (the add-on's), else the farthest corner.
 static ap::Point scope_middle(const View *view, const lv_area_t &a) {
   return {a.x1 + view->overlay.radar.x * view->sx, a.y1 + view->overlay.radar.y * view->sy};
 }
-static float scope_reach(ap::Point c, const lv_area_t &a) {
+static float scope_reach(const View *view, ap::Point c, const lv_area_t &a) {
+  if (view->overlay.radar.rose > 0) return view->overlay.radar.rose * std::min(view->sx, view->sy) + 2;
   float far = 0;
   for (const float x : {(float) a.x1, (float) a.x2}) for (const float y : {(float) a.y1, (float) a.y2})
     far = std::max(far, std::hypot(x - c.x, y - c.y));
   return far + 2;
 }
 // The beam and its afterglow, a fan of slices fading behind it, under every plane.
-// The trail fades in a slice a degree wide each, a tenth dimmer than the one before: steps of a level or two of the
-// panel's colour, which read as one smooth fade (three wider slices showed as bands).
-static constexpr int TRAIL_SLICES = 10;
+// The trail fades in six slices, each a sixth dimmer than the one before. Every slice costs about as much as the rows it
+// spans (some 6 ms out to the corner of the AMOLED 2.41), so the beam ends at the rose and six is as smooth as it affords.
+static constexpr int TRAIL_SLICES = 6;
 // Each slice is drawn in pieces SEGMENT_PX long from the middle out: LVGL works out a triangle over the whole box round
 // it, and the box of one long thin slice across a diagonal is most of a quarter of the glass.
-static constexpr float SEGMENT_PX = 40.0f;
+static constexpr float SEGMENT_PX = 80.0f;
 static void draw_beam(lv_layer_t *layer, const ap::Overlay &o, ap::Point c, float reach, float beam, int width) {
   auto at = [&](float b, float r) {
     const float a = b * 3.14159265f / 180.0f;
@@ -165,7 +174,7 @@ static ap::Box plane_box(const View *view, const ap::Plane &p, ap::Point c) {
 // How lit a plane is by the beam, in steps, so a plane is drawn again only when it changes a step.
 static constexpr int GLOW_STEPS = 6;
 static int glow_step(const View *view, ap::Point c, ap::Point plane, float beam) {
-  if (!view->overlay.radar.sweep) return 0;
+  if (!latches(view->overlay)) return 0;
   return (int) std::lround(ap::afterglow(ap::behind(beam, ap::bearing(c, plane))) * GLOW_STEPS);
 }
 
@@ -175,7 +184,7 @@ static void draw(lv_event_t *e) {
   lv_layer_t *layer = lv_event_get_layer(e);
   lv_area_t a;
   lv_obj_get_coords(lv_event_get_target_obj(e), &a);
-  const ap::Overlay &o = view->overlay;
+  const ap::Overlay &o = shown(view);
   const Sizes s = sizes(o.full);
   const uint32_t now = lv_tick_get();
   const bool radar = o.radar.on;
@@ -184,7 +193,7 @@ static void draw(lv_event_t *e) {
   const ap::Point middle = radar ? scope_middle(view, a) : ap::Point{0, 0};
   const float beam = radar && o.radar.sweep ? ap::beam(now) : 0;
   if (radar && o.radar.sweep) {
-    draw_beam(layer, o, middle, scope_reach(middle, a), beam, std::max(2, s.line * 3 / 2));
+    draw_beam(layer, o, middle, scope_reach(view, middle, a), beam, std::max(2, s.line * 3 / 2));
     view->beam_drawn = beam;
   }
   auto on_glass = [&](float x, float y) { return ap::Point{a.x1 + x * view->sx, a.y1 + y * view->sy}; };
@@ -294,15 +303,23 @@ static void draw(lv_event_t *e) {
     if (box.x + box.w <= 0 || box.y + box.h <= 0 || box.x >= frame_w || box.y >= frame_h) continue;
     blocked.push_back(box);
   }
-  const std::vector<ap::Placed> placed = ap::place_labels(labels, frame_w, frame_h, s.gap, line_h, view->spots, blocked);
+  std::vector<int> kept(o.planes.size(), ap::NO_SPOT);
+  for (size_t i = 0; i < o.planes.size(); ++i) {
+    const auto &id = o.planes[i].id;
+    const auto found = id.empty() ? view->spot_of.end() : view->spot_of.find(id);
+    kept[i] = found != view->spot_of.end() ? found->second : id.empty() && i < view->spots.size() ? view->spots[i] : ap::NO_SPOT;
+  }
+  const std::vector<ap::Placed> placed = ap::place_labels(labels, frame_w, frame_h, s.gap, line_h, kept, blocked);
   view->spots.assign(placed.size(), ap::NO_SPOT);
-  for (size_t i = 0; i < placed.size(); ++i) view->spots[i] = placed[i].spot;
-  // Where each plane of a sweeping scope stands whole, kept from a draw that held all of it: what the glass shows.
-  if (radar && o.radar.sweep) {
+  for (size_t i = 0; i < placed.size(); ++i) {
+    view->spots[i] = placed[i].spot;
+    if (!o.planes[i].id.empty()) view->spot_of[o.planes[i].id] = placed[i].spot;
+  }
+  // Where each plane of a sweeping scope stands whole, kept from a draw that held all of it: what the glass shows. A
+  // label that took another spot is drawn again whole on the next frame, where it was and where it is.
+  if (latches(view->overlay)) {
     const lv_area_t &clip = layer->_clip_area;
     const ap::Box drawn_area{clip.x1, clip.y1, clip.x2 - clip.x1 + 1, clip.y2 - clip.y1 + 1};
-    for (auto d = view->drawn.begin(); d != view->drawn.end();)
-      d = d->second.gone && ap::holds(drawn_area, d->second.box) ? view->drawn.erase(d) : std::next(d);
     for (size_t i = 0; i < o.planes.size(); ++i) {
       if (o.planes[i].id.empty()) continue;
       ap::Box box = plane_box(view, o.planes[i], places[i]);
@@ -310,7 +327,10 @@ static void draw(lv_event_t *e) {
         const ap::Box &l = placed[i].box;
         box = ap::join(box, {a.x1 + l.x - 1, a.y1 + l.y - 1, l.w + 2, l.h + 2});
       }
-      if (ap::holds(drawn_area, box)) view->drawn[o.planes[i].id] = {box, places[i], false};
+      auto &was = view->drawn[o.planes[i].id];
+      const bool moved_label = placed[i].spot != kept[i] && kept[i] != ap::NO_SPOT;
+      if (moved_label) view->again.push_back(was.w > 0 ? ap::join(was, box) : box);
+      if (ap::holds(drawn_area, box)) was = box;
     }
   }
   // The leaders under every label: a halo of the card's colour, then the plane's own.
@@ -345,43 +365,70 @@ static void draw(lv_event_t *e) {
   }
 }
 
-// A scope's beam turning: what it swept since the last frame and the planes whose light changed a step are drawn
-// again, not the whole picture.
+// A scope's beam turning: what it swept since the last frame is drawn again, each plane it crossed is painted where it
+// is now with its new label (or goes, when the reports dropped it), drawn again whole where it was and where it is, and
+// the planes whose light changed a step are drawn again round their marker, the same pixels everywhere else.
+static ap::Box guess_box(const View *view, const ap::Plane &p, ap::Point c) {
+  const int r = sizes(view->overlay.full).plane * 2;
+  return ap::join(plane_box(view, p, c), {(int) c.x - 3 * r, (int) c.y - r, 6 * r, 2 * r});
+}
 static void sweep(lv_timer_t *timer) {
   auto *view = static_cast<View *>(lv_timer_get_user_data(timer));
   if (!view || !view->layer || view->hidden || lv_obj_has_flag(view->layer, LV_OBJ_FLAG_HIDDEN)) return;
   lv_area_t a;
   lv_obj_get_coords(view->layer, &a);
   const ap::Overlay &o = view->overlay;
+  ap::Overlay &painted = view->painted;
   const ap::Point c = scope_middle(view, a);
   const uint32_t now = lv_tick_get();
   const float was = view->beam_drawn < 0 ? ap::beam(now) : view->beam_drawn, beam = ap::beam(now);
-  // Each plane where it was drawn and where it is now: an area that touches either draws both again whole. A plane not
-  // drawn yet (a new report's) takes a box as wide as a label could be on either side.
-  const int reach = sizes(o.full).plane * 2;
-  std::vector<std::array<ap::Box, 2>> planes;
-  std::vector<ap::Point> places;
-  for (const auto &p : o.planes) {
-    const ap::Point at = ap::at(o, p, now, view->sx, view->sy), plane{a.x1 + at.x, a.y1 + at.y};
-    places.push_back(plane);
-    const auto d = view->drawn.find(p.id);
-    if (d != view->drawn.end()) {
-      planes.push_back({d->second.box, ap::moved(d->second.box, plane.x - d->second.at.x, plane.y - d->second.at.y)});
-    } else {
-      const ap::Box guess = ap::join(plane_box(view, p, plane), {(int) plane.x - 3 * reach, (int) plane.y - reach, 6 * reach, 2 * reach});
-      planes.push_back({guess, guess});
-    }
-  }
-  for (const auto &d : view->drawn) if (d.second.gone) planes.push_back({d.second.box, d.second.box});
-  auto invalidate = [&](ap::Box box) {
-    box = ap::take_in(box, planes);
+  auto invalidate = [&](const ap::Box &box) {
     lv_area_t area{box.x, box.y, box.x + box.w - 1, box.y + box.h - 1};
     lv_obj_invalidate_area(view->layer, &area);
   };
-  invalidate(ap::wedge_box(c, scope_reach(c, a), was - ap::SWEEP_TRAIL - 2, beam + 2));
-  for (size_t i = 0; i < o.planes.size(); ++i) {
-    if (glow_step(view, c, places[i], was) == glow_step(view, c, places[i], beam)) continue;
-    invalidate({(int) places[i].x - reach, (int) places[i].y - reach, 2 * reach + 1, 2 * reach + 1});
+  invalidate(ap::wedge_box(c, scope_reach(view, c, a), was - ap::SWEEP_TRAIL - 2, beam + 2));
+  for (const auto &box : view->again) invalidate(box);
+  view->again.clear();
+  auto on_glass = [&](const ap::Plane &p) { return ap::Point{a.x1 + p.x * view->sx, a.y1 + p.y * view->sy}; };
+  auto old_box = [&](const ap::Plane &p) {
+    const auto d = view->drawn.find(p.id);
+    return d != view->drawn.end() && d->second.w > 0 ? d->second : guess_box(view, p, on_glass(p));
+  };
+  bool changed = false;
+  for (const auto &p : o.planes) {
+    const ap::Point at = ap::at(o, p, now);
+    ap::Plane now_p = p;
+    now_p.x = (int) std::lround(at.x);
+    now_p.y = (int) std::lround(at.y);
+    if (!ap::crossed(was, beam, ap::bearing(c, on_glass(now_p)))) continue;
+    auto it = std::find_if(painted.planes.begin(), painted.planes.end(), [&](const ap::Plane &q) { return q.id == p.id; });
+    ap::Box box = guess_box(view, now_p, on_glass(now_p));
+    if (it != painted.planes.end()) {
+      const ap::Box before = old_box(*it);
+      box = ap::join(box, ap::join(before, ap::moved(before, (now_p.x - it->x) * view->sx, (now_p.y - it->y) * view->sy)));
+      *it = now_p;
+    } else {
+      painted.planes.push_back(now_p);
+    }
+    invalidate(box);
+    changed = true;
+  }
+  for (auto it = painted.planes.begin(); it != painted.planes.end();) {
+    const bool listed = std::any_of(o.planes.begin(), o.planes.end(), [&](const ap::Plane &p) { return p.id == it->id; });
+    if (listed || !ap::crossed(was, beam, ap::bearing(c, on_glass(*it)))) { ++it; continue; }
+    invalidate(old_box(*it));
+    view->drawn.erase(it->id);
+    view->spot_of.erase(it->id);
+    it = painted.planes.erase(it);
+    changed = true;
+  }
+  // The watched planes last, so they lie over the others, as the app sends them.
+  if (changed) std::stable_partition(painted.planes.begin(), painted.planes.end(), [](const ap::Plane &p) { return p.watch == 0; });
+  const int reach = sizes(o.full).plane * 2;
+  for (const auto &p : painted.planes) {
+    const ap::Point at = on_glass(p);
+    if (glow_step(view, c, at, was) == glow_step(view, c, at, beam)) continue;
+    invalidate({(int) at.x - reach, (int) at.y - reach, 2 * reach + 1, 2 * reach + 1});
   }
 }
 // A scope whose beam turns draws itself again as the beam goes round, as a radar does: a new report, or a plane that
@@ -441,9 +488,31 @@ void show(View *&view, lv_obj_t *picture, const ap::Overlay &o) {
     lv_obj_add_event_cb(view->layer, draw, LV_EVENT_DRAW_MAIN, view);
     lv_obj_add_event_cb(view->layer, deleted, LV_EVENT_DELETE, view);
   }
+  // A scope that sweeps paints the planes as they are when it opens, or when the view under them changes (the keys
+  // moved it, another picture size); afterwards each plane changes as the beam crosses it (sweep).
+  const bool fresh = !view->latched || view->painted.width != o.width || view->painted.height != o.height ||
+                     view->painted.move != o.move || view->painted.index != o.index || view->painted.full != o.full;
   view->overlay = o;
-  for (auto &d : view->drawn)
-    d.second.gone = std::none_of(o.planes.begin(), o.planes.end(), [&](const ap::Plane &p) { return p.id == d.first; });
+  if (latches(o)) {
+    std::vector<ap::Plane> planes = std::move(view->painted.planes);
+    view->painted = o;
+    view->painted.glide = false;
+    if (fresh) {
+      for (auto &p : view->painted.planes) {
+        const ap::Point at = ap::at(o, p, lv_tick_get());
+        p.x = (int) std::lround(at.x);
+        p.y = (int) std::lround(at.y);
+      }
+      view->drawn.clear();
+      if (view->layer) lv_obj_invalidate(view->layer);
+    } else {
+      view->painted.planes = std::move(planes);
+    }
+    view->latched = true;
+  } else {
+    view->latched = false;
+    view->painted = {};
+  }
   if (o.radar.on && o.radar.sweep && !view->sweeping) view->sweeping = lv_timer_create(sweep, ap::SWEEP_FRAME_MS, view);
   else if (!(o.radar.on && o.radar.sweep)) stop_sweep(view);
   follow(view, picture);
@@ -473,16 +542,17 @@ std::string pick(View *view, int x, int y, int reach) {
   if (!view || !view->layer || view->hidden) return "";
   lv_area_t a;
   lv_obj_get_coords(view->layer, &a);
-  return ap::pick(view->overlay, (float) (x - a.x1), (float) (y - a.y1), (float) reach, lv_tick_get(), view->sx, view->sy);
+  return ap::pick(shown(view), (float) (x - a.x1), (float) (y - a.y1), (float) reach, lv_tick_get(), view->sx, view->sy);
 }
 
 bool where(View *view, const std::string &id, int &x, int &y) {
   if (!view || !view->layer || view->hidden || id.empty()) return false;
-  for (const auto &p : view->overlay.planes) {
+  const ap::Overlay &o = shown(view);
+  for (const auto &p : o.planes) {
     if (p.id != id) continue;
     lv_area_t a;
     lv_obj_get_coords(view->layer, &a);
-    const ap::Point at = ap::at(view->overlay, p, lv_tick_get(), view->sx, view->sy);
+    const ap::Point at = ap::at(o, p, lv_tick_get(), view->sx, view->sy);
     x = a.x1 + (int) std::lround(at.x);
     y = a.y1 + (int) std::lround(at.y);
     return true;

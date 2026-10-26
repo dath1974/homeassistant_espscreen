@@ -440,6 +440,7 @@ std::string receive(const std::string &payload) {
         for (int n = 0; n < theme::radar::TINT_COUNT; ++n) if (tint == TINTS[n]) next.radar.tint = n;
         next.radar.x = r["x"].is<int>() ? std::max(-8192, std::min(8192, r["x"].as<int>())) : next.width / 2;
         next.radar.y = r["y"].is<int>() ? std::max(-8192, std::min(8192, r["y"].as<int>())) : next.height / 2;
+        next.radar.rose = r["e"].is<int>() ? std::max(0, std::min(8192, r["e"].as<int>())) : 0;
         next.radar.sweep = next.full && r["w"].is<int>() && r["w"].as<int>() == 1;
       }
       next.move = string(root["mv"], 48);

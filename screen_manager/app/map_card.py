@@ -938,7 +938,7 @@ def draw_scope(canvas, view, centre, tint, dpi_scale, full=False, radius=None):
     step = ring_step(px_per_nm, edge or max(near, 40 * dpi_scale))
     ring = _mix(ground, glow, SCOPE_SHARE['ring'])
     face = font(10 * dpi_scale * s, 500)
-    rose = edge if edge else near - 4 * dpi_scale
+    rose = scope_rose((cx, cy), (W, H), dpi_scale, edge)
     # The miles of each ring where it crosses the bearing 105, between the rose's figures, the first with its unit; none
     # where the ring runs along the rose, whose figures are there.
     a = m.radians(105)
@@ -1327,12 +1327,26 @@ def scope_of(tile):
     return options['scope'] if options['streets'] == 'radar' else None
 
 
+def scope_rose(centre, size, dpi_scale, edge=None):
+    """The radius of a scope's compass rose, the circle its beam turns in: the distance `radius`'s circle (`edge`, pixels)
+    where the card has one, else the largest circle round the middle the frame holds whole."""
+    cx, cy = centre
+    return edge if edge else min(cx, size[0] - cx, cy, size[1] - cy) - 4 * dpi_scale
+
+
 def scope_middle(tile, states, size, board, registry=None, full=False, focus=None, move=None):
-    """Where the middle of a radar scope is on the card's picture (x, y), as render draws it, or None for a map."""
+    """Where the middle of a radar scope is on the card's picture and the radius of its rose (x, y, radius), as render
+    draws them, or None for a map."""
     if not scope_of(tile):
         return None
     framed = _framed(tile, states, size, board, registry, full, focus if full else None)
-    return moved(framed, move if full else None).point(framed.lat, framed.lon)
+    view = moved(framed, move if full else None)
+    x, y = view.point(framed.lat, framed.lon)
+    # A person picked frames the view on them, without the circle (render); a plane picked (`air:`) keeps the view.
+    person = full and focus and not str(focus).startswith('air:')
+    circle = circle_of(tile, states, size, board, registry) if not person else None
+    edge = circle[2] / metres_per_pixel(view.lat, view.zoom) if circle else None
+    return x, y, scope_rose((x, y), size, board.scale, edge)
 
 
 def pictures_wanted(tile, states, registry=None):

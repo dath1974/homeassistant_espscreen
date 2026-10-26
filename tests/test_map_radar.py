@@ -109,16 +109,24 @@ class Drawing(unittest.TestCase):
         self.assertAlmostEqual(moved[1], framed[1] + 20, places=3)
         self.assertIsNone(map_card.scope_middle(tile(streets='show'), {}, size, board))
 
+    def test_the_rose_is_the_circle_the_beam_turns_in(self):
+        board, size = self.board, (400, 300)
+        x, y, rose = map_card.scope_middle(tile(distance='region'), {}, size, board)
+        self.assertAlmostEqual(rose, min(x, 400 - x, y, 300 - y) - 4, places=3, msg='the largest circle the frame holds')
+        _, _, circled = map_card.scope_middle(tile(distance='radius', radius=20000), {}, size, board)
+        self.assertLess(circled, 150, 'the distance radius circle, a little inside the short side')
+        self.assertGreater(circled, 120)
+
 
 class Planes(unittest.TestCase):
     def test_the_style_names_the_scope(self):
         options = aircraft.options_of(tile(plane_sweep='show'))
         self.assertNotIn('r', aircraft.style_of(options))
-        style = aircraft.style_of(options, ('amber', (120.4, 80.6)))
-        self.assertEqual(style['r'], {'t': 'amber', 'x': 120, 'y': 81, 'w': 0}, 'a card on the page never sweeps')
-        self.assertEqual(aircraft.style_of(options, ('amber', (120, 80)), full=True)['r']['w'], 1)
+        style = aircraft.style_of(options, ('amber', (120.4, 80.6, 99.6)))
+        self.assertEqual(style['r'], {'t': 'amber', 'x': 120, 'y': 81, 'e': 100, 'w': 0}, 'a card on the page never sweeps')
+        self.assertEqual(aircraft.style_of(options, ('amber', (120, 80, 50)), full=True)['r']['w'], 1)
         hidden = aircraft.options_of(tile())
-        self.assertEqual(aircraft.style_of(hidden, ('green', (0, 0)), full=True)['r']['w'], 0)
+        self.assertEqual(aircraft.style_of(hidden, ('green', (0, 0, 0)), full=True)['r']['w'], 0)
 
     def test_a_scope_sends_motion_for_its_vectors_even_when_planes_hold(self):
         flights = aircraft.flights_of({'attributes': {'flights': [
@@ -129,7 +137,7 @@ class Planes(unittest.TestCase):
         [scope] = aircraft.overlay(view, flights, options, radar=True)
         self.assertEqual(held[4:6], [0, 0])
         self.assertGreater(scope[4], 0, 'heading east: to the right a minute on')
-        self.assertEqual(aircraft.style_of(options, ('green', (0, 0)))['g'], 0, 'and still the screen holds them')
+        self.assertEqual(aircraft.style_of(options, ('green', (0, 0, 0)))['g'], 0, 'and still the screen holds them')
 
 
 if __name__ == '__main__':
