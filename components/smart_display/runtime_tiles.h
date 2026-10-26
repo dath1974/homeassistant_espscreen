@@ -625,6 +625,7 @@ struct Widgets {
 // card drawn again lays them over its picture at once; the full view keeps its own (air_full).
 inline std::map<int, aircraft_plan::Overlay> air_tiles;
 inline void air_receive(aircraft_plan::Overlay &&next);
+inline void air_tiles_place(int only = -1);
 inline void air_tick(uint32_t now);
 // A page is being built off the glass (warm_page): its cards ask for no pictures and wake nothing.
 inline bool warming=false;
@@ -11180,11 +11181,20 @@ inline void air_receive(aircraft_plan::Overlay &&next) {
     return;
   }
   const int index = next.index;
-  auto &kept = air_tiles[index] = std::move(next);
-  for (auto &w : widgets)
-    if ((int) w.index == index && w.tile && w.picture && w.index < model.count && model.tiles[w.index].is_map() &&
-        model.tiles[w.index].extra().map_air && !lv_obj_has_flag(w.picture, LV_OBJ_FLAG_HIDDEN))
-      aircraft_view::show(w.air, w.picture, kept);
+  air_tiles[index] = std::move(next);
+  air_tiles_place(index);
+}
+// The cards' planes on the page. Not while a full view covers it: a card drawn again under it draws the full view again
+// with it, the whole glass at once, a stall in what moves there. The cards take their planes when it closes. `only`: the
+// card of that tile alone, -1 for every card.
+inline void air_tiles_place(int only) {
+  if (camera_root) return;
+  for (auto &w : widgets) {
+    if ((only >= 0 && (int) w.index != only) || !w.tile || !w.picture || w.index >= model.count || !model.tiles[w.index].is_map() ||
+        !model.tiles[w.index].extra().map_air || lv_obj_has_flag(w.picture, LV_OBJ_FLAG_HIDDEN)) continue;
+    const auto kept = air_tiles.find((int) w.index);
+    if (kept != air_tiles.end()) aircraft_view::show(w.air, w.picture, kept->second);
+  }
 }
 // Every 250 ms: the asks that are due, and once a second the planes that glide.
 inline void air_tick(uint32_t now) {
@@ -11219,7 +11229,7 @@ inline void air_tick(uint32_t now) {
   if (now - air_ticked_at < 1000) return;
   air_ticked_at = now;
   const uint32_t at = lv_tick_get();
-  for (auto &w : widgets) aircraft_view::tick(w.air, at);
+  if (!camera_root) for (auto &w : widgets) aircraft_view::tick(w.air, at);
   aircraft_view::tick(air_full_view, at);
 }
 
@@ -11947,6 +11957,7 @@ inline void camera_close() {
   map_move = map_move_shown = MapMove{};
   map_sheet = MapSheet{};
   aircraft_view::release(air_full_view);
+  air_tiles_place();
   air_full = {};
   air_asked_full.clear();
   camera_release_due = true;
