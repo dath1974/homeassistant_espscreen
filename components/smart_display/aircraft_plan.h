@@ -55,6 +55,7 @@ struct Radar {
   bool on = false;
   int tint = 0;
   int x = 0, y = 0;
+  int rose = 0;  // the radius of its compass rose, the circle the beam turns in; 0: out to the farthest corner
   bool sweep = false;
 };
 
@@ -137,6 +138,8 @@ inline float bearing(Point c, Point p) {
 }
 // How many degrees the beam at `beam_at` has turned since it passed `at`: 0 just as it passes, up to 360.
 inline float behind(float beam_at, float at) { return std::fmod(beam_at - at + 720.0f, 360.0f); }
+// Whether the beam, turning from `was` to `now` (less than a turn), passed bearing `at`.
+inline bool crossed(float was, float now, float at) { return was != now && behind(now, at) < behind(was, at); }
 // How lit a plane is the beam passed `since` degrees ago: 1 as it passes, fading to 0 at AFTERGLOW.
 inline float afterglow(float since) { return since >= AFTERGLOW ? 0.0f : 1.0f - since / AFTERGLOW; }
 
@@ -164,23 +167,6 @@ inline bool holds(const Box &outer, const Box &inner) {
 }
 inline Box moved(const Box &b, float dx, float dy) {
   return {b.x + (int) std::floor(dx), b.y + (int) std::floor(dy), b.w + 1, b.h + 1};
-}
-// What a scope draws again to move a plane whole (aircraft_view.cpp): an area grows by every plane it touches, where the
-// plane was drawn and where it is now (`planes`, those two boxes each), until no plane lies across its edge. A label
-// drawn again only in part would show half its old place and half its new one.
-inline Box take_in(Box area, const std::vector<std::array<Box, 2>> &planes) {
-  for (int pass = 0; pass < 4; ++pass) {
-    bool grew = false;
-    for (const auto &p : planes) {
-      if (!overlaps(area, p[0]) && !overlaps(area, p[1])) continue;
-      const Box both = join(p[0], p[1]);
-      if (holds(area, both)) continue;
-      area = join(area, both);
-      grew = true;
-    }
-    if (!grew) break;
-  }
-  return area;
 }
 // A label's place beside its plane: to the right of the marker, its middle on the plane's height; to the left where the
 // right has no room; and kept inside the frame.
