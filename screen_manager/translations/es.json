@@ -2423,7 +2423,7 @@
           "auto": "Pantalla completa con botones",
           "clean": "Pantalla completa, solo mapa",
           "none": "Nada",
-          "auto_hint": "El mapa se abre en toda la pantalla con su botón de volver, su nombre y botones para mover y ampliar.",
+          "auto_hint": "El mapa se abre en toda la pantalla con su botón de volver, su nombre y botones para mover y ampliar. Toca el mapa para mostrarlas; se ocultan de nuevo cinco segundos después del último toque.",
           "clean_hint": "El mapa se abre en toda la pantalla sin nada encima. Tócalo de nuevo para cerrarlo.",
           "none_hint": "Tocar el mapa no hace nada."
         },

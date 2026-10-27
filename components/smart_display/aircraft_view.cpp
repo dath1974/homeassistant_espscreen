@@ -173,7 +173,8 @@ static void draw(lv_event_t *e) {
   const int32_t own = lv_obj_get_index(self), count = parent ? (int32_t) lv_obj_get_child_count(parent) : 0;
   for (int32_t n = own + 1; n < count; ++n) {
     lv_obj_t *above = lv_obj_get_child(parent, n);
-    if (!above || lv_obj_has_flag(above, LV_OBJ_FLAG_HIDDEN)) continue;
+    // Keys that come and go with a tap (LV_OBJ_FLAG_USER_1) keep their place hidden too, so the labels hold still.
+    if (!above || (lv_obj_has_flag(above, LV_OBJ_FLAG_HIDDEN) && !lv_obj_has_flag(above, LV_OBJ_FLAG_USER_1))) continue;
     lv_area_t k;
     lv_obj_get_coords(above, &k);
     const ap::Box box{k.x1 - a.x1, k.y1 - a.y1, lv_area_get_width(&k), lv_area_get_height(&k)};

@@ -2423,7 +2423,7 @@
           "auto": "Schermo intero con tasti",
           "clean": "Schermo intero, solo mappa",
           "none": "Niente",
-          "auto_hint": "La mappa si apre a tutto schermo con il tasto indietro, il nome e i tasti per spostarla e ingrandirla.",
+          "auto_hint": "La mappa si apre a tutto schermo con il tasto indietro, il nome e i tasti per spostarla e ingrandirla. Tocca la mappa per mostrarli; si nascondono di nuovo cinque secondi dopo l’ultimo tocco.",
           "clean_hint": "La mappa si apre a tutto schermo senza nulla sopra. Toccala di nuovo per chiuderla.",
           "none_hint": "Toccare la mappa non fa nulla."
         },
