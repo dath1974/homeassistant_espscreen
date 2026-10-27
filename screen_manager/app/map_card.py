@@ -1049,9 +1049,10 @@ def render(size, people, zones, tiles, framing='everyone', distance=DEFAULT_DIST
     if scope:
         if tiles:
             draw_scope_map(canvas, view, tiles, look, dpi_scale)
-        # Moved by the keys, the scope stands round the middle of the view they show, its rings at their zoom.
+        # Moved by the keys, the scope stands round the middle of the view they show, its rings at their zoom, and its
+        # circle keeps its size on the glass: the keys change its range, as a radar's range selector does (scope_range).
         draw_scope(canvas, view, (view.width / 2.0, view.height / 2.0) if move else view.point(*middle), scope, dpi_scale,
-                   full, circle[2] if circle else None)
+                   full, scope_range(circle[2], move) if circle else None)
         chart, circle = None, None
     elif chart:
         tiles = {}
@@ -1217,13 +1218,15 @@ def validate_radius(value):
 
 def circle_of(tile, states, size, board, registry=None, move=None):
     """(lat, lon, metres) of a map tile's distance `radius` round the middle it is framed on, or None without one. A
-    radar scope's full view moved by the keys (`move`) has it round the middle of the view they show, as render draws it."""
+    radar scope's full view moved by the keys (`move`) has it round the middle of the view they show, at the range the
+    keys chose (scope_range), as render draws it."""
     options = options_of(tile)
     if options['distance'] != 'radius' or options['framing'] == 'everyone':
         return None
     view = _framed(tile, states, size, board, registry, False, None)
     if move and scope_of(tile):
-        return (*moved(_framed(tile, states, size, board, registry, True, None), move).middle(), radius_of(tile))
+        return (*moved(_framed(tile, states, size, board, registry, True, None), move).middle(),
+                scope_range(radius_of(tile), move))
     return view.lat, view.lon, radius_of(tile)
 
 
@@ -1340,6 +1343,12 @@ def scope_of(tile):
     return options['scope'] if options['streets'] == 'radar' else None
 
 
+def scope_range(metres, move):
+    """The metres a radar scope's circle reaches on a full view moved by the keys: the same circle on the glass at every
+    zoom, so each step out doubles its range and each step in halves it."""
+    return metres * 2.0 ** -move[0] if move else metres
+
+
 def scope_rose(centre, size, dpi_scale, edge=None):
     """The radius of a scope's compass rose, the circle its beam turns in: the largest circle round the middle the frame
     holds whole, or the distance `radius`'s circle (`edge`, pixels) where the card has one inside it."""
@@ -1359,7 +1368,7 @@ def scope_middle(tile, states, size, board, registry=None, full=False, focus=Non
     x, y = (size[0] / 2.0, size[1] / 2.0) if move else view.point(framed.lat, framed.lon)
     # A person picked frames the view on them, without the circle (render); a plane picked (`air:`) keeps the view.
     person = full and focus and not str(focus).startswith('air:')
-    circle = circle_of(tile, states, size, board, registry) if not person else None
+    circle = circle_of(tile, states, size, board, registry, move) if not person else None
     edge = circle[2] / metres_per_pixel(view.lat, view.zoom) if circle else None
     return x, y, scope_rose((x, y), size, board.scale, edge)
 

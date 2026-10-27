@@ -105,15 +105,15 @@ class Drawing(unittest.TestCase):
         board, size = self.board, (400, 300)
         moved = map_card.scope_middle(tile(distance='region'), {}, size, board, full=True, move=(1, 50.0, -20.0))
         self.assertEqual(moved[:2], (200.0, 150.0), 'the middle of the view the keys show')
-        # The distance's circle keeps its metres round that middle: a step out draws it half as large, and the rose with
-        # it; a step closer it outgrows the glass, and the rose stays on the largest circle the glass holds.
+        # The distance's circle keeps its size on the glass whatever the zoom, as a radar's range selector: a step out
+        # doubles its range, a step in halves it, and the planes are cut at the range it shows.
         circled = tile(distance='radius', radius=10000)
         _, _, rose = map_card.scope_middle(circled, {}, size, board, full=True)
-        _, _, further = map_card.scope_middle(circled, {}, size, board, full=True, move=(-1, 0.0, 0.0))
-        _, _, closer = map_card.scope_middle(circled, {}, size, board, full=True, move=(1, 0.0, 0.0))
-        self.assertAlmostEqual(further, rose / 2, delta=1.0)
-        self.assertAlmostEqual(closer, 150 - 4, delta=0.5)
-        # And the planes are kept round it: the circle the app cuts them at is the one drawn.
+        for steps in (-2, -1, 1, 2):
+            _, _, then = map_card.scope_middle(circled, {}, size, board, full=True, move=(steps, 0.0, 0.0))
+            self.assertAlmostEqual(then, rose, delta=1.0)
+            self.assertAlmostEqual(map_card.circle_of(circled, {}, size, board, None, (steps, 0.0, 0.0))[2], 10000 * 2.0 ** -steps)
+        # And round the middle the keys moved it to: the circle the app cuts the planes at is the one drawn.
         lat, lon, metres = map_card.circle_of(circled, {}, size, board, None, (0, 120.0, 0.0))
         view = map_card.moved(map_card.view_for(circled, {}, size, board, full=True), (0, 120.0, 0.0))
         self.assertEqual(metres, 10000)
