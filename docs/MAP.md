@@ -46,7 +46,7 @@ middle, so each stays to be seen; the one a finger picked never moves.
 | **Zones** | Your zones as soft circles, or none. |
 | **Streets** | The streets from Home Assistant's map, or a plain ground with only the zones and people: nothing is fetched. |
 | **Look** | As the screen (light or dark with it), or always light, or always dark. |
-| **Tap** (map tile) | **Full screen with keys**: the full view above, with its back key, name and keys. **Full screen, map only**: the map over the whole screen with nothing over it, and a tap anywhere closes it. **Nothing**: a tap does nothing. |
+| **Tap** (map tile) | **Full screen with keys**: the full view above, with its name; its back key and keys come with a tap on the map and hide again five seconds after the last tap or key. **Full screen, map only**: the map over the whole screen with nothing over it, and a tap anywhere closes it. **Nothing**: a tap does nothing. |
 | **On the picture** | The tile's name on a small label at the bottom left, or nothing. |
 
 ## As Home Assistant does it
