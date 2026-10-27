@@ -629,6 +629,7 @@ inline void air_tiles_place(int only = -1);
 // Whether a full view covers the page, so its map cards take no planes meanwhile (air_tiles_place).
 inline bool air_covered();
 inline void air_tick(uint32_t now);
+inline void map_keys_tick(uint32_t now);
 // A page is being built off the glass (warm_page): its cards ask for no pictures and wake nothing.
 inline bool warming=false;
 constexpr unsigned POINT_BUFFER = 128;
