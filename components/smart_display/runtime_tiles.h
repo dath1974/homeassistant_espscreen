@@ -12165,6 +12165,8 @@ inline void map_tap_picked() {
 }
 inline void map_pick_plane(const std::string &id) {
   map_focus = id.empty() ? std::string() : aircraft_plan::PICKED + id;
+  // A plane picked has the glass to its card: the map's controls go, or stay away (map_sheet_draw places them).
+  if (!id.empty()) map_keys_up = false;
   aircraft_view::set_picked(air_full_view, id);
   map_sheet.focus.clear();
   map_sheet_draw();
@@ -12380,8 +12382,11 @@ inline void camera_open(const std::string &entity, const std::string &name, int 
   if (map_index >= 0 && !bare) lv_obj_add_event_cb(camera_root, [](lv_event_t *) {
     // With a plane picked: another plane picked, or the one picked let go (map_tap_picked), and nothing else.
     if (aircraft_plan::picks_plane(map_focus)) { map_tap_picked(); return; }
-    // A tap on the map brings its controls for MAP_KEYS_MS, or takes them away when they are up, and picks what it lands
-    // on either way.
+    // A plane under the finger is picked, and the controls go (map_pick_plane).
+    const std::string plane = map_plane_tapped();
+    if (!plane.empty()) { map_pick_plane(plane); return; }
+    // Anywhere else a tap brings the map's controls for MAP_KEYS_MS, or takes them away when they are up, and focuses
+    // the person or tracker it lands on.
     if (map_keys_up) map_keys_hide();
     else map_keys_wake();
     lv_point_t point;
@@ -12391,13 +12396,6 @@ inline void camera_open(const std::string &entity, const std::string &name, int 
     lv_indev_get_point(input, &point);
     lv_area_t area;
     lv_obj_get_coords(camera_picture, &area);
-    // A plane under the finger first (a full view's, aircraft_view::pick): picked, or let go when it is the one picked.
-    const std::string plane = aircraft_view::pick(air_full_view, point.x, point.y, ui::px(16));
-    if (!plane.empty()) {
-      map_pick_plane(aircraft_plan::picked_id(map_focus) == plane ? std::string() : plane);
-      return;
-    }
-    if (aircraft_plan::picks_plane(map_focus)) { map_pick_plane(""); return; }
     const int x = point.x - area.x1, y = point.y - area.y1;
     const MapSheet::Hit *best = nullptr;
     long nearest = 0;
