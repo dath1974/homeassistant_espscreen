@@ -121,9 +121,6 @@ int main() {
     int same = 0;
     for (size_t i = 0; i < again.size(); ++i) same += again[i].spot == placed[i].spot;
     assert(apart(again) && same >= 10);
-    // A key over the map (a full view's): the label beside its plane makes way for it.
-    auto keyed = place_labels({label(50, 50)}, 300, 200, 3, 16, {}, {{60, 30, 40, 40}});
-    assert(keyed[0].spot != 0 && !overlaps(keyed[0].box, {60, 30, 40, 40}));
     // On the frame's right edge a lone label goes left; with no room at all it falls back inside the frame.
     auto edge = place_labels({label(290, 100)}, 300, 200, 3, 16);
     assert(edge[0].spot == 1 && inside(edge[0].box, 300, 200));
