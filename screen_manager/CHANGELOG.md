@@ -19,7 +19,7 @@
   screen, and tap a plane there for its card: the airline and flight, the aircraft and its registration,
   its altitude and speed, and its squawk, following the plane on every report. You can also list up to eight aircraft
   to watch by registration or callsign, each in a colour of its own: a watched plane always shows, larger and ringed,
-  with its label. Labels keep clear of each other and of the map's keys, as on a radar display: one with no room
+  with its label. Labels keep clear of each other, as on a radar display: one with no room
   beside its plane moves into open space with a thin line back to it, and one with no room at all on a small card is
   left out. The map tile can show people and aircraft, only people, or only aircraft, and it can be centred on a place
   of your own instead of home: a latitude and longitude, or an airport's code such as KJFK, LAX or EGLL, from a list
