@@ -2428,7 +2428,7 @@
           "auto": "Pełny ekran z przyciskami",
           "clean": "Pełny ekran, tylko mapa",
           "none": "Nic",
-          "auto_hint": "Mapa otwiera się na cały ekran z przyciskiem wstecz, nazwą i przyciskami do przesuwania i powiększania.",
+          "auto_hint": "Mapa otwiera się na cały ekran z przyciskiem wstecz, nazwą i przyciskami do przesuwania i powiększania. Dotknij mapy, aby je pokazać; znikają pięć sekund po ostatnim dotknięciu.",
           "clean_hint": "Mapa otwiera się na cały ekran bez niczego na wierzchu. Dotknij jej ponownie, aby ją zamknąć.",
           "none_hint": "Dotknięcie mapy nic nie robi."
         },

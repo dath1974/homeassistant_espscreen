@@ -2053,7 +2053,7 @@
           "auto": "Volledig scherm met knoppen",
           "clean": "Volledig scherm, alleen kaart",
           "none": "Niets",
-          "auto_hint": "De kaart opent over het hele scherm met de terugknop, de naam en knoppen om te verschuiven en te zoomen.",
+          "auto_hint": "De kaart opent over het hele scherm met de terugknop, de naam en knoppen om te verschuiven en te zoomen. Tik op de kaart om ze te tonen; vijf seconden na de laatste tik verdwijnen ze weer.",
           "clean_hint": "De kaart opent over het hele scherm zonder iets erover. Tik nogmaals om haar te sluiten.",
           "none_hint": "Tikken op de kaart doet niets."
         },

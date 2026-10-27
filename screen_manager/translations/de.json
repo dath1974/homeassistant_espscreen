@@ -2428,7 +2428,7 @@
           "auto": "Vollbild mit Tasten",
           "clean": "Vollbild, nur Karte",
           "none": "Nichts",
-          "auto_hint": "Die Karte öffnet sich über den ganzen Bildschirm, mit Zurück-Taste, Namen und Tasten zum Verschieben und Zoomen.",
+          "auto_hint": "Die Karte öffnet sich über den ganzen Bildschirm, mit Zurück-Taste, Namen und Tasten zum Verschieben und Zoomen. Tippe auf die Karte, um sie einzublenden; fünf Sekunden nach dem letzten Tippen verschwinden sie wieder.",
           "clean_hint": "Die Karte öffnet sich über den ganzen Bildschirm, ohne etwas darüber. Tippe erneut, um sie zu schließen.",
           "none_hint": "Ein Tippen auf die Karte bewirkt nichts."
         },
