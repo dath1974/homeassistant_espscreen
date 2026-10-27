@@ -12080,18 +12080,15 @@ inline void map_sheet_draw() {
   }
   map_card_obj = effects_page::card(camera_root, side + m.pad, y, w, h, scope ? 0 : m.radius);
   lv_obj_add_flag(map_card_obj, LV_OBJ_FLAG_CLICKABLE);  // a finger on the card is no finger on the map
-<<<<<<< HEAD
   if (scope) {
     lv_obj_set_style_bg_color(map_card_obj, aircraft_view::ground(air_full), 0);
     lv_obj_set_style_bg_opa(map_card_obj, LV_OPA_90, 0);
     lv_obj_set_style_border_color(map_card_obj, aircraft_view::phosphor(air_full, 0.45f), 0);
   }
-=======
   // A plane's card closes with a tap on it too, letting go of the plane, as a tap anywhere else does.
   if (plane) lv_obj_add_event_cb(map_card_obj, [](lv_event_t *) {
     if (aircraft_plan::picks_plane(map_focus)) lv_async_call([](void *) { map_pick_plane(""); }, nullptr);
   }, LV_EVENT_SHORT_CLICKED, nullptr);
->>>>>>> chart-maps
   const int top = plane ? ui::px(ui::large() ? 4 : 2) : 0;
   for (int n = 0; n < rows; ++n) {
     const auto &row = map_sheet.rows[n];
