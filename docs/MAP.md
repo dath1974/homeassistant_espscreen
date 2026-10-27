@@ -47,7 +47,7 @@ middle, so each stays to be seen; the one a finger picked never moves.
 | **Base map** | The streets from Home Assistant's map, a plain ground with only the zones and people (nothing is fetched), or a chart of the United States: the FAA's VFR sectional, IFR low or IFR high enroute chart, or the USGS topographic map. See "Charts". Or **Radar scope**, see "Radar". |
 | **Phosphor** (radar scope) | The scope's colour: green, amber, blue or white. |
 | **Look** | As the screen (light or dark with it), or always light, or always dark. A radar scope has none. |
-| **Tap** (map tile) | **Full screen with keys**: the full view above, with its back key, name and keys. **Full screen, map only**: the map over the whole screen with nothing over it, and a tap anywhere closes it. **Nothing**: a tap does nothing. |
+| **Tap** (map tile) | **Full screen with keys**: the full view above, with its name; its back key and keys come with a tap on the map and hide again five seconds after the last tap or key. **Full screen, map only**: the map over the whole screen with nothing over it, and a tap anywhere closes it. **Nothing**: a tap does nothing. |
 | **On the picture** | The tile's name on a small label at the bottom left, or nothing. |
 
 ## As Home Assistant does it
