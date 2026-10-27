@@ -166,23 +166,7 @@ static void draw(lv_event_t *e) {
     l.w = w + 2 * s.pad;
     l.h = (int) rows[i].size() * line_h + s.pad;
   }
-  // What lies over the planes (a full view's keys, its back key and name): the shown siblings above this layer, save one
-  // as large as half the picture, which would block every spot alike.
-  std::vector<ap::Box> blocked;
-  lv_obj_t *self = lv_event_get_target_obj(e), *parent = lv_obj_get_parent(self);
-  const int32_t own = lv_obj_get_index(self), count = parent ? (int32_t) lv_obj_get_child_count(parent) : 0;
-  for (int32_t n = own + 1; n < count; ++n) {
-    lv_obj_t *above = lv_obj_get_child(parent, n);
-    // Keys that come and go with a tap (LV_OBJ_FLAG_USER_1) keep their place hidden too, so the labels hold still.
-    if (!above || (lv_obj_has_flag(above, LV_OBJ_FLAG_HIDDEN) && !lv_obj_has_flag(above, LV_OBJ_FLAG_USER_1))) continue;
-    lv_area_t k;
-    lv_obj_get_coords(above, &k);
-    const ap::Box box{k.x1 - a.x1, k.y1 - a.y1, lv_area_get_width(&k), lv_area_get_height(&k)};
-    if ((long) box.w * box.h * 2 >= (long) frame_w * frame_h) continue;
-    if (box.x + box.w <= 0 || box.y + box.h <= 0 || box.x >= frame_w || box.y >= frame_h) continue;
-    blocked.push_back(box);
-  }
-  const std::vector<ap::Placed> placed = ap::place_labels(labels, frame_w, frame_h, s.gap, line_h, view->spots, blocked);
+  const std::vector<ap::Placed> placed = ap::place_labels(labels, frame_w, frame_h, s.gap, line_h, view->spots);
   view->spots.assign(placed.size(), ap::NO_SPOT);
   for (size_t i = 0; i < placed.size(); ++i) view->spots[i] = placed[i].spot;
   // The leaders under every label: a halo of the card's colour, then the plane's own.
