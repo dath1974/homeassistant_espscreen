@@ -101,12 +101,28 @@ class Drawing(unittest.TestCase):
         self.assertTrue(all(abs(a - b) <= 4 for a, b in zip(image.getpixel((4, 4)), ground)), image.getpixel((4, 4)))
         self.assertGreater(image.getpixel((150, 120))[1], image.getpixel((4, 4))[1])
 
-    def test_the_middle_follows_the_keys(self):
+    def test_moved_by_the_keys_the_scope_stands_round_the_new_middle(self):
         board, size = self.board, (400, 300)
-        framed = map_card.scope_middle(tile(distance='region'), {}, size, board, full=True)
-        moved = map_card.scope_middle(tile(distance='region'), {}, size, board, full=True, move=(0, 50.0, -20.0))
-        self.assertAlmostEqual(moved[0], framed[0] - 50, places=3)
-        self.assertAlmostEqual(moved[1], framed[1] + 20, places=3)
+        moved = map_card.scope_middle(tile(distance='region'), {}, size, board, full=True, move=(1, 50.0, -20.0))
+        self.assertEqual(moved[:2], (200.0, 150.0), 'the middle of the view the keys show')
+        # The distance's circle keeps its metres round that middle: a step out draws it half as large, and the rose with
+        # it; a step closer it outgrows the glass, and the rose stays on the largest circle the glass holds.
+        circled = tile(distance='radius', radius=10000)
+        _, _, rose = map_card.scope_middle(circled, {}, size, board, full=True)
+        _, _, further = map_card.scope_middle(circled, {}, size, board, full=True, move=(-1, 0.0, 0.0))
+        _, _, closer = map_card.scope_middle(circled, {}, size, board, full=True, move=(1, 0.0, 0.0))
+        self.assertAlmostEqual(further, rose / 2, delta=1.0)
+        self.assertAlmostEqual(closer, 150 - 4, delta=0.5)
+        # And the planes are kept round it: the circle the app cuts them at is the one drawn.
+        lat, lon, metres = map_card.circle_of(circled, {}, size, board, None, (0, 120.0, 0.0))
+        view = map_card.moved(map_card.view_for(circled, {}, size, board, full=True), (0, 120.0, 0.0))
+        self.assertEqual(metres, 10000)
+        x, y = view.point(lat, lon)
+        self.assertAlmostEqual(x, 200.0, delta=0.5)
+        self.assertAlmostEqual(y, 150.0, delta=0.5)
+        # A map of streets keeps its circle round the middle it was framed on, wherever the keys moved it.
+        streets = {**circled, 'options': {**circled['options'], 'streets': 'show'}}
+        self.assertEqual(map_card.circle_of(streets, {}, size, board, None, (0, 120.0, 0.0)), map_card.circle_of(streets, {}, size, board))
         self.assertIsNone(map_card.scope_middle(tile(streets='show'), {}, size, board))
 
     def test_the_rose_is_the_circle_the_beam_turns_in(self):

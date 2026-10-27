@@ -138,7 +138,8 @@ class Study(map_tiles.Study):
             options = aircraft.options_of(tile)
             planes = aircraft.overlay(view, aircraft.flights_of(map_tiles.STATES[SOURCE]), options, self.tracks, SOURCE, size,
                                       self.board.scale, full, False, self.now,
-                                      circle=map_card.circle_of(tile, map_tiles.STATES, size, self.board),
+                                      circle=map_card.circle_of(tile, map_tiles.STATES, size, self.board, None,
+                                                                map_card.move_of(move) if full else None),
                                       radar=bool(map_card.scope_of(tile)))
             middle = map_card.scope_middle(tile, map_tiles.STATES, size, self.board, None, full, data.get('focus') or None,
                                            map_card.move_of(move) if full else None)
