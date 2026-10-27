@@ -125,8 +125,9 @@ inline Box label_box(Point c, int reach, int w, int h, int frame_w, int frame_h,
 // and below, then the same eight directions on rings `step` further out (LABEL_RINGS of them). Watched planes are
 // placed first, then the rest in the app's order. A label with no clear spot is left out (`shown` false), as a pile of
 // text helps nobody on a small card and the full view has room for it; a watched plane's takes the spot it overlaps
-// least instead, so its label always shows. A label keeps the spot it had (`kept`) while that spot stays clear, so labels hold still while their
-// planes glide. `blocked`: what lies over the planes on the glass (a full view's keys), kept clear the same way.
+// least instead, so its label always shows. A label keeps the spot it had (`kept`) while that spot stays clear, so
+// labels hold still while their planes glide. What lies over the planes (a full view's keys) is no concern of theirs:
+// they lie under it, as the planes do.
 constexpr int LABEL_DIRECTIONS = 8, LABEL_RINGS = 6, LABEL_SPOTS = LABEL_DIRECTIONS * (LABEL_RINGS + 1), NO_SPOT = -1;
 
 struct Label {
@@ -168,7 +169,7 @@ inline Box spot_box(const Label &l, int spot, int gap, int step) {
 }
 
 inline std::vector<Placed> place_labels(const std::vector<Label> &labels, int frame_w, int frame_h, int gap, int step,
-                                        const std::vector<int> &kept = {}, const std::vector<Box> &blocked = {}) {
+                                        const std::vector<int> &kept = {}) {
   std::vector<Placed> out(labels.size());
   std::vector<Box> markers;
   markers.reserve(labels.size());
@@ -189,7 +190,6 @@ inline std::vector<Placed> place_labels(const std::vector<Label> &labels, int fr
     auto cost = [&](const Box &b) {
       long sum = 0;
       for (const auto &p : placed) sum += overlap_area(b, p);
-      for (const auto &k : blocked) sum += overlap_area(b, k);
       for (size_t m = 0; m < markers.size(); ++m) if (m != i) sum += overlap_area(b, markers[m]);
       return sum;
     };
