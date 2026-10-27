@@ -90,6 +90,13 @@ class View:
         x, y = world(lat, lon, self.zoom)
         return x - self.left, y - self.top
 
+    def middle(self):
+        """(lat, lon) of the middle of the frame, wherever the keys moved it."""
+        size = TILE_PX * 2 ** self.zoom
+        x, y = self.left + self.width / 2.0, self.top + self.height / 2.0
+        lat = math.degrees(math.atan(math.sinh(math.pi - 2 * math.pi * y / size)))
+        return lat, x / size * 360.0 - 180.0
+
     def inside(self, lat, lon, margin=0):
         x, y = self.point(lat, lon)
         return margin <= x <= self.width - margin and margin <= y <= self.height - margin
@@ -1042,7 +1049,9 @@ def render(size, people, zones, tiles, framing='everyone', distance=DEFAULT_DIST
     if scope:
         if tiles:
             draw_scope_map(canvas, view, tiles, look, dpi_scale)
-        draw_scope(canvas, view, view.point(*middle), scope, dpi_scale, full, circle[2] if circle else None)
+        # Moved by the keys, the scope stands round the middle of the view they show, its rings at their zoom.
+        draw_scope(canvas, view, (view.width / 2.0, view.height / 2.0) if move else view.point(*middle), scope, dpi_scale,
+                   full, circle[2] if circle else None)
         chart, circle = None, None
     elif chart:
         tiles = {}
@@ -1206,12 +1215,15 @@ def validate_radius(value):
     return value
 
 
-def circle_of(tile, states, size, board, registry=None):
-    """(lat, lon, metres) of a map tile's distance `radius` round the middle it is framed on, or None without one."""
+def circle_of(tile, states, size, board, registry=None, move=None):
+    """(lat, lon, metres) of a map tile's distance `radius` round the middle it is framed on, or None without one. A
+    radar scope's full view moved by the keys (`move`) has it round the middle of the view they show, as render draws it."""
     options = options_of(tile)
     if options['distance'] != 'radius' or options['framing'] == 'everyone':
         return None
     view = _framed(tile, states, size, board, registry, False, None)
+    if move and scope_of(tile):
+        return (*moved(_framed(tile, states, size, board, registry, True, None), move).middle(), radius_of(tile))
     return view.lat, view.lon, radius_of(tile)
 
 
@@ -1329,10 +1341,11 @@ def scope_of(tile):
 
 
 def scope_rose(centre, size, dpi_scale, edge=None):
-    """The radius of a scope's compass rose, the circle its beam turns in: the distance `radius`'s circle (`edge`, pixels)
-    where the card has one, else the largest circle round the middle the frame holds whole."""
+    """The radius of a scope's compass rose, the circle its beam turns in: the largest circle round the middle the frame
+    holds whole, or the distance `radius`'s circle (`edge`, pixels) where the card has one inside it."""
     cx, cy = centre
-    return edge if edge else min(cx, size[0] - cx, cy, size[1] - cy) - 4 * dpi_scale
+    whole = min(cx, size[0] - cx, cy, size[1] - cy) - 4 * dpi_scale
+    return min(edge, whole) if edge else whole
 
 
 def scope_middle(tile, states, size, board, registry=None, full=False, focus=None, move=None):
@@ -1341,8 +1354,9 @@ def scope_middle(tile, states, size, board, registry=None, full=False, focus=Non
     if not scope_of(tile):
         return None
     framed = _framed(tile, states, size, board, registry, full, focus if full else None)
-    view = moved(framed, move if full else None)
-    x, y = view.point(framed.lat, framed.lon)
+    move = move if full else None
+    view = moved(framed, move)
+    x, y = (size[0] / 2.0, size[1] / 2.0) if move else view.point(framed.lat, framed.lon)
     # A person picked frames the view on them, without the circle (render); a plane picked (`air:`) keeps the view.
     person = full and focus and not str(focus).startswith('air:')
     circle = circle_of(tile, states, size, board, registry) if not person else None

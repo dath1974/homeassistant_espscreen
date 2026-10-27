@@ -3942,7 +3942,8 @@ class Manager:
             planes = aircraft.overlay(view, aircraft.flights_of(self.ha.states.get(source)), options, self.air_tracks, source,
                                       card['size'], board.scale, card['full'], metric, number=i18n.screen_number,
                                       suffix=i18n.unit_suffix,
-                                      circle=map_card.circle_of(tile, self.ha.states, card['size'], board, self.registry_index()),
+                                      circle=map_card.circle_of(tile, self.ha.states, card['size'], board, self.registry_index(),
+                                                                card['move'] if card['full'] else None),
                                       radar=bool(map_card.scope_of(tile)))
         finally:
             i18n.SCREEN.reset(token)
