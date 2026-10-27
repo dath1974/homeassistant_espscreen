@@ -11163,10 +11163,27 @@ inline void air_full_place() {
   aircraft_view::set_hidden(air_full_view, false);
 }
 inline void map_sheet_draw();
-// The name over a map's full view: ink on the card's colour, or over a radar scope its phosphor on its ground.
+// A round key over a map: the ink, see-through, with a glyph in the card's colour; over a radar scope its ground with a
+// ring and a glyph of its phosphor, lit dimly while pressed. Set only when it changes: each set draws the key again.
+inline void map_key_paint(lv_obj_t *key, bool scope) {
+  if (!key) return;
+  const lv_color_t bg = scope ? aircraft_view::ground(air_full) : theme::color(theme::INK);
+  if (lv_color_eq(lv_obj_get_style_bg_color(key, LV_PART_MAIN), bg)) return;
+  lv_obj_set_style_bg_color(key, bg, 0);
+  lv_obj_set_style_bg_opa(key, scope ? LV_OPA_80 : LV_OPA_70, 0);
+  lv_obj_set_style_bg_color(key, scope ? aircraft_view::phosphor(air_full, 0.35f) : theme::color(theme::INK), LV_STATE_PRESSED);
+  lv_obj_set_style_border_width(key, scope ? std::max(1, ui::px(1)) : 0, 0);
+  lv_obj_set_style_border_color(key, aircraft_view::phosphor(air_full, 0.45f), 0);
+  if (lv_obj_t *glyph = lv_obj_get_child(key, 0))
+    lv_obj_set_style_text_color(glyph, scope ? aircraft_view::phosphor(air_full, 1.0f) : theme::color(theme::CARD), 0);
+}
+// The name and the keys over a map's full view: the card's colours, or over a radar scope its phosphor on its ground.
 inline void map_title_paint() {
   if (!camera_title || camera_map_index < 0) return;
   const bool scope = air_full.radar.on && air_full.index == camera_map_index;
+  map_key_paint(camera_back, scope);
+  for (lv_obj_t *group : {map_zoom_keys, map_pad})
+    if (group) for (uint32_t n = 0; n < lv_obj_get_child_count(group); ++n) map_key_paint(lv_obj_get_child(group, n), scope);
   const lv_color_t ink = scope ? aircraft_view::phosphor(air_full, 1.0f) : theme::color(theme::INK);
   const lv_color_t ground = scope ? aircraft_view::ground(air_full) : theme::color(theme::CARD);
   // Set only when they change: each set draws the name again.
@@ -12205,6 +12222,7 @@ inline void map_keys_create() {
     lv_obj_set_pos(map_waiting, overlay_card::screen_width() - b.x - (b.key + spin) / 2, b.y + (b.key - spin) / 2);
     lv_obj_add_flag(map_waiting, LV_OBJ_FLAG_HIDDEN);
   }
+  map_title_paint();
   map_keys_place();
 }
 // Over the bottom of the map, clear of its attribution; above a picked one's card, or hidden where there is no room.
