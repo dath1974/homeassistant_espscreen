@@ -111,11 +111,16 @@ of open water, the water itself a breath lighter, the motorways, and the main ro
 are left out, so a low country does not fill the scope with lines. Every few rows of the picture are a shade darker, as
 the lines of a tube are. The card carries "OpenStreetMap" when the street tiles came.
 
+On the full view the keys work the scope as a radar's controls do. Moved, it stands round the middle of the view they
+show, its rings at their spacing for the new zoom. Zoomed, the radius's circle keeps its size on the glass and its range
+changes: each step out doubles it and each step in halves it, and the planes are kept to the range it shows. The Radius
+setting is the range the full view opens at, and the range of the card on the page.
+
 The aircraft over a scope take its style (the `r` of op "air": the phosphor and the scope's middle on the picture).
 Colour by altitude becomes the phosphor's brightness, dim on the ground and low down and brightest at the top, and One
-colour is the phosphor's glow; watched aircraft keep their own colours. Each plane is a small blip, half the size of a street map's marker. The
-arrow marker becomes a vector to where the plane will be in a minute, which the app sends even when planes hold
-between reports. A track is the plane's history, a dot at each place it was with the older ones fainter, and a label
+colour is the phosphor's glow; watched aircraft keep their own colours. Each plane is a small blip, half the size of a
+street map's marker. The arrow marker becomes a vector to where the plane will be in a minute, which the app sends even
+when planes hold between reports. A track is the plane's history, a dot at each place it was with the older ones fainter, and a label
 is a square data block in the plane's own phosphor.
 
 On the full view a beam can turn (Sweep, under Aircraft): once every four seconds, clockwise from north, out to the
