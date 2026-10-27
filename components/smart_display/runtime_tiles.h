@@ -11105,8 +11105,7 @@ inline MapMove map_move, map_move_shown;
 inline lv_obj_t *map_zoom_keys = nullptr, *map_pad = nullptr;  // + and - at the right, the four arrows at the left
 // The controls over a map's full view (its name, the back key, zoom, the arrows) come with a tap on the map, go with the
 // next one, and go by themselves MAP_KEYS_MS after it or the last key pressed, so the map has the glass to itself. A tap
-// on a plane or a person picks it either way. Their places stay kept from the labels of its planes meanwhile
-// (LV_OBJ_FLAG_USER_1, aircraft_view.cpp), so the labels hold still as the controls come and go.
+// on a plane or a person picks it either way. The planes and their labels lie under them.
 constexpr uint32_t MAP_KEYS_MS = 5000;
 inline bool map_keys_up = false;
 inline uint32_t map_keys_at = 0;
@@ -12183,7 +12182,6 @@ inline void map_keys_create() {
     lv_obj_remove_style_all(box);
     lv_obj_set_size(box, w, h);
     lv_obj_remove_flag(box, static_cast<lv_obj_flag_t>(LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_CLICKABLE));  // a finger beside a key is on the map
-    lv_obj_add_flag(box, LV_OBJ_FLAG_USER_1);  // its place kept from the planes' labels while it is hidden
     return box;
   };
   auto key = [&](lv_obj_t *box, int x, int y, const char *glyph, int k) {
@@ -12288,7 +12286,6 @@ inline void camera_open(const std::string &entity, const std::string &name, int 
   const int bar = home.h, bar_y = home.y;
   camera_back = view_key(camera_root, bar, detail_bar::BACK, map_index >= 0);
   lv_obj_set_pos(camera_back, home.x, home.y);
-  if (map_index >= 0 && !bare) lv_obj_add_flag(camera_back, LV_OBJ_FLAG_USER_1);  // comes and goes with the map's keys
   lv_obj_add_event_cb(camera_back, [](lv_event_t *) {
     // A map focused on someone goes back to everyone first (firmware 0.21.0+), a plane picked to none; then the key
     // closes the view.
@@ -12370,10 +12367,7 @@ inline void camera_open(const std::string &entity, const std::string &name, int 
     lv_obj_set_style_max_width(camera_title, detail_bar::middle(camera_root).w, 0);
     lv_obj_set_size(camera_title, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
     lv_obj_align(camera_title, LV_ALIGN_TOP_MID, 0, bar_y);
-    if (!bare) {
-      lv_obj_add_flag(camera_title, LV_OBJ_FLAG_USER_1);  // comes and goes with the map's keys
-      map_keys_create();
-    }
+    if (!bare) map_keys_create();
   }
   if (bare) lv_obj_add_flag(camera_title, LV_OBJ_FLAG_HIDDEN);
   ESP_LOGI("camera", "open %s", entity.c_str());
