@@ -138,8 +138,8 @@ hour.
 **A plane's card.** On the full view, tap a plane to pick it: it gets a ring, the top bar takes its callsign, and a card
 shows what the sensor knows of it, as many rows as the screen has room for: the airline and flight, the route, the
 aircraft and its registration, its altitude (with an arrow for climbing or descending) and speed, and its squawk. The view
-stays as it is, and the card follows the plane on every report; it goes to the top when the plane is under it. Tap the
-plane again, the map beside it or the back key to let it go.
+stays as it is, and the card follows the plane on every report; it goes to the top when the plane is under it. A tap
+anywhere then lets it go and closes the card: on the map, on another plane, on the card itself, or the back key.
 
 **How fresh it is.** A plane is as recent as the sensor's last report. Flightradar24 updates as often as its scan
 interval in the integration's options, and it limits requests that come too often, so every 10 to 15 seconds is a
