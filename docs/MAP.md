@@ -185,7 +185,8 @@ No place reaches the screen, as with the people on the map.
 Altitudes and speeds on the labels follow Home Assistant's unit system: feet and knots, or meters and kilometers per
 hour.
 
-**A plane's card.** On the full view, tap a plane to pick it: it gets a ring, the top bar takes its callsign, and a card
+**A plane's card.** On the full view, tap a plane to pick it, with the map's controls up or not (they go): it gets a
+ring, the top bar takes its callsign, and a card
 shows what the sensor knows of it, as many rows as the screen has room for: the airline and flight, the route, the
 aircraft and its registration, its altitude (with an arrow for climbing or descending) and speed, and its squawk. The view
 stays as it is, and the card follows the plane on every report; it goes to the top when the plane is under it. A tap on
