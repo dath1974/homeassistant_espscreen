@@ -11103,9 +11103,10 @@ struct MapMove {
 constexpr int MAP_ZOOM_OUT = -8, MAP_ZOOM_IN = 5;
 inline MapMove map_move, map_move_shown;
 inline lv_obj_t *map_zoom_keys = nullptr, *map_pad = nullptr;  // + and - at the right, the four arrows at the left
-// The keys over a map's full view (back, zoom, the arrows) come with a tap on the map and go MAP_KEYS_MS after it or the
-// last key pressed, so the map has the glass to itself. Their places stay kept from the labels of its planes meanwhile
-// (LV_OBJ_FLAG_USER_1, aircraft_view.cpp), so the labels hold still as the keys come and go.
+// The controls over a map's full view (its name, the back key, zoom, the arrows) come with a tap on the map, go with the
+// next one, and go by themselves MAP_KEYS_MS after it or the last key pressed, so the map has the glass to itself. A tap
+// on a plane or a person picks it either way. Their places stay kept from the labels of its planes meanwhile
+// (LV_OBJ_FLAG_USER_1, aircraft_view.cpp), so the labels hold still as the controls come and go.
 constexpr uint32_t MAP_KEYS_MS = 5000;
 inline bool map_keys_up = false;
 inline uint32_t map_keys_at = 0;
@@ -11113,6 +11114,10 @@ inline void map_keys_place();
 inline void map_keys_wake() {
   map_keys_up = true;
   map_keys_at = esphome::millis();
+  map_keys_place();
+}
+inline void map_keys_hide() {
+  map_keys_up = false;
   map_keys_place();
 }
 inline void map_keys_tick(uint32_t now) {
@@ -12208,10 +12213,11 @@ inline void map_keys_create() {
 // Over the bottom of the map, clear of its attribution; above a picked one's card, or hidden where there is no room.
 inline void map_keys_place() {
   if (!camera_root || !map_zoom_keys || !map_pad) return;
-  // Not up: hidden, back key and all, until a tap on the map (map_keys_wake).
-  if (camera_back) {
-    if (map_keys_up) lv_obj_remove_flag(camera_back, LV_OBJ_FLAG_HIDDEN);
-    else lv_obj_add_flag(camera_back, LV_OBJ_FLAG_HIDDEN);
+  // Not up: hidden, name, back key and all, until a tap on the map (map_keys_wake).
+  for (lv_obj_t *own : {camera_back, camera_title}) {
+    if (!own) continue;
+    if (map_keys_up) lv_obj_remove_flag(own, LV_OBJ_FLAG_HIDDEN);
+    else lv_obj_add_flag(own, LV_OBJ_FLAG_HIDDEN);
   }
   if (!map_keys_up) {
     lv_obj_add_flag(map_zoom_keys, LV_OBJ_FLAG_HIDDEN);
@@ -12313,8 +12319,10 @@ inline void camera_open(const std::string &entity, const std::string &name, int 
   }
   // A finger on a map's marker focuses that person or tracker, on the map beside it everyone again (firmware 0.21.0+).
   if (map_index >= 0 && !bare) lv_obj_add_event_cb(camera_root, [](lv_event_t *) {
-    // Every tap on the map brings its keys for MAP_KEYS_MS, and still picks what it lands on.
-    map_keys_wake();
+    // A tap on the map brings its controls for MAP_KEYS_MS, or takes them away when they are up, and picks what it lands
+    // on either way.
+    if (map_keys_up) map_keys_hide();
+    else map_keys_wake();
     lv_point_t point;
     lv_indev_t *input = lv_indev_active();
     // The markers are where the picture on the glass has them only once it shows what the keys asked for.
@@ -12362,7 +12370,10 @@ inline void camera_open(const std::string &entity, const std::string &name, int 
     lv_obj_set_style_max_width(camera_title, detail_bar::middle(camera_root).w, 0);
     lv_obj_set_size(camera_title, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
     lv_obj_align(camera_title, LV_ALIGN_TOP_MID, 0, bar_y);
-    if (!bare) map_keys_create();
+    if (!bare) {
+      lv_obj_add_flag(camera_title, LV_OBJ_FLAG_USER_1);  // comes and goes with the map's keys
+      map_keys_create();
+    }
   }
   if (bare) lv_obj_add_flag(camera_title, LV_OBJ_FLAG_HIDDEN);
   ESP_LOGI("camera", "open %s", entity.c_str());

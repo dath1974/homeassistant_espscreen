@@ -2423,7 +2423,7 @@
           "auto": "Teljes képernyő gombokkal",
           "clean": "Teljes képernyő, csak térkép",
           "none": "Semmi",
-          "auto_hint": "A térkép a teljes képernyőn nyílik meg, vissza gombbal, névvel és mozgató, nagyító gombokkal. Koppints a térképre a megjelenítésükhöz; az utolsó koppintás után öt másodperccel eltűnnek.",
+          "auto_hint": "A térkép a teljes képernyőn nyílik meg. Koppints rá a nevéért, a vissza gombért és a mozgató- és nagyítógombokért, újra az elrejtésükhöz; különben az utolsó koppintás után öt másodperccel eltűnnek.",
           "clean_hint": "A térkép a teljes képernyőn nyílik meg, semmi sincs fölötte. Koppints rá újra a bezáráshoz.",
           "none_hint": "A térképre koppintás nem csinál semmit."
         },

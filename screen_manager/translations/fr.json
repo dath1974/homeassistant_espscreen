@@ -2423,7 +2423,7 @@
           "auto": "Plein écran avec boutons",
           "clean": "Plein écran, carte seule",
           "none": "Rien",
-          "auto_hint": "La carte s'ouvre sur tout l'écran avec son bouton retour, son nom et des boutons pour la déplacer et zoomer. Touchez la carte pour les afficher ; elles se masquent cinq secondes après le dernier appui.",
+          "auto_hint": "La carte s’ouvre en plein écran. Touchez-la pour afficher son nom, la touche retour et les touches pour déplacer et zoomer, et à nouveau pour les masquer ; sinon elles se masquent cinq secondes après le dernier appui.",
           "clean_hint": "La carte s'ouvre sur tout l'écran sans rien par-dessus. Touchez-la à nouveau pour la fermer.",
           "none_hint": "Toucher la carte ne fait rien."
         },
