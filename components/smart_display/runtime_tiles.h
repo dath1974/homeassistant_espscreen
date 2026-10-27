@@ -12085,7 +12085,7 @@ inline void map_sheet_draw() {
     lv_obj_set_style_bg_opa(map_card_obj, LV_OPA_90, 0);
     lv_obj_set_style_border_color(map_card_obj, aircraft_view::phosphor(air_full, 0.45f), 0);
   }
-  // A plane's card closes with a tap on it too, letting go of the plane, as a tap anywhere else does.
+  // A plane's card closes with a tap on it too, letting go of the plane, as a tap on the map does.
   if (plane) lv_obj_add_event_cb(map_card_obj, [](lv_event_t *) {
     if (aircraft_plan::picks_plane(map_focus)) lv_async_call([](void *) { map_pick_plane(""); }, nullptr);
   }, LV_EVENT_SHORT_CLICKED, nullptr);
@@ -12149,6 +12149,20 @@ inline void map_preview() {
 }
 // Pick a plane (or none with ""): the view stays as it is, the plane is ringed at once, and its card comes with the
 // planes' next message and the picture's answer, then with every report.
+// The plane under the finger that just tapped a full view, "" for none.
+inline std::string map_plane_tapped() {
+  lv_indev_t *input = lv_indev_active();
+  if (!input) return "";
+  lv_point_t point;
+  lv_indev_get_point(input, &point);
+  return aircraft_view::pick(air_full_view, point.x, point.y, ui::px(16));
+}
+// With a plane picked, a tap on another plane picks that one, and any other tap (the map, the plane picked, its card)
+// lets go of it and closes its card, and does nothing else.
+inline void map_tap_picked() {
+  const std::string other = map_plane_tapped();
+  map_pick_plane(!other.empty() && other != aircraft_plan::picked_id(map_focus) ? other : std::string());
+}
 inline void map_pick_plane(const std::string &id) {
   map_focus = id.empty() ? std::string() : aircraft_plan::PICKED + id;
   aircraft_view::set_picked(air_full_view, id);
@@ -12343,11 +12357,11 @@ inline void camera_open(const std::string &entity, const std::string &name, int 
     lv_async_call([](void *) { camera_close(); }, nullptr);
   }, LV_EVENT_SHORT_CLICKED, nullptr);
   // A bare map (the map tile's tap `clean`) has nothing over it: no back key, no name, no keys; a tap anywhere closes it,
-  // but one on a plane picks it, and the next, wherever it lands, lets go of it before one closes the view.
+  // but one on a plane picks it, and the next lets go of it (or picks another plane) before one closes the view.
   if (bare) {
     lv_obj_add_flag(camera_back, LV_OBJ_FLAG_HIDDEN);
     lv_obj_add_event_cb(camera_root, [](lv_event_t *) {
-      if (aircraft_plan::picks_plane(map_focus)) { map_pick_plane(""); return; }
+      if (aircraft_plan::picks_plane(map_focus)) { map_tap_picked(); return; }
       lv_point_t point;
       lv_indev_t *input = lv_indev_active();
       if (input) {
@@ -12364,8 +12378,8 @@ inline void camera_open(const std::string &entity, const std::string &name, int 
   }
   // A finger on a map's marker focuses that person or tracker, on the map beside it everyone again (firmware 0.21.0+).
   if (map_index >= 0 && !bare) lv_obj_add_event_cb(camera_root, [](lv_event_t *) {
-    // With a plane picked, a tap anywhere lets go of it and closes its card, and does nothing else.
-    if (aircraft_plan::picks_plane(map_focus)) { map_pick_plane(""); return; }
+    // With a plane picked: another plane picked, or the one picked let go (map_tap_picked), and nothing else.
+    if (aircraft_plan::picks_plane(map_focus)) { map_tap_picked(); return; }
     // A tap on the map brings its controls for MAP_KEYS_MS, or takes them away when they are up, and picks what it lands
     // on either way.
     if (map_keys_up) map_keys_hide();
