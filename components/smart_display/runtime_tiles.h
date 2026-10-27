@@ -11186,6 +11186,7 @@ inline void air_full_place() {
   aircraft_view::set_hidden(air_full_view, false);
 }
 inline void map_sheet_draw();
+inline void map_pick_plane(const std::string &id);
 // A round key over a map: the ink, see-through, with a glyph in the card's colour; over a radar scope its ground with a
 // ring and a glyph of its phosphor, lit dimly while pressed. Set only when it changes: each set draws the key again.
 inline void map_key_paint(lv_obj_t *key, bool scope) {
@@ -12079,11 +12080,18 @@ inline void map_sheet_draw() {
   }
   map_card_obj = effects_page::card(camera_root, side + m.pad, y, w, h, scope ? 0 : m.radius);
   lv_obj_add_flag(map_card_obj, LV_OBJ_FLAG_CLICKABLE);  // a finger on the card is no finger on the map
+<<<<<<< HEAD
   if (scope) {
     lv_obj_set_style_bg_color(map_card_obj, aircraft_view::ground(air_full), 0);
     lv_obj_set_style_bg_opa(map_card_obj, LV_OPA_90, 0);
     lv_obj_set_style_border_color(map_card_obj, aircraft_view::phosphor(air_full, 0.45f), 0);
   }
+=======
+  // A plane's card closes with a tap on it too, letting go of the plane, as a tap anywhere else does.
+  if (plane) lv_obj_add_event_cb(map_card_obj, [](lv_event_t *) {
+    if (aircraft_plan::picks_plane(map_focus)) lv_async_call([](void *) { map_pick_plane(""); }, nullptr);
+  }, LV_EVENT_SHORT_CLICKED, nullptr);
+>>>>>>> chart-maps
   const int top = plane ? ui::px(ui::large() ? 4 : 2) : 0;
   for (int n = 0; n < rows; ++n) {
     const auto &row = map_sheet.rows[n];
@@ -12338,10 +12346,11 @@ inline void camera_open(const std::string &entity, const std::string &name, int 
     lv_async_call([](void *) { camera_close(); }, nullptr);
   }, LV_EVENT_SHORT_CLICKED, nullptr);
   // A bare map (the map tile's tap `clean`) has nothing over it: no back key, no name, no keys; a tap anywhere closes it,
-  // but one on a plane picks it, and the next lets go of it before one closes the view.
+  // but one on a plane picks it, and the next, wherever it lands, lets go of it before one closes the view.
   if (bare) {
     lv_obj_add_flag(camera_back, LV_OBJ_FLAG_HIDDEN);
     lv_obj_add_event_cb(camera_root, [](lv_event_t *) {
+      if (aircraft_plan::picks_plane(map_focus)) { map_pick_plane(""); return; }
       lv_point_t point;
       lv_indev_t *input = lv_indev_active();
       if (input) {
@@ -12358,6 +12367,8 @@ inline void camera_open(const std::string &entity, const std::string &name, int 
   }
   // A finger on a map's marker focuses that person or tracker, on the map beside it everyone again (firmware 0.21.0+).
   if (map_index >= 0 && !bare) lv_obj_add_event_cb(camera_root, [](lv_event_t *) {
+    // With a plane picked, a tap anywhere lets go of it and closes its card, and does nothing else.
+    if (aircraft_plan::picks_plane(map_focus)) { map_pick_plane(""); return; }
     // A tap on the map brings its controls for MAP_KEYS_MS, or takes them away when they are up, and picks what it lands
     // on either way.
     if (map_keys_up) map_keys_hide();
